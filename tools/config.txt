@@ -1,0 +1,9 @@
+// Copyright 2024 NXP
+// SPDX-License-Identifier: BSD-2-Clause
+Configuration file for ADL parser & .td files generator
+
+ADLName = PATH
+IgnoredAttrib = {nia, cia}
+legalDisclaimer = legalDisclaimer.py
+InstructionIgnoredAttrib = ""
+IgnoredInstructions = {}

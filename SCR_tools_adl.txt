@@ -1,0 +1,30 @@
+Package:                   tools_adl.git
+Version:                   0.0.1
+Outgoing License:          BSD-2-Clause
+License File:              LICENSE
+Description and comments:  ADL Tools to generate LLVM target description files and tests
+Release Location:          https://github.com/nxp-auto-tools/tools_adl
+Origin:                    NXP (BSD-2-clause)
+Components: 
+ - 
+   Component: 
+   Name: "ADL Tools"
+   Subcomponents: 
+   Name: "make_td"
+     Description: "Tool to generate LLVM target description files from ADL specification"
+     Version: "0.1"
+     Author: NXP
+     License: BSD-2-Clause
+     Format: source
+     Location: "tools/make_td.py"
+
+   Name: "make_test"
+     Description: "Tool to generate build tool tests from ADL specification"
+     Version: "0.1"
+     Author: NXP
+     License: BSD-2-Clause
+     Format: source
+     Location: "tools/testing/make_test.py"
+
+
+                           

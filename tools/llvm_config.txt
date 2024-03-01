@@ -1,0 +1,144 @@
+// Copyright 2024 NXP
+// SPDX-License-Identifier: BSD-2-Clause
+Configuration file for ADL parser & .td files generator based on LLVM requirements
+
+// ---- TD files used for generation -----------------------------------------------------
+RegisterInfoFile = ./examples/TD/RISCVRegisterInfo_gen.td
+InstructionInfoFile = ./examples/TD/RISCVInstrInfo_gen.td
+InstructionFormatFile = ./examples/TD/RISCVInstrFormats_gen.td
+InstructionFormatFile16 = ./examples/TD/RISCVInstrFormats16_gen.td
+InstructionAliases = ./examples/TD/RISCVInstrAliases_gen.td
+OperandsFile = ./examples/TD/RISCVOperands_gen.td
+OperandsFile16 = ./examples/TD/RISCVOperands16_gen.td
+CallingConventionFile = ./examples/TD/RISCVCallingConv_gen.td
+RelocationFile = ./examples/TD/RISCVReloc.def
+IntrinsicsFile = ./examples/TD/RISCVIntrinsics_gen.td
+BuiltinFile = ./examples/TD/BuiltinRISCV.def
+BuiltinHeader = ./examples/TD/riscv_builtin.h
+MemoryOperand = ./examples/TD/RISCVMemoryOperand_gen.td
+TestIntrinsics = ./tools/testing/intrinsics
+
+// ---- Environment variables and setup -----------------------------------------------------------------------
+Namespace = RISCV
+BaseArchitecture = rv32
+RegisterClass = RISCVReg
+InstructionClass = RVInst
+InstructionClassC = RVInst16
+InstructionFormat = InstFormat
+RegAltNameIndex = ABIRegAltName
+LLVMGPRBasicWidth = 32
+LLVMStandardInstructionWidth = 32
+AsmString = opcodestr # "\t" # argstr
+LLVMConstraintClassWidth = 3
+LLVMConstraintRiscVPrefix = RV
+LLVMConstraintName = VConstraint
+LLVMConstraintValues = NoConstraint
+LLVMNoConstraintValue = 0b000
+TSFlagsFirstConstraint = 7
+TSFlagsLastConstraint = 5
+sideEffectAttribute = rv32pa
+sideEffectAttributeSpecific = sideEffect
+memorySynchronizationInstruction = sync
+XLenVT = i32
+XLenVT_key = XLenVT
+XLenRI = RegInfo<32,32,32>
+XLenRI_key = XLenRI
+DefineSP = True
+
+// ---- Instructions Types --------------------------------------------------------------------------
+instructionFormatR = InstFormatR
+instructionFormatCR = InstFormatCR
+instructionFormatI = InstFormatI
+instructionFormatCI = InstFormatCI
+instructionFormatB = InstFormatB
+instructionFormatCB = InstFormatCB
+instructionFormatJ = InstFormatJ
+instructionFormatU = InstFormatU
+instructionFormatS = InstFormatS
+instructionFormatCS = InstFormatCS
+
+// ---- LLVM Format Info ----------------------------------------------------------------------------
+TSFlagsFirst = 4
+TSFlagsLast = 0
+aliasGPR_8 = GPRC
+aliasGPR_1 = GPRNoX0
+aliasGPR_1Nox2 = GPRNoX0X2
+LLVMPrivilegedAttributes = {rv32pa}
+LLVMOtherVTAttrib = {branch}
+LLVMOtherVTReloc = {}
+LLVMOtherVTValue = OtherVT
+LLVMPrintMethodAttrib = {branch}
+LLVMPrintMethodReloc = {}
+LLVMPrintMethodValue = printBranchOperand
+LLVMOperandTypeAttrib = {branch}
+LLVMOperandTypeReloc = {}
+LLVMOperandTypeValue = OPERAND_PCREL
+SImmAsmOperandParameters = {int_width, string_suffix}
+UImmAsmOperandParameters = {int_width, string_suffix}
+ImmAsmOperandParameters = {string_prefix, int_width, string_suffix}
+ImmAsmOperandName = {prefix, width, suffix}
+ImmAsmOperandRenderMethod = addImmOperands
+ImmAsmOperandDiagnosticType = !strconcat("Invalid", Name)
+basicDecodeMethod = {decodeUImmOperand, decodeSImmOperand}
+LLVMVFlags = {VLMul, ForceTailAgnostic, IsTiedPseudo, HasSEWOp, HasVLOp, HasVecPolicyOp, IsRVVWideningReduction, UsesMaskPolicy, IsSignExtendingOpW, HasRoundModeOp, UsesVXRM}
+VLMul = 0
+VLMulTSFlagsStart = 10
+VLMulTSFlagsEnd = 8
+ForceTailAgnostic = false
+ForceTailAgnosticTSFlagsStart = 11
+ForceTailAgnosticTSFlagsEnd = 11
+IsTiedPseudo = 0
+IsTiedPseudoTSFlagsStart = 12
+IsTiedPseudoTSFlagsEnd = 12
+HasSEWOp = 0
+HasSEWOpTSFlagsStart = 13
+HasSEWOpTSFlagsEnd = 13
+HasVLOp = 0
+HasVLOpTSFlagsStart = 14
+HasVLOpTSFlagsEnd = 14
+HasVecPolicyOp = 0
+HasVecPolicyOpTSFlagsStart = 15
+HasVecPolicyOpTSFlagsEnd = 15
+IsRVVWideningReduction = 0
+IsRVVWideningReductionTSFlagsStart = 16
+IsRVVWideningReductionTSFlagsEnd = 16
+UsesMaskPolicy = 0
+UsesMaskPolicyTSFlagsStart = 17
+UsesMaskPolicyTSFlagsEnd = 17
+IsSignExtendingOpW = 0
+IsSignExtendingOpWTSFlagsStart = 18
+IsSignExtendingOpWTSFlagsEnd = 18
+HasRoundModeOp = 0
+HasRoundModeOpTSFlagsStart = 19
+HasRoundModeOpTSFlagsEnd = 19
+UsesVXRM = 0
+UsesVXRMTSFlagsStart = 20
+UsesVXRMTSFlagsEnd = 20
+
+// ---- Calling Convention -----------------------------------------------------------------------------------
+RegisterAllocationOrder = {GPR: [Function_arguments, Temporary, Saved_register, Hard_wired_zero, Return_address, Stack_pointer, Global_pointer, Thread_pointer]}
+CallingConventionAllocationOrder = {CSR_ILP32_LP64: [Return_address, Global_pointer, Thread_pointer, Saved_register]}
+CallingConventionAllocationExcluded = {CSR_Interrupt: [Hard_wired_zero, Stack_pointer]}
+CSR_ILP32_LP64_Ref = GPR
+CSR_Interrupt_Ref = GPR
+XLenRIRegInfo = RegInfoByHwMode<[RV32, RV64], [RegInfo<32,32,32>, RegInfo<64,64,64>]>
+XLenVTValueType = ValueTypeByHwMode<[RV32, RV64], [i32,  i64]>
+
+// ----Extensions Declaration-----------------------------------------------------------------------------------
+LLVMExtRv32i = IsRV32
+HasStdRv32iExtension = Rv32i
+
+// ----Immediate Operands---------------------------------------------------------------------------------------------------------
+ImmediateOperands = {fence_prod, fence_succ, GenericOperand, imm_uj, shamt_c, imm_u_pc, imm_u, imm_sb, pd, ps1, ps2, ps3, s1_ptr, d_ptr}
+fence_prod = {disableImmLeaf=True, PrintMethod=printFenceArg, AliasImmClass=fencearg, DefineOperand=FenceArg, DisableEncoderMethod=True, ParserMatchClass=FenceArg, ImmAsmOperandName=FenceArg, ImmAsmOperandRenderMethod=addFenceArgOperands, ParserMethod="parseFenceArg", OperandClass=AsmOperandClass}
+fence_succ = {disableImmLeaf=True, PrintMethod=printFenceArg, AliasImmClass=fencearg, DefineOperand=FenceArg, DisableEncoderMethod=True, ParserMatchClass=FenceArg, ImmAsmOperandName=FenceArg, ImmAsmOperandRenderMethod=addFenceArgOperands, ParserMethod="parseFenceArg", OperandClass=AsmOperandClass}
+imm_uj = {disableImmLeaf=True, EncoderMethod=getImmOpValue, AliasImmClass=simm21_lsb0_jal, DefineOperand=Simm21Lsb0JALAsmOperand, ParserMatchClass=Simm21Lsb0JALAsmOperand, ParserMethod=parseJALOffset, OperandClass=SImmAsmOperand<21,"Lsb0JAL">}
+GenericOperand = {EncoderMethod=getImmOpValue}
+shamt_c = {AliasImmClass=uimmlog2xlennonzero}
+imm_u_pc = {disableImmLeaf=True, AliasImmClass=uimm20_auipc, ParserMatchClass=UImmAsmOperand<20, "AUIPC">}
+imm_u = {disableImmLeaf=True, AliasImmClass=uimm20_lui, ParserMatchClass=UImmAsmOperand<20, "LUI">}
+imm_sb = {disableImmLeaf=True, EncoderMethod=getImmOpValue, DecoderMethod=decodeSImmOperandAndLsl1<13>}
+
+// ----Additional Extensions Info------------------------------------------------------------------------------------------------------------
+ExtensionPrefixed = {}
+DecoderNamespace = {Others=RISCV32Only_}
