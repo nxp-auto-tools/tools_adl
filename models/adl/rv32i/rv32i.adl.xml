@@ -2,7 +2,7 @@
 
 <data>
 <cores>
-<core name="zenv">
+<core name="RV32I">
 <licenseText>
 <str> Copyright 2024 NXP
 SPDX-License-Identifier: BSD-2-Clause </str>

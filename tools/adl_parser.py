@@ -45,7 +45,6 @@ def parse_adl(adl_name):
             attributes = list()
             parameters = dict()
             entries = list()
-            entries_synatx = list()
             syntax = list()
             debug_info = dict()
             enumerated_dict = dict()
@@ -73,6 +72,10 @@ def parse_adl(adl_name):
                                 enumerated_dict[
                                     regclassinfo.attrib["name"]
                                 ] += enumerated_list
+                    if regfile.tag == "read":
+                        for attribute in regclassinfo.iter("alias"):
+                            for register in attribute[0].iter(attribute[0].tag):
+                                parameters['pseudo'] = register[0].text
                     for attribute in regclassinfo.iter("entry"):
                         entries.append(attribute.attrib["name"])
                     for syntaxelem in regclassinfo.iter("syntax"):
@@ -119,8 +122,6 @@ def parse_adl(adl_name):
                     alignment,
                 )
                 registers[register_class] = reginfo
-                # print(registers[register_class])
-
             elif register_class == "GPR":
                 attributes = set(attributes)
                 pseudo = ""
@@ -164,6 +165,8 @@ def parse_adl(adl_name):
                 pseudo = ""
                 alignment = ""
                 shared = ""
+                read = ""
+                write = ""
                 if "alignment" in parameters.keys():
                     alignment = parameters["alignment"]
                 if "calling_convention" in parameters.keys():
@@ -209,7 +212,6 @@ def parse_adl(adl_name):
                     alignment,
                 )
                 registers[register_class] = reginfo
-                # print(registers[register_class])
 
         for regclass in core.iter("regs"):
             for regs in regclass:
@@ -219,8 +221,6 @@ def parse_adl(adl_name):
                 entries = list()
                 syntax = list()
                 register_name = regs.attrib["name"]
-                # print(regs.attrib['name'])
-                # print(regs.tag, regs.attrib)
                 for reg_info in regs:
                     for sub_reg_info in reg_info:
                         for attribute in sub_reg_info.iter("attribute"):
@@ -347,7 +347,6 @@ def get_instrfield_offset(adl_name):
     for core in root.iter("cores"):
         for instr_field in core.iter("instrfield"):
             instruction_field = instr_field.attrib["name"]
-            # print(instruction_field)
             parameters = dict()
             enumerated_dict = dict()
             exclude_values = dict()
@@ -408,6 +407,10 @@ def get_instrfield_from_adl(adl_name):
             for instr in instr_field:
                 for elem in instr:
                     parameters[instr.tag] = elem.text
+                    if instr.tag == "enumerated":
+                        enumerated_list = [
+                            option[0].text for option in elem.iter("option")
+                        ]
                     if instr.tag == "bits":
                         for instr_bits in instr.iter("range"):
                             for index in range(len(instr_bits)):
@@ -682,7 +685,7 @@ def parse_instructions_aliases_from_adl(adl_name):
     return instructions_aliases
 
 
-## This function will parsed the information describing the registers containing subregisters. it saves the subregisters
+## This function will parsed the information describing the registers containing subregisters. It saves the subregisters
 # description for a register
 #
 # @param adl_name This argument represents the ADL file from which the information will be parsed
@@ -753,3 +756,82 @@ def parse_relocations(adl_name):
                         parameters[instr.tag] = elem.text
                 reloc_data[reloc_name] = parameters
     return reloc_data
+
+
+def parse_sched_table_from_adl(adl_name):
+    tree = ET.parse(adl_name)
+    root = tree.getroot()
+    sched_table_dict = dict()
+    for core in root.iter("cores"):
+        for sched_table in core.iter("sched-table"):
+            if sched_table.attrib["name"] not in sched_table_dict.keys():
+                sched_table_dict[sched_table.attrib["name"]] = {}
+                instruction_sched = dict()
+                for instr in core.iter("instruction-sched"):
+                    parameters = dict()
+                    aux_list = list()
+                    resource_cycle = list()
+                    if "name" in instr.attrib.keys():
+                        instruction_name = instr.attrib["name"]
+                        for instruction_info in instr:
+                            for elem in instruction_info:
+                                if instruction_info.tag == 'instruction_list':
+                                    aux = elem.text.split(",")
+                                    parameters[instruction_info.tag] = aux
+                                elif instruction_info.tag == "pipeline":
+                                    if elem.text not in aux_list:
+                                        aux_list.append(elem.text)
+                                    parameters[instruction_info.tag] = aux_list
+                                elif instruction_info.tag == "resource_cycle":
+                                    if elem.text not in resource_cycle:
+                                        resource_cycle.append(elem.text)
+                                    parameters[instruction_info.tag] = resource_cycle
+                                else:
+                                    parameters[instruction_info.tag] = elem.text
+                        instruction_sched[instruction_name] = parameters
+                    elif "group" in instr.attrib.keys():
+                        instruction_group = instr.attrib["group"]
+                        for instruction_info in instr:
+                            for elem in instruction_info:
+                                if instruction_info.tag == 'instruction_list':
+                                    aux = elem.text.split(",")
+                                    parameters[instruction_info.tag] = aux
+                                elif instruction_info.tag == "pipeline":
+                                    if elem.text not in aux_list:
+                                        aux_list.append(elem.text)
+                                    parameters[instruction_info.tag] = aux_list
+                                elif instruction_info.tag == "resource_cycle":
+                                    if elem.text not in resource_cycle:
+                                        resource_cycle.append(elem.text)
+                                    parameters[instruction_info.tag] = resource_cycle
+                                else:
+                                    parameters[instruction_info.tag] = elem.text
+                        instruction_sched[instruction_group] = parameters
+                    sched_table_dict[sched_table.attrib["name"]].update(instruction_sched)
+    return sched_table_dict
+
+def parse_scheduling_model_params(adl_name):
+    tree = ET.parse(adl_name)
+    root = tree.getroot()
+    sched_table_params = dict()
+    for core in root.iter("cores"):
+        for sched_table in core.iter("sched-table"):
+            if sched_table.attrib["name"] not in sched_table_params.keys():
+                sched_table_params[sched_table.attrib["name"]] = {}
+            parameters = dict()
+            for info in sched_table:
+                for elem in info:
+                    if info.tag != 'instruction-sched':
+                        parameters[info.tag] = elem.text
+            func_units_list = list()
+            for func_unit in core.iter('functional-unit'):
+                if "name" in func_unit.attrib.keys():
+                    func_unit_name = func_unit.attrib["name"]
+                    if func_unit_name not in func_units_list:
+                        func_units_list.append(func_unit_name)
+            if len(func_units_list) > 0:
+                parameters['FunctionalUnits'] = func_units_list
+            sched_table_params[sched_table.attrib["name"]] = parameters
+    return sched_table_params
+
+

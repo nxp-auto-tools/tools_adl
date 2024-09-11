@@ -16,12 +16,20 @@ IntrinsicsFile = ./examples/TD/RISCVIntrinsics_gen.td
 BuiltinFile = ./examples/TD/BuiltinRISCV.def
 BuiltinHeader = ./examples/TD/riscv_builtin.h
 MemoryOperand = ./examples/TD/RISCVMemoryOperand_gen.td
-TestIntrinsics = ./tools/testing/intrinsics
+TestIntrinsics = ./tools/testing/intrinsics/
+ScheduleFile = ./examples/TD/RISCVSchedule_gen.td
+SchedulePath = ./examples/TD/
+ScheduleFileTable = ./examples/TD/RISCVScheduleTable_gen.td
+TestScheduling = ./tools/testing/scheduling/zilsd/
+SailDescription = ./examples/sail/RISCV_insts_ext.sail
 
 // ---- Environment variables and setup -----------------------------------------------------------------------
 Namespace = RISCV
 BaseArchitecture = rv32
 RegisterClass = RISCVReg
+RegisterClassSubRegs_GPR = RISCVRegWithSubRegs
+RegisterClassSubRegs_CSR = RISCVCSRRegWithSubRegs
+RegisterClassSubRegs_CSR_enabled = True
 InstructionClass = RVInst
 InstructionClassC = RVInst16
 InstructionFormat = InstFormat
@@ -29,6 +37,7 @@ RegAltNameIndex = ABIRegAltName
 LLVMGPRBasicWidth = 32
 LLVMStandardInstructionWidth = 32
 AsmString = opcodestr # "\t" # argstr
+DwarfCSR = 4096
 LLVMConstraintClassWidth = 3
 LLVMConstraintRiscVPrefix = RV
 LLVMConstraintName = VConstraint
@@ -36,9 +45,10 @@ LLVMConstraintValues = NoConstraint
 LLVMNoConstraintValue = 0b000
 TSFlagsFirstConstraint = 7
 TSFlagsLastConstraint = 5
-sideEffectAttribute = rv32pa
+sideEffectAttribute = ""
 sideEffectAttributeSpecific = sideEffect
 memorySynchronizationInstruction = sync
+sideEffectInstrfield = csr
 XLenVT = i32
 XLenVT_key = XLenVT
 XLenRI = RegInfo<32,32,32>
@@ -50,9 +60,6 @@ instructionFormatR = InstFormatR
 instructionFormatCR = InstFormatCR
 instructionFormatI = InstFormatI
 instructionFormatCI = InstFormatCI
-instructionFormatB = InstFormatB
-instructionFormatCB = InstFormatCB
-instructionFormatJ = InstFormatJ
 instructionFormatU = InstFormatU
 instructionFormatS = InstFormatS
 instructionFormatCS = InstFormatCS
@@ -63,14 +70,13 @@ TSFlagsLast = 0
 aliasGPR_8 = GPRC
 aliasGPR_1 = GPRNoX0
 aliasGPR_1Nox2 = GPRNoX0X2
-LLVMPrivilegedAttributes = {rv32pa}
-LLVMOtherVTAttrib = {branch}
+LLVMPrivilegedAttributes = {""}
+LLVMOtherVTAttrib = {}
 LLVMOtherVTReloc = {}
 LLVMOtherVTValue = OtherVT
-LLVMPrintMethodAttrib = {branch}
+LLVMPrintMethodAttrib = {}
 LLVMPrintMethodReloc = {}
-LLVMPrintMethodValue = printBranchOperand
-LLVMOperandTypeAttrib = {branch}
+LLVMOperandTypeAttrib = {}
 LLVMOperandTypeReloc = {}
 LLVMOperandTypeValue = OPERAND_PCREL
 SImmAsmOperandParameters = {int_width, string_suffix}
@@ -126,19 +132,23 @@ XLenVTValueType = ValueTypeByHwMode<[RV32, RV64], [i32,  i64]>
 
 // ----Extensions Declaration-----------------------------------------------------------------------------------
 LLVMExtRv32i = IsRV32
+LLVMExtRv32c = HasStdExtC
+HasStdExtCExtension = C
+LLVMExtZilsd = HasStdExtZilsd
+HasStdExtZilsdExtension = Zilsd
+LLVMExtZcmlsd = HasStdExtZcmlsd
+HasStdExtZcmlsdExtension = Zcmlsd
 HasStdRv32iExtension = Rv32i
+HasStdRv32cExtension = Rv32c
 
 // ----Immediate Operands---------------------------------------------------------------------------------------------------------
-ImmediateOperands = {fence_prod, fence_succ, GenericOperand, imm_uj, shamt_c, imm_u_pc, imm_u, imm_sb, pd, ps1, ps2, ps3, s1_ptr, d_ptr}
-fence_prod = {disableImmLeaf=True, PrintMethod=printFenceArg, AliasImmClass=fencearg, DefineOperand=FenceArg, DisableEncoderMethod=True, ParserMatchClass=FenceArg, ImmAsmOperandName=FenceArg, ImmAsmOperandRenderMethod=addFenceArgOperands, ParserMethod="parseFenceArg", OperandClass=AsmOperandClass}
-fence_succ = {disableImmLeaf=True, PrintMethod=printFenceArg, AliasImmClass=fencearg, DefineOperand=FenceArg, DisableEncoderMethod=True, ParserMatchClass=FenceArg, ImmAsmOperandName=FenceArg, ImmAsmOperandRenderMethod=addFenceArgOperands, ParserMethod="parseFenceArg", OperandClass=AsmOperandClass}
-imm_uj = {disableImmLeaf=True, EncoderMethod=getImmOpValue, AliasImmClass=simm21_lsb0_jal, DefineOperand=Simm21Lsb0JALAsmOperand, ParserMatchClass=Simm21Lsb0JALAsmOperand, ParserMethod=parseJALOffset, OperandClass=SImmAsmOperand<21,"Lsb0JAL">}
+ImmediateOperands = {GenericOperand, imm_u_pc, imm_u, imm_sb}
 GenericOperand = {EncoderMethod=getImmOpValue}
 shamt_c = {AliasImmClass=uimmlog2xlennonzero}
 imm_u_pc = {disableImmLeaf=True, AliasImmClass=uimm20_auipc, ParserMatchClass=UImmAsmOperand<20, "AUIPC">}
 imm_u = {disableImmLeaf=True, AliasImmClass=uimm20_lui, ParserMatchClass=UImmAsmOperand<20, "LUI">}
 imm_sb = {disableImmLeaf=True, EncoderMethod=getImmOpValue, DecoderMethod=decodeSImmOperandAndLsl1<13>}
 
-// ----Additional Extensions Info------------------------------------------------------------------------------------------------------------
-ExtensionPrefixed = {}
-DecoderNamespace = {Others=RISCV32Only_}
+// ----Additional Extension Info------------------------------------------------------------------------------------------------------------
+ExtensionPrefixed = {Zilsd}
+DecoderNamespace = {Zilsd=Zilsd, Others=RISCV32Only_}

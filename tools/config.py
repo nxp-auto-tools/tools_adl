@@ -50,7 +50,7 @@ def config_environment(config_file, llvm_file):
         if newline.startswith("//"):
             continue
         x = re.findall(
-                '\.*[\#"a-z_A-Z0-9]*\/*\:*[\#"a-z_A-Z0-9]*\/*\.*[\#"a-z_A-Z0-9]*\/*\.*[\#"a-zA-z0-9\.]*',
+                '\.*[\#"a-z_A-Z0-9]*\/*\:*[\#"a-z_A-Z0-9]*\/*\.*[\#"a-z_A-Z0-9]*\/*\.*[\#"a-zA-z0-9\.]*\/*[\-*a-zA-Z\/*]*',
             newline,
         )
         args = [elem.strip(" ") for elem in x if elem != ""]

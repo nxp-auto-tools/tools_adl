@@ -40,4 +40,8 @@ if __name__ == "__main__":
         if fname.endswith(".h"):
             os.system("del *.h")
             break
+    for fname in os.listdir("."):
+        if fname.endswith(".h"):
+            os.system("del *.sail")
+            break
     make_td_function()

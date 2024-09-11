@@ -1,224 +1,258 @@
-# Copyright 2024 NXP
+# Copyright 2024 NXP 
 # SPDX-License-Identifier: BSD-2-Clause
 
 ## @package parse_reloc
 # The module for parsing and extracting information about relocations from adl
 
 import sys
-import xml.etree.ElementTree as ET
 import re
-import importlib
+import xml.etree.ElementTree as ET
 from collections import defaultdict
-
-sys.path.append("./../")
-module_info = "info"
-try:
-    info = importlib.import_module(module_info)
-except ImportError:
-    print("Please run make_test.py first to generate the info module.")
 
 
 ## A function that generates a dictionary with all the instructions as keys and a list of their operands as values
 # @param adl_file Name of the adl file
-# @return @b instr_op_dict-> A dictionary containing instructions as keys and a list of operands as values
+# @return @b instruction_operands_dict-> A dictionary containing instructions as keys and a list of operands as values
 def instructions_operands(adl_file):
     tree = ET.parse(adl_file)
     root = tree.getroot()
 
-    model_only = list()
-    ignored = list()
-    instr_op_dict = dict()
+    instruction_operands_dict = {}
+    # Iterate over all instructions and skip the ones that are pseudo, alias or have the attribute ignored
+    for instruction in root.iter("instruction"):
+        skip_instruction = False
+        for attribute in instruction.iter("attribute"):
+            if attribute.get("name") == "ignored":
+                skip_instruction = True
+                break
+            if attribute.get("name") == "model_only":
+                skip_instruction = True
+                break
+        if ((instruction.find("pseudo") is not None) or 
+            (instruction.find("alias_action") is not None) or
+            (skip_instruction is True)):
+            continue
 
-    for cores in root.iter("cores"):
-        # check if the instruction is a pseudo instruction or has alias_action
-        for instruction in cores.iter("instruction"):
-            if (instruction.find("pseudo")) or (instruction.find("alias_action")):
-                continue
-            else:
-                name = instruction.get("name")
-                # get instruction instrfield name if the instruction is not alias or hint, else take syntax name
-                for syntax in instruction.iter("syntax"):
-                    syntax_text = str(syntax.find("str").text).split()
-                    syntax_name = syntax_text[0]
-                # check if the instruction is model_only
-                for attribute in instruction.iter("attribute"):
-                    if attribute.get("name") == "model_only":
-                        model_only.append(instruction.get("name"))
-                # check if the instruction is ignored
-                for attribute in instruction.iter("attribute"):
-                    if attribute.get("name") == "ignored":
-                        ignored.append(instruction.get("name"))
-                # extract the syntax of the instruction
-                for syntax in instruction.iter("syntax"):
-                    syntax_text = str(syntax.find("str").text)
-
-                # extract the operands from the syntax
-                pattern_syntax = r"^([\w.]+)\s+(.*)$"
-                match_1 = re.match(pattern_syntax, syntax_text)
-                if match_1 is not None:
-                    instr_name = match_1.group(1)
-                    operands_syntax = match_1.group(2).split(",")
-                else:
-                    operands_syntax = []
-
-                instr_op_dict[name] = operands_syntax
-
-                # delete all model_only instructions
-                for key in model_only:
-                    if key in instr_op_dict:
-                        del instr_op_dict[key]
-
-                # delete all ignored instructions
-                for key in ignored:
-                    if key in instr_op_dict:
-                        del instr_op_dict[key]
-
-    # eliminate offsets from dict
-    pattern = re.compile(r"\(.*?\)")
-    for key, value in instr_op_dict.items():
-        instr_op_dict[key] = [pattern.sub("", item) for item in value]
-
-    return instr_op_dict
-
-
-## Reverses the previous instr_op_dict with operands as keys and a list of instructions as their values
-# @param instr_op_dict A dictionary containing instructions as keys and a list of operands as values
-# @return @b op_instr_dict_updated-> A dictionary containing operands as keys and a list of instructions as values
-def operands_instructions(instr_op_dict):
-    op_instr_dict = defaultdict(list)
-
-    for instruction, operands in instr_op_dict.items():
-        for operand in operands:
-            op_instr_dict[operand].append(instruction)
-
-    op_instr_dict = dict(op_instr_dict)
-
-    op_instr_dict_updated = dict()
-    for key, value in op_instr_dict.items():
-        if "(" in key and ")" in key:
-            new_key = key.replace("(", "").replace(")", "")
-            op_instr_dict_updated[new_key] = value
+        syntax = instruction.find("syntax").find("str").text
+        instruction_name = instruction.get("name")
+        # Check if the instruction has no operands
+        if len(syntax.split(' ')) == 1:
+            instruction_operands_dict[instruction_name] = []
         else:
-            op_instr_dict_updated[key] = value
+            operands = syntax.split(' ')[1].split(',')
+            instruction_operands_dict[instruction_name] = operands
 
-    return op_instr_dict_updated
+    # Sepparate the offset from the immediate in the operands list
+    for instruction, operands in instruction_operands_dict.items():
+        for operand in operands:
+            match_offset = re.search(r'\((.*?)\)', operand)
+             # Extract the offset within parentheses
+            if match_offset is not None:
+                offset = match_offset.group(1)
+                # Remove the offset and keep only the immediate
+                immediate = re.sub(r'\(.*?\)', '', operand).strip()
+                # Remove the operand from the list
+                operands.remove(operand)
+                # Append the immediate and the offset to the list of operands
+                operands.append(immediate)
+                operands.append(offset)
 
+    return instruction_operands_dict
+
+
+## Reverses the previous instruction_operands_dict with operands as keys and a list of instructions as their values
+# @param instruction_operands_dict A dictionary containing instructions as keys and a list of operands as values
+# @return @b operand_instructions_dict-> A dictionary containing operands as keys and a list of instructions as values
+def operands_instructions(instruction_operands_dict):
+
+    operand_instructions_dict = defaultdict(list)
+
+    for instruction, operands in instruction_operands_dict.items():
+        for operand in operands:
+            operand_instructions_dict[operand].append(instruction)
+
+    return operand_instructions_dict
+    
 
 ## Generates a dictionary with all the relocations as keys and a list of instructons as their values
 # @param adl_file Name of the adl file
-# @param op_instr_dict_updated-> A dictionary containing operands as keys and a list of instructions as values
+# @param operand_instructions_dict-> A dictionary containing operands as keys and a list of instructions as values
 # @return A dictionary containing relocations as keys and a list of instructions as values
-def relocations_instructions(adl_file, op_instr_dict_updated):
+def relocations_instructions(adl_file, operand_instructions_dict):
     tree = ET.parse(adl_file)
     root = tree.getroot()
 
-    reloc_op_dict = dict()
+    relocation_operand_dict = dict()
+    relocation_instructions_dict = dict()
 
-    for cores in root.iter("cores"):
-        # extract all registers with their relocations from adl
-        for instrfield in cores.iter("instrfield"):
-            for reloc in instrfield.iter("reloc"):
-                if (
-                    instrfield.get("name") in op_instr_dict_updated.keys()
-                    and instrfield.find("reloc") is not None
-                ):
-                    name = instrfield.get("name")
-                    for string in reloc.iter("str"):
-                        relocation = string.text
-                        reloc_op_dict[relocation] = name
+    for instrfield in root.iter("instrfield"):
+        for reloc in instrfield.iter("reloc"):
+            # Check if the operand is in the operand_instructions_dict and if it has a relocation
+            if instrfield.get("name") in operand_instructions_dict.keys() and instrfield.find("reloc") is not None:
+                relocations_list = instrfield.find("reloc").findall("str")
+                for reloc in relocations_list:
+                    relocation_operand_dict[reloc.text] = instrfield.get("name")
 
-    for cores in root.iter("cores"):
-        # extract all registers without their relocations from adl -> just for printing purposes
-        for instrfield2 in cores.iter("instrfield"):
-            if (
-                instrfield2.get("name") in op_instr_dict_updated.keys()
-                and instrfield2.find("reloc") is not None
-            ):
-                name2 = instrfield2.get("name")
+    # Extract associated relocations and instructions based on common operands
+    for operand_i, instructions in operand_instructions_dict.items():
+        for relocation, operand_r in relocation_operand_dict.items():
+            if operand_i in relocation_operand_dict.values():
+                relocation_instructions_dict[relocation] = operand_instructions_dict[operand_r]
+    
+    # Sort the instructions lists
+    for relocation, instructions in relocation_instructions_dict.items():
+        relocation_instructions_dict[relocation] = sorted(instructions)
+    return dict(sorted(relocation_instructions_dict.items()))
 
-    # extract associated relocations and instructions based on common operands
-    reloc_instr_dict = dict()
-    for key1, value1 in op_instr_dict_updated.items():
-        for key2, value2 in reloc_op_dict.items():
-            if key1 in reloc_op_dict.values():
-                reloc_instr_dict[key2] = op_instr_dict_updated[value2]
 
-    # sort the instructions lists
-    for reloc, instr in reloc_instr_dict.items():
-        reloc_instr_dict[reloc] = sorted(instr)
+## A function that generates a dictionary with all the relocations as keys and a list of their operands as values
+# @param adl_file Name of the adl file
+# @param relocation_instructions_dict A dictionary containing relocations as keys and a list of instructions as values
+# @return A dictionary containing relocations as keys and a list of their operands as values
+def relocations_instrfields(adl_file, relocation_instructions_dict):
 
-    return dict(sorted(reloc_instr_dict.items()))
+    tree = ET.parse(adl_file)
+    root = tree.getroot()
+
+    relocation_instrfield_dict = dict()
+
+    for instrfield in root.iter("instrfield"):
+        for reloc in instrfield.iter("reloc"):
+            reloc_list = instrfield.find("reloc").findall("str")
+            for reloc in reloc_list:
+                if reloc.text in relocation_instructions_dict.keys():
+                    relocation_instrfield_dict[reloc.text] = instrfield.get("name")
+
+    return relocation_instrfield_dict
 
 
 ## Generates a dictionary with all the relocations as keys and their abbreviations as values
 # @param adl_file Name of the adl file
 # @param reloc_instr_dict-> A dictionary containing relocations as keys and a list of instructions as values
 # @return A dictionary with all the relocations as keys and their abbreviations as values
-def relocations_abbrev(adl_file, reloc_instr_dict):
+def relocations_abbrevs(adl_file, relocation_instructions_dict):
+
     tree = ET.parse(adl_file)
     root = tree.getroot()
 
     relocation_abbrev_dict = {}
-
-    for cores in root.iter("cores"):
-        for relocations in cores.iter("relocations"):
-            for reloc, abbrev in zip(
-                relocations.iter("reloc"), relocations.iter("abbrev")
-            ):
-                reloc_name = reloc.get("name")
-                abbrev_name = abbrev.find("str").text
-                if reloc_name in reloc_instr_dict.keys():
-                    relocation_abbrev_dict[reloc_name] = abbrev_name
+    for relocations in root.iter("relocations"):
+        for reloc,abbrev in zip(relocations.iter("reloc"), relocations.iter("abbrev")):
+            reloc_name = reloc.get("name")
+            abbrev_name = abbrev.find("str").text
+            if reloc_name in relocation_instructions_dict.keys():
+                relocation_abbrev_dict[reloc_name] = abbrev_name
 
     return dict(sorted(relocation_abbrev_dict.items()))
 
 
-## A function used to parse relevant information about operands for relocations generation
+## Generates a dictionary with relocations that have a suffix
 # @param adl_file Name of the adl file
-# @param op_instr_dict_updated A dictionary containing operands as keys and a list of instructions as values
-# @return @b reloc_op_dict-> A dictionary containing relocations as keys and a list of operands as values
-# @return @b imm_width-> A dictionary containing immediates as keys and their width as values
-# @return @b imm_shift-> A dictionary containing immediates as keys and their shift as values
-def operands_width(adl_file, op_instr_dict_updated):
+# @param reloc_instr_dict-> A dictionary containing relocations as keys and a list of instructions as values
+# @return A dictionary with only the relocations that have a suffix
+def relocations_suffixes(adl_file, relocation_instructions_dict):
+    
     tree = ET.parse(adl_file)
     root = tree.getroot()
 
-    reloc_op_dict = dict()
-    imm_width = dict()
-    imm_shift = dict()
-    imm_signed = dict()
+    relocation_suffix_dict = {}
+    for relocations in root.iter("relocations"):
+        for reloc in relocations.iter("reloc"):
+            if reloc.get("name") in relocation_instructions_dict.keys():
+                suffix = reloc.find("suffix")
+                if suffix is not None:
+                    relocation_suffix_dict[reloc.get("name")] = suffix.find("str").text
+    
+    return dict(sorted(relocation_suffix_dict.items()))
 
-    for cores in root.iter("cores"):
-        # extract all registers with their relocations from adl
-        for instrfield in cores.iter("instrfield"):
-            for reloc in instrfield.iter("reloc"):
-                if (
-                    instrfield.get("name") in op_instr_dict_updated.keys()
-                    and instrfield.find("reloc") is not None
-                ):
-                    name = instrfield.get("name")
-                    for string in reloc.iter("str"):
-                        relocation = string.text
-                        reloc_op_dict[relocation] = name
-        # extract all immediates from adl with additional info
-        for instrfield in cores.iter("instrfield"):
-            immediate = instrfield.get("name")
-            signed_text = "false"
-            if immediate in reloc_op_dict.values():
-                for width in instrfield.iter("width"):
-                    width_text = int(width.find("int").text)
-                for shift in instrfield.iter("shift"):
-                    shift_text = int(shift.find("int").text)
-                    width_text += shift_text
-                for signed in instrfield.iter("signed"):
-                    signed_text = signed.find("str").text
 
-                imm_width[immediate] = width_text
-                imm_shift[immediate] = shift_text
-                imm_signed[immediate] = signed_text
+## Generates a dictionary with all the instructions as keys and their syntax as values
+# @param adl_file Name of the adl file
+# @return A dictionary with all the instructions as keys and their syntax name as values
+def instructions_syntaxNames(adl_file):
+    tree = ET.parse(adl_file)
+    root = tree.getroot()
 
-        for key in imm_width:
-            if key in imm_signed and imm_signed[key] != "true":
-                imm_width[key] += 1
+    instruction_syntaxName_dict = {}
 
-    return reloc_op_dict, imm_width, imm_shift
+    for instruction in root.iter("instruction"):
+        instruction_name = instruction.get("name")
+        syntax = str(instruction.find("syntax").find("str").text).split()[0]
+        instruction_syntaxName_dict[instruction_name] = syntax
+
+    return instruction_syntaxName_dict
+
+
+## Generates a dictionary with all the relocations as keys and a list of their dependencies as values
+# @param adl_file Name of the adl file
+# @param reloc_instr_dict-> A dictionary containing relocations as keys and a list of instructions as values
+# @return A dictionary with all the relocations as keys and a list of their dependencies as values
+def relocations_dependencies(adl_file, relocation_instructions_dict):
+    tree = ET.parse(adl_file)
+    root = tree.getroot()
+
+    relocation_dependency_dict = dict()
+    for relocations in root.iter("relocations"):
+        for reloc in relocations.iter("reloc"):
+            # Check if the relocation is in the relocation_instructions_dict and if it has a dependency
+            if reloc.get("name") in relocation_instructions_dict.keys() and reloc.find("dependency") is not None:
+                dependencies = reloc.find("dependency").findall("str")
+                dependencies_list = []
+                for dependency in dependencies:
+                    dependencies_list.append(dependency.text)
+                relocation_dependency_dict[reloc.get("name")] = dependencies_list
+
+    return relocation_dependency_dict
+
+
+## A function that generates a dictionary with instrfield names as keys and their shift as values
+# @param adl_file Name of the adl file
+# @param relocation_instrfield_dict A dictionary containing relocations as keys and a list of their operands as values
+# @return A dictionary containing instrfield names as keys and their shift as values
+def instrfields_shifts(adl_file, relocation_instrfield_dict):
+    tree = ET.parse(adl_file)
+    root = tree.getroot()
+
+    instrfield_shift_dict = dict()
+    for instrfield in root.iter("instrfield"):
+        if instrfield.get("name") in relocation_instrfield_dict.values():
+            for shift in instrfield.iter("shift"):             
+                instrfield_shift_dict[instrfield.get("name")] = int(shift.find("int").text)
+
+    return instrfield_shift_dict
+
+
+## A function that generates a dictionary with instrfield names as keys and their width as values
+# @param adl_file Name of the adl file
+# @param relocation_instrfield_dict A dictionary containing relocations as keys and a list of their operands as values
+# @return A dictionary containing instrfield names as keys and their width as values
+def instrfields_widths(adl_file, relocation_instrfield_dict):
+    tree = ET.parse(adl_file)
+    root = tree.getroot()
+
+    instrfield_width_dict = dict()
+    for instrfield in root.iter("instrfield"):
+        if instrfield.get("name") in relocation_instrfield_dict.values():
+            for width in instrfield.iter("width"):             
+                instrfield_width_dict[instrfield.get("name")] = int(width.find("int").text)
+
+    return instrfield_width_dict
+
+
+## A function that generates a dictionary with instrfield names as keys and their signed attribute as values (1 if signed and 0 if unsigned)
+# @param adl_file Name of the adl file
+# @param relocation_instrfield_dict A dictionary containing relocations as keys and a list of their operands as values
+# @return A dictionary containing instrfield names as keys and their signed attribute as values
+def instrfields_signed(adl_file, relocation_instrfield_dict):
+    tree = ET.parse(adl_file)
+    root = tree.getroot()
+
+    instrfield_signed_dict = dict()
+    for instrfield in root.iter("instrfield"):
+        if instrfield.get("name") in relocation_instrfield_dict.values():
+            if instrfield.find("signed") is not None:
+                instrfield_signed_dict[instrfield.get("name")] = 1
+            else:
+                instrfield_signed_dict[instrfield.get("name")] = 0
+
+    return instrfield_signed_dict

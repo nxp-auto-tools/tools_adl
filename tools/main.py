@@ -102,6 +102,7 @@ def main():
         config_variables["RegisterClass"],
         config_variables["Namespace"],
     )
+    files.generate_scheduling_table(config_variables["ScheduleFileTable"])
     if os.path.exists(config_variables["InstructionInfoFile"]):
         os.remove(config_variables["InstructionInfoFile"])
     legalDisclaimer.get_copyright(config_variables["InstructionInfoFile"])
@@ -166,6 +167,9 @@ def main():
     files.generate_operand_mem_wrapper_class(config_variables["MemoryOperand"])
     files.generate_register_pairs(config_variables["RegisterInfoFile"])
     files.generate_intrinsic_tests()
+    files.generate_sched_tests(config_variables["TestScheduling"])
+    files.generate_scheduling_ref(config_variables["TestScheduling"])
+    files.generate_sail_description(config_variables["SailDescription"], extensions_list)
     del config_variables
 
 

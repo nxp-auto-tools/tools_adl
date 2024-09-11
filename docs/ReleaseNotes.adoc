@@ -66,7 +66,7 @@ calling this module, the user also has to provide a proper XML file
 which will be given as a command line argument when the module above is
 run. Finally, an example of running the application should look like:
 
-	python .\make_td.py rv32i.adl.xml	
+	python ./tools/make_td.py rv32i.adl.xml	
 
 Obviously, if the XML model is not in the same directory with the tools,
 then the user will provide a path to the XML.
@@ -82,9 +82,11 @@ which extensions should be generated.
 NOTE: If *no extension is specified*, then the tools will generate content
 for *all the extensions declared* in the XML file, without exception.
 
+NOTE: The user *must* be in the root folder (tools_adl) when running the script.
+
 An example of selecting certain extensions will be similar to:
 
-	python .\make_td.py rv32i.adl.xml [rv32i]
+	python ./tools/make_td.py rv32i.adl.xml [rv32i]
 
 NOTE: Here the used selected to generate only the information related to rv32i
 extension. Consequently, any other extension which is also defined in
@@ -99,10 +101,10 @@ any spaces, just commas (,).*
 
 Similiar to the generation module, the python script *make_test.py* is a tool used to generate tests based on an XML file containing RISC-V extension information. It accepts two arguments and both *must* be provided: the path to the XML file *<path_to_xml_file>* and a list of extensions *<extensions>* (e.g. rv32i) sepparated by *commas (,)*. Running the script with these arguments should look like this:
 
-	python .\make_test.py <path_to_xml_file> <extensions>
+	python ./make_test.py <path_to_xml_file> <extensions>
 
 
-NOTE: The user must be in the *testing* folder (tools_adl/tools/testing) when running the command due to *configuration files* dependencies.
+NOTE: The user must be in the *encoding* folder (tools_adl/tools/testing/encoding) when running the command due to *configuration files* dependencies.
 
 After running the script, an *info.py* file (contains information about instructions and operands) and two folders will be generated: *tests* and *references*. 
 
@@ -121,13 +123,34 @@ After the generation process, users can execute the script *lit_references_teste
 
 Additionally to the encoding tests generation, there can also be generated relocations tests using the *make_reloc.py* module. It accepts two arguments and both *must* be provided: the path to the XML file *<path_to_xml_file>* and an *integer* as the symbol table max value *<sym_max_val>*. Running the script with these arguments should look like this:
 
-	python .\make_reloc.py <path_to_xml_file> <sym_max_val>
+	python ./make_reloc.py <path_to_xml_file> <sym_max_val>
 
 NOTE: The user *must* run *make_test.py* script before running the relocations script in order to generate the *info.py* file.
 
 NOTE: The user *must* be in the *relocations* folder (tools_adl/tools/testing/relocations) when running the command due to *configuration files* dependencies.
 
 After running the script, a *tests* folder will be generated containing instruction relocations tests.
+
+** Generated relocations table:
+
+[width="100%",options="header",]
+|===
+|*Relocation* |*Instrfield* 
+
+|R_RISCV_GOT_HI20 |imm_u_pc
+|R_RISCV_HI20 |imm_u
+|R_RISCV_LO12_I |imm_i
+|R_RISCV_LO12_S |imm_s
+|R_RISCV_PCREL_HI20 |imm_u_pc
+|R_RISCV_PCREL_LO12_I |imm_i
+|R_RISCV_PCREL_LO12_S |imm_s
+|R_RISCV_TLS_GD_HI20 |imm_u_pc
+|R_RISCV_TLS_GOT_HI20 |imm_u_pc
+|R_RISCV_TPREL_ADD |imm_add_tprel
+|R_RISCV_TPREL_HI20 |imm_u
+|R_RISCV_TPREL_LO12_I |imm_i
+|R_RISCV_TPREL_LO12_S |imm_s
+|===
 
 == How to Configure the Tools?
 
@@ -653,6 +676,8 @@ relocation. 
 *** *<value>* (int) – Integer value of the relocation.
 *** *<right_shift>* (int) – Optional, used to specify the number of bits
 the relocation value is right-shifted before it is encoded.
+*** *<dependency>* (str) – Optional, handles the high part of the
+relocation, helping manage memory offset.
 
 [width="100%",cols="24%,9%,17%,12%,21%,17%",options="header",]
 |===
@@ -667,11 +692,12 @@ the relocation value is right-shifted before it is encoded.
 *tags*
 
 |<reloc name> |str |Mandatory |Used |- |-
-|<abrev> |str |Optional |Not used |- |<reloc name>
+|<abrev> |str |Optional |Used (testing) |- |<reloc name>
 |<field_width> |int |Optional |Not used |- |<reloc name>
 |<pcrel> |str |Optional |Not used |- |<reloc name>
 |<value> |int |Mandatory |Used |- |<reloc name>
 |<right_shift> |int |Optional |Not used |- |<reloc name>
+|<dependency> |str |Optional |Used (testing) |- |<reloc name>
 |===
 
 * *<instrfields>*
@@ -1148,6 +1174,220 @@ example:
 	}
 	// CHECK: add a\{\{[0-9]}}, a\{\{[0-9]}}, a\{\{[0-9]}}
 
+== How to generate Sail description?
+**Sail** is a language for describing the instruction-set architecture (ISA) semantics of processors: the architectural specification of the behaviour of machine instructions. 
+
+NOTE: For more information about **Sail**: https://github.com/riscv/sail-riscv
+
+Sail description generation is a feature supported in ADL tools for having, beside TD files generation, the **RISC-V** extension formal specification written in Sail for instruction enconding, semantic and parsing/decoding information. 
+	
+	* *How it works?*
+		** In order to enable Sail description generation, the user should run the basic **make-td** command line. When this command is run, a **.sail** file will be generated for each RISC-V extension which is specified. 
+		** When the Sail description generation is activated, the previous generated Sail file will be automatically deleted and replaced by the fresh generated files.
+
+	* *How a Sail description looks?*
+		** Naming convention for Sail description files could be set in *llvm-config* by editing *SailDescription* field.
+		** Each instruction supported will contain 4 parts defined: union clause ast, mapping clause encdec, function clause execute, mapping clause assembly.
+		** Union clause ast is a formal description for the instruction mnemonic in which it also specifies which type of instruction fields is used (registers or immediates).
+
+				union clause ast = ADD : (regidx, regidx, regidx)
+
+		** Mapping clause encdec provides information about the encoding of the instruction. It also specifies the exact range of bits provided for an instruction field, immediate value or opcode.  
+			
+				mapping clause encdec = ADD(rs2, rs1, rd)
+					if haveRv32i()
+				<-> 0b0000000 @ rs2 : bits(5) @ rs1 : bits(5) @ 0b000 @ rd : bits(5) @ 0b0110011
+					if haveRv32i()
+		
+		** Function clause execute is the main part of the Sail description in which information about how the instruction will behave when executed. It also provides information about how the registers work, how the information is parsed, how the memory is handled or which operands and operators are used. Moreover, there are several exceptions which are defined and handled.
+				
+				function clause execute(ADD(rs2, rs1, rd)) = {
+					let rs2_val = X(rs2);
+					let rs1_val = X(rs1);
+					let rd_val = X(rd);
+				let result : xlenbits = rs1_val + rs2_val in
+				X(rd) = result;
+				RETIRE_SUCCESS
+				}
+
+		** Mapping clause assembly translates the instruction in Sail language preserving information about registers or instruction fields.
+				
+				mapping clause assembly = ADD(rs2, rs1, rd)
+					if haveRv32i()
+				<-> "add" ^ spc() ^ reg_name(rs2) ^ sep() ^ reg_name(rs1) ^ sep() ^ reg_name(rd)
+					if haveRv32i()
+
+	* *Which type of instructions are supported?*
+		** For instance, the instructions supported for Sail description generation are: **R-type** instructions, **I-type** instructions (**Load** instructions included) and **S-type** instructions. Although, for a proper generation, the action specified inside  **<action>** tag in the XML file is vital. It should be double-checked and verified for not having generation issues. Also, the script will use other fields from he XML file such as **<syntax>** tag, **<inputs>**, **<outputs>** and **<fields>**, so  it would be recommended to check running the tool.  
+
+== Generate scheduling description 
+
+ADL tools project can generate scheduling description for several extensions. This tool will generate a scheduling table description, which will contain more information about the core, but also provide scheduling information for each instruction from the extension supported. 
+
+	* *How it works?*
+		** Scheduling description will be generated automatically when the tool is run and the information used for generating will be parsed from the XML file. 
+		** The XML contains <sched-table> tag which provide a high-level description for a scheduling model. Moreover, it specifies the model type, issue width, load latency and other relevant core related information. 
+		** Beside these, the <sched-table> will also contain information about functional units, instruction types, latency and throughput. 
+		** *Scheduling model name*
+
+			<sched-table name="zilsd">
+		
+		** *Tag specifying if the model is in_order or out_of_order*
+		
+			<ModelType>
+			<str>in_order</str>
+			</ModelType>
+
+		** *Tag specifying if the model is single-issue, dual-issue or other type*
+
+			<IssueWidth>
+			<int>1</int>
+			</IssueWidth>
+
+		** *Tag specifying a pre-defined value for load instructions*
+
+			<LoadLatency>
+			<int>2</int>
+			</LoadLatency> 
+		
+		** *Tag specifying the penalty in case of miss for change-of-flow/branch instructions*
+
+			<MispredictPenalty>
+			<int>5</int>
+			</MispredictPenalty>
+
+		** *True/False tag specifying if the model supports all of its extensions, if not the unsupported extensions are specified as below*
+
+			<CompleteModel>
+			<str>False</str>
+			</CompleteModel>
+			<UnsupportedFeatures>
+			<str>HasStdExtV,… </str>
+			</UnsupportedFeatures>
+			<FunctionalUnits>
+		
+		
+		** *Tag specifying the functional units used for the scheduling model*
+		
+			<functional-unit name="RISCVPipelineMEMORY">
+			<doc>
+			<str>Load/Store/Memory operations</str>
+			</doc>
+			</functional-unit>
+			</FunctionalUnits>
+
+		** *Tags specifying instructions types, latency, throughput and functional units used*
+
+			<instruction-sched name="ST">
+			<instruction_list>
+			<str>c.sd,c.sdsp,sd</str>
+			</instruction_list>
+			<latency>
+			<str>2</str>
+			</latency>
+			<throughput>
+			<str>2</str>
+			</throughput>
+			<pipeline>
+			<str>RISCVPipelineMEMORY</str>
+			</pipeline>
+			</instruction-sched>
+
+NOTE: Scheduling description is entirely based on the information parsed from *<sched-table>* tag and it should be correctly and completely defined for a proper generation. 
+	
+	*	*How scheduling description looks?*
+		** Generating scheduling is a complex process which will provide a scheduling table description (containing core information), a resource description (in which read and write resources are defined) and most important a scheduling description file.
+		** Scheduling description is the file in which each type of instructions will have scheduling information added, such as: functional units used, latency, throughput or other scheduling details. 
+		** Naming convention for these scheduling file could be set in *llvm-config* by editing *ScheduleFile*, *SchedulePath* and *ScheduleFileTable* variables, providing information about the path and the file's name. 
+
+			def ZILSDModel : SchedMachineModel {
+
+			** Information based on *<ModelType>* tag from <sched-table> for defining if it is in-order (=0) or out-of-order (>1)
+
+				let MicroOpBufferSize = 0;
+
+			** Information parsed from *<IssueWidth>* tag which pre-defines latency for load instructions
+
+				let IssueWidth = 1;
+
+			** Information based on *<LoadLatency>* tag which specifies if dual-issue is activated (=2), single-issue (=1) or other types (>2) are enabled
+				
+				let LoadLatency = 2;
+			
+			** Information parsed from *<MispredictPenalty>* tag for change-of-flow/branch instruction penalty
+				
+				let MispredictPenalty = 5;
+
+			** Information parsed from *<CompleteModel>* tag which is a true/false string value for specifying if scheduling model supports all the extension, if not unsupported features are specified below 
+				
+				let CompleteModel = 0;
+				let UnsupportedFeatures = [HasStdExtV, …];
+			}
+
+		let SchedModel = ZILSDModel in {
+
+		** Explicitly set to zero since this core is *in-order*
+
+		let BufferSize = 0 in {
+
+		** Functional units are specified
+		** *ProResource* defines the processor’s resources for defining scheduling
+
+			def RISCVPipelineMEMORY : ProcResource<1>;
+		}
+
+		** *WriteRes* defines new subtarget SchedWriteRes that maps resources the for a target
+		** It specifies which resources are required, duration, pipeline
+
+		def : WriteRes<WriteST, [RISCVPipelineMEMORY]> {
+			let Latency = 2;
+			let ResourceCycles = 2;
+		}
+		def : WriteRes<WriteLD, [RISCVPipelineMEMORY]> {
+			let Latency = 2;
+			let ResourceCycles = 2;
+		}
+
+		** Defines new subtarget *SchedReadAdvance* that maps information for a target *SchedRead* 
+		** Used to model forwarding and considered an advanced modeling feature
+
+		def : ReadAdvance<ReadST, 0>;
+		def : ReadAdvance<ReadLD, 0>;
+		}
+
+	* *Scheduling tests integrating llvm-mca and llvm-lit*
+		** Once the scheduling description model is done, it should be tested and validated for avoiding possible issues. 
+		** It is very important to check an execution timeline when implementing a new scheduling model. 
+		** The latency and throughput defined for each instruction together with the functional units used are key elements for a correct timeline execution. 
+		** That is the reason behind generating scheduling tests. ADL tools project provide scheduling tests for each instruction parsed from the XML file. 
+		** Moreover, references are also generated for comparing and validating results. The mechanism consists in:
+		** *Generating instructions tests*
+
+			ld s8, 2(t2)
+			ld s0, 2(t0)
+		
+		** *Generating reference based on the timeline produced by llvm-mca*
+
+			// CHECK:      [0,0] DeE .  ld s8, 2(t2)
+			// CHECK-NEXT: [0,1] . DeE  ld s0, 2(t0)
+
+NOTE: *CHECK* and *CHECK-NEXT* are commands for llvm-lit which specify the execution order
+
+		** *Integrate llvm-mca and llvm-lit commands*
+
+			// RUN: %llvm-mca -mtriple=riscv32 -mcpu=core-name -timeline --timeline-max-cycles=0 -iterations=1 %s &> %s.txt
+			// RUN: cat %s.txt | %filecheck %s
+
+		** Basically, *llvm-mca* will run the instruction and generate an execution timeline which will be compared to the reference using *llvm-lit*.
+		** After running the tool, 2 types of scheduling tests will be generated: basic tests and data-dependency tests. 
+		** Data-dependency tests will use the destination of the first instruction as source in the second instruction tested, if applicable. On the other hand, the basic tests will use totally different registers, randomly chosen. 
+		** For validating the results and checking the scheduling model, llvm-lit allows to run an entire test suite and then check if tests passed or failed. 
+		** Beside *llvm-lit*, *llvm-mca* should be activated in the command line, together with *File Check*. 
+
+			<path>/llvm-lit --param app_filecheck=<path>/llvm-build/bin/FileCheck --param app_llvm_mca=<path>/llvm-build/bin/llvm-mca <tests_folder>
+
+NOTE: This command line will show the result from every single test from the test suite run and also provide a *.txt* file which serves as log, for more information about certain tests. 
+		
 == Known Limitations
-	* *Tests for register pairs are not supported*
-	* *Scheduling information is not supported*
+	* *References for relocations are not yet generated*
+	* *Scheduling information is for demo purposes*

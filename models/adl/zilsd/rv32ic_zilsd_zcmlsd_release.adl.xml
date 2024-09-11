@@ -1,0 +1,3866 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<data>
+<cores>
+<core name="ZILSD">
+<licenseText>
+<str> Copyright 2024 NXP
+SPDX-License-Identifier: BSD-2-Clause </str>
+</licenseText>
+<doc>
+<str><![CDATA[
+The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
+
+
+]]></str>
+</doc>
+<bit_endianness>
+<str>little</str>
+</bit_endianness>
+<RaMask>
+<initial>
+<str>0xffffffff</str>
+</initial>
+<constant>
+<str>true</str>
+</constant>
+</RaMask>
+<EaMask>
+<initial>
+<str>0xffffffff</str>
+</initial>
+<constant>
+<str>true</str>
+</constant>
+</EaMask>
+<regs>
+<register name="NIA">
+<doc>
+<str><![CDATA[
+    Next instruction address.
+    
+]]></str>
+</doc>
+<width>
+<int>32</int>
+</width>
+<attributes>
+<attribute name="nia">
+<str></str>
+</attribute>
+<attribute name="debug">
+<int>1</int>
+</attribute>
+<attribute name="rv32i">
+<str></str>
+</attribute>
+</attributes>
+<reset>
+<str>0</str>
+</reset>
+<shared>
+<int>0</int>
+</shared>
+</register>
+<register name="PC">
+<doc>
+<str><![CDATA[
+    Current instruction address.
+    
+]]></str>
+</doc>
+<width>
+<int>32</int>
+</width>
+<attributes>
+<attribute name="cia">
+<str></str>
+</attribute>
+<attribute name="rv32i">
+<str></str>
+</attribute>
+</attributes>
+<reset>
+<str>0</str>
+</reset>
+<shared>
+<int>0</int>
+</shared>
+</register>
+</regs>
+<regfiles>
+<regfile name="GPR">
+<doc>
+<str><![CDATA[
+      The complete general-purpose register file. r0 always reads as 0.
+    
+]]></str>
+</doc>
+<width>
+<int>32</int>
+</width>
+<attributes>
+<attribute name="debug">
+<int>0</int>
+</attribute>
+<attribute name="rv32i">
+<str></str>
+</attribute>
+</attributes>
+<size>
+<int>32</int>
+</size>
+<prefix>
+<str>x</str>
+</prefix>
+<shared>
+<int>0</int>
+</shared>
+<read>
+<action>
+<str><![CDATA[
+{
+    return ( index == 0 ) ? 0 : ThisReg ( index ) ;
+}
+]]></str>
+</action>
+</read>
+<write>
+<action>
+<str><![CDATA[
+{
+    if ( index != 0 ) {
+        ThisReg ( index ) = x ;
+    }
+}
+]]></str>
+</action>
+</write>
+<calling_convention>
+<option name="X0">
+<str>Hard_wired_zero</str>
+</option>
+<option name="X1">
+<str>Return_address</str>
+</option>
+<option name="X2">
+<str>Stack_pointer</str>
+</option>
+<option name="X3">
+<str>Global_pointer</str>
+</option>
+<option name="X4">
+<str>Thread_pointer</str>
+</option>
+<option name="X5">
+<str>Temporary</str>
+</option>
+<option name="X5">
+<str>Alternate_link_register</str>
+</option>
+<option name="X6">
+<str>Temporary</str>
+</option>
+<option name="X7">
+<str>Temporary</str>
+</option>
+<option name="X8">
+<str>Saved_register</str>
+</option>
+<option name="X8">
+<str>Frame_pointer</str>
+</option>
+<option name="X9">
+<str>Saved_register</str>
+</option>
+<option name="X10">
+<str>Function_arguments</str>
+</option>
+<option name="X10">
+<str>Return_values</str>
+</option>
+<option name="X11">
+<str>Function_arguments</str>
+</option>
+<option name="X11">
+<str>Return_values</str>
+</option>
+<option name="X12">
+<str>Function_arguments</str>
+</option>
+<option name="X13">
+<str>Function_arguments</str>
+</option>
+<option name="X14">
+<str>Function_arguments</str>
+</option>
+<option name="X15">
+<str>Function_arguments</str>
+</option>
+<option name="X16">
+<str>Function_arguments</str>
+</option>
+<option name="X17">
+<str>Function_arguments</str>
+</option>
+<option name="X18">
+<str>Saved_register</str>
+</option>
+<option name="X19">
+<str>Saved_register</str>
+</option>
+<option name="X20">
+<str>Saved_register</str>
+</option>
+<option name="X21">
+<str>Saved_register</str>
+</option>
+<option name="X22">
+<str>Saved_register</str>
+</option>
+<option name="X23">
+<str>Saved_register</str>
+</option>
+<option name="X24">
+<str>Saved_register</str>
+</option>
+<option name="X25">
+<str>Saved_register</str>
+</option>
+<option name="X26">
+<str>Saved_register</str>
+</option>
+<option name="X27">
+<str>Saved_register</str>
+</option>
+<option name="X28">
+<str>Temporary</str>
+</option>
+<option name="X29">
+<str>Temporary</str>
+</option>
+<option name="X30">
+<str>Temporary</str>
+</option>
+<option name="X31">
+<str>Temporary</str>
+</option>
+</calling_convention>
+</regfile>
+</regfiles>
+<relocations>
+<reloc name="R_RISCV_HI20">
+<abbrev>
+<str>hi</str>
+</abbrev>
+<field_width>
+<int>20</int>
+</field_width>
+<pcrel>
+<str>false</str>
+</pcrel>
+<value>
+<int>26</int>
+</value>
+<right_shift>
+<int>0</int>
+</right_shift>
+</reloc>
+<reloc name="R_RISCV_LO12_I">
+<abbrev>
+<str>lo</str>
+</abbrev>
+<field_width>
+<int>12</int>
+</field_width>
+<pcrel>
+<str>false</str>
+</pcrel>
+<value>
+<int>27</int>
+</value>
+<right_shift>
+<int>0</int>
+</right_shift>
+<dependency>
+<str>R_RISCV_HI20</str>
+</dependency>
+</reloc>
+<reloc name="R_RISCV_LO12_S">
+<abbrev>
+<str>lo</str>
+</abbrev>
+<field_width>
+<int>12</int>
+</field_width>
+<pcrel>
+<str>false</str>
+</pcrel>
+<value>
+<int>28</int>
+</value>
+<right_shift>
+<int>0</int>
+</right_shift>
+<dependency>
+<str>R_RISCV_HI20</str>
+</dependency>
+</reloc>
+<reloc name="R_RISCV_GOT_HI20">
+<abbrev>
+<str>got_pcrel_hi</str>
+</abbrev>
+<field_width>
+<int>20</int>
+</field_width>
+<pcrel>
+<str>true</str>
+</pcrel>
+<value>
+<int>20</int>
+</value>
+<right_shift>
+<int>0</int>
+</right_shift>
+</reloc>
+<reloc name="R_RISCV_TLS_GOT_HI20">
+<abbrev>
+<str>tls_ie_pcrel_hi</str>
+</abbrev>
+<field_width>
+<int>20</int>
+</field_width>
+<pcrel>
+<str>true</str>
+</pcrel>
+<value>
+<int>21</int>
+</value>
+<right_shift>
+<int>0</int>
+</right_shift>
+</reloc>
+<reloc name="R_RISCV_TLS_GD_HI20">
+<abbrev>
+<str>tls_gd_pcrel_hi</str>
+</abbrev>
+<field_width>
+<int>20</int>
+</field_width>
+<pcrel>
+<str>true</str>
+</pcrel>
+<value>
+<int>22</int>
+</value>
+<right_shift>
+<int>0</int>
+</right_shift>
+</reloc>
+<reloc name="R_RISCV_PCREL_HI20">
+<abbrev>
+<str>pcrel_hi</str>
+</abbrev>
+<field_width>
+<int>20</int>
+</field_width>
+<pcrel>
+<str>true</str>
+</pcrel>
+<value>
+<int>23</int>
+</value>
+<right_shift>
+<int>0</int>
+</right_shift>
+</reloc>
+<reloc name="R_RISCV_PCREL_LO12_I">
+<abbrev>
+<str>pcrel_lo</str>
+</abbrev>
+<field_width>
+<int>12</int>
+</field_width>
+<pcrel>
+<str>false</str>
+</pcrel>
+<value>
+<int>24</int>
+</value>
+<right_shift>
+<int>0</int>
+</right_shift>
+<dependency>
+<str>R_RISCV_PCREL_HI20</str>
+</dependency>
+</reloc>
+<reloc name="R_RISCV_PCREL_LO12_S">
+<abbrev>
+<str>pcrel_lo</str>
+</abbrev>
+<field_width>
+<int>12</int>
+</field_width>
+<pcrel>
+<str>false</str>
+</pcrel>
+<value>
+<int>25</int>
+</value>
+<right_shift>
+<int>0</int>
+</right_shift>
+<dependency>
+<str>R_RISCV_PCREL_HI20</str>
+</dependency>
+</reloc>
+<reloc name="R_RISCV_TPREL_ADD">
+<abbrev>
+<str>tprel_add</str>
+</abbrev>
+<field_width>
+<int>32</int>
+</field_width>
+<pcrel>
+<str>false</str>
+</pcrel>
+<value>
+<int>32</int>
+</value>
+<right_shift>
+<int>0</int>
+</right_shift>
+</reloc>
+<reloc name="R_RISCV_TPREL_HI20">
+<abbrev>
+<str>tprel_hi</str>
+</abbrev>
+<field_width>
+<int>20</int>
+</field_width>
+<pcrel>
+<str>false</str>
+</pcrel>
+<value>
+<int>29</int>
+</value>
+<right_shift>
+<int>0</int>
+</right_shift>
+</reloc>
+<reloc name="R_RISCV_TPREL_LO12_I">
+<abbrev>
+<str>tprel_lo</str>
+</abbrev>
+<field_width>
+<int>12</int>
+</field_width>
+<pcrel>
+<str>false</str>
+</pcrel>
+<value>
+<int>30</int>
+</value>
+<right_shift>
+<int>0</int>
+</right_shift>
+<dependency>
+<str>R_RISCV_TPREL_HI20</str>
+<str>R_RISCV_TPREL_ADD</str>
+</dependency>
+</reloc>
+<reloc name="R_RISCV_TPREL_LO12_S">
+<abbrev>
+<str>tprel_lo</str>
+</abbrev>
+<field_width>
+<int>12</int>
+</field_width>
+<pcrel>
+<str>false</str>
+</pcrel>
+<value>
+<int>31</int>
+</value>
+<right_shift>
+<int>0</int>
+</right_shift>
+<dependency>
+<str>R_RISCV_TPREL_HI20</str>
+<str>R_RISCV_TPREL_ADD</str>
+</dependency>
+</reloc>
+</relocations>
+<instrfields>
+<instrfield name="funct3">
+<doc>
+<str><![CDATA[
+    Secondary opcode (function) field.
+    
+]]></str>
+</doc>
+<bits>
+<range>
+<int>14</int>
+<int>12</int>
+</range>
+</bits>
+<width>
+<int>3</int>
+</width>
+<size>
+<int>3</int>
+</size>
+<shift>
+<int>0</int>
+</shift>
+<offset>
+<int>0</int>
+</offset>
+<mask>
+<str>0x7000</str>
+</mask>
+<type>
+<str>imm</str>
+</type>
+</instrfield>
+<instrfield name="funct3_c">
+<doc>
+<str><![CDATA[
+    Secondary opcode for compressed instructions.
+    
+]]></str>
+</doc>
+<bits>
+<range>
+<int>15</int>
+<int>13</int>
+</range>
+</bits>
+<width>
+<int>3</int>
+</width>
+<size>
+<int>3</int>
+</size>
+<shift>
+<int>0</int>
+</shift>
+<offset>
+<int>0</int>
+</offset>
+<mask>
+<str>0x000000000000e000</str>
+</mask>
+<type>
+<str>imm</str>
+</type>
+</instrfield>
+<instrfield name="funct7">
+<doc>
+<str><![CDATA[
+    Tertiary opcode field.
+    
+]]></str>
+</doc>
+<bits>
+<range>
+<int>31</int>
+<int>25</int>
+</range>
+</bits>
+<width>
+<int>7</int>
+</width>
+<size>
+<int>7</int>
+</size>
+<shift>
+<int>0</int>
+</shift>
+<offset>
+<int>0</int>
+</offset>
+<mask>
+<str>0x00000000fe000000</str>
+</mask>
+<type>
+<str>imm</str>
+</type>
+</instrfield>
+<instrfield name="imm_add_tprel">
+<doc>
+<str><![CDATA[
+    Dummy instruction field used by the add operation for thread local storage.
+    
+]]></str>
+</doc>
+<pseudo>
+<str>true</str>
+</pseudo>
+<width>
+<int>32</int>
+</width>
+<size>
+<int>32</int>
+</size>
+<shift>
+<int>0</int>
+</shift>
+<offset>
+<int>0</int>
+</offset>
+<mask>
+<str>0x0</str>
+</mask>
+<type>
+<str>imm</str>
+</type>
+<reloc>
+<str>R_RISCV_TPREL_ADD</str>
+</reloc>
+</instrfield>
+<instrfield name="imm_i">
+<doc>
+<str><![CDATA[
+    Signed 12-bit immediate for I-type instructions.
+    
+]]></str>
+</doc>
+<bits>
+<range>
+<int>31</int>
+<int>20</int>
+</range>
+</bits>
+<width>
+<int>12</int>
+</width>
+<size>
+<int>12</int>
+</size>
+<shift>
+<int>0</int>
+</shift>
+<offset>
+<int>0</int>
+</offset>
+<mask>
+<str>0xfff00000</str>
+</mask>
+<display>
+<str>dec</str>
+</display>
+<type>
+<str>imm</str>
+</type>
+<signed>
+<str>true</str>
+</signed>
+<reloc>
+<str>R_RISCV_LO12_I</str>
+<str>R_RISCV_TPREL_LO12_I</str>
+<str>R_RISCV_PCREL_LO12_I</str>
+</reloc>
+</instrfield>
+<instrfield name="imm_s">
+<doc>
+<str><![CDATA[
+    Signed 12-bit immediate for S-type instructions.
+    
+]]></str>
+</doc>
+<bits>
+<range>
+<int>31</int>
+<int>25</int>
+</range>
+<range>
+<int>11</int>
+<int>7</int>
+</range>
+</bits>
+<width>
+<int>12</int>
+</width>
+<size>
+<int>12</int>
+</size>
+<shift>
+<int>0</int>
+</shift>
+<offset>
+<int>0</int>
+</offset>
+<mask>
+<str>0xfe000f80</str>
+</mask>
+<display>
+<str>dec</str>
+</display>
+<type>
+<str>imm</str>
+</type>
+<signed>
+<str>true</str>
+</signed>
+<reloc>
+<str>R_RISCV_LO12_S</str>
+<str>R_RISCV_TPREL_LO12_S</str>
+<str>R_RISCV_PCREL_LO12_S</str>
+</reloc>
+</instrfield>
+<instrfield name="imm_sb">
+<doc>
+<str><![CDATA[
+    Signed 12-bit immediate for SB-type instructions.
+    
+]]></str>
+</doc>
+<bits>
+<range>
+<int>31</int>
+<int>31</int>
+</range>
+<range>
+<int>7</int>
+<int>7</int>
+</range>
+<range>
+<int>30</int>
+<int>25</int>
+</range>
+<range>
+<int>11</int>
+<int>8</int>
+</range>
+</bits>
+<width>
+<int>12</int>
+</width>
+<size>
+<int>12</int>
+</size>
+<shift>
+<int>1</int>
+</shift>
+<offset>
+<int>0</int>
+</offset>
+<mask>
+<str>0xfe000f80</str>
+</mask>
+<addr>
+<str>pc</str>
+</addr>
+<display>
+<str>dec</str>
+</display>
+<type>
+<str>imm</str>
+</type>
+<signed>
+<str>true</str>
+</signed>
+</instrfield>
+<instrfield name="imm_u">
+<doc>
+<str><![CDATA[
+    20-bit immediate for U-type instructions.
+
+    The resulting register is sign-extended, but the field is treated as an
+    unsigned value from a range-checking point of view.
+    
+]]></str>
+</doc>
+<bits>
+<range>
+<int>31</int>
+<int>12</int>
+</range>
+</bits>
+<width>
+<int>20</int>
+</width>
+<size>
+<int>20</int>
+</size>
+<shift>
+<int>0</int>
+</shift>
+<offset>
+<int>0</int>
+</offset>
+<mask>
+<str>0xfffff000</str>
+</mask>
+<display>
+<str>hex</str>
+</display>
+<type>
+<str>imm</str>
+</type>
+<reloc>
+<str>R_RISCV_HI20</str>
+<str>R_RISCV_TPREL_HI20</str>
+</reloc>
+</instrfield>
+<instrfield name="imm_u_pc">
+<doc>
+<str><![CDATA[
+    Signed 20-bit immediate PC-relative field for U-type instructions.
+    
+]]></str>
+</doc>
+<bits>
+<range>
+<int>31</int>
+<int>12</int>
+</range>
+</bits>
+<width>
+<int>20</int>
+</width>
+<size>
+<int>20</int>
+</size>
+<shift>
+<int>0</int>
+</shift>
+<offset>
+<int>0</int>
+</offset>
+<mask>
+<str>0xfffff000</str>
+</mask>
+<display>
+<str>hex</str>
+</display>
+<type>
+<str>imm</str>
+</type>
+<reloc>
+<str>R_RISCV_GOT_HI20</str>
+<str>R_RISCV_TLS_GOT_HI20</str>
+<str>R_RISCV_TLS_GD_HI20</str>
+<str>R_RISCV_PCREL_HI20</str>
+</reloc>
+</instrfield>
+<instrfield name="immd_ci">
+<doc>
+<str><![CDATA[
+    Immediate offset value for compressed-instruction long/double loads.
+    
+]]></str>
+</doc>
+<bits>
+<range>
+<int>4</int>
+<int>2</int>
+</range>
+<range>
+<int>12</int>
+<int>12</int>
+</range>
+<range>
+<int>6</int>
+<int>5</int>
+</range>
+</bits>
+<width>
+<int>6</int>
+</width>
+<size>
+<int>6</int>
+</size>
+<shift>
+<int>3</int>
+</shift>
+<offset>
+<int>0</int>
+</offset>
+<mask>
+<str>0x000000000000107c</str>
+</mask>
+<display>
+<str>dec</str>
+</display>
+<type>
+<str>imm</str>
+</type>
+</instrfield>
+<instrfield name="immd_cl">
+<doc>
+<str><![CDATA[
+    Immediate offset value for compressed-instruction long/double loads.
+    
+]]></str>
+</doc>
+<bits>
+<range>
+<int>6</int>
+<int>5</int>
+</range>
+<range>
+<int>12</int>
+<int>10</int>
+</range>
+</bits>
+<width>
+<int>5</int>
+</width>
+<size>
+<int>5</int>
+</size>
+<shift>
+<int>3</int>
+</shift>
+<offset>
+<int>0</int>
+</offset>
+<mask>
+<str>0x0000000000001c60</str>
+</mask>
+<display>
+<str>dec</str>
+</display>
+<type>
+<str>imm</str>
+</type>
+</instrfield>
+<instrfield name="immd_cs">
+<doc>
+<str><![CDATA[
+    Immediate offset value for compressed-instruction word stores.
+    
+]]></str>
+</doc>
+<bits>
+<range>
+<int>6</int>
+<int>5</int>
+</range>
+<range>
+<int>12</int>
+<int>10</int>
+</range>
+</bits>
+<width>
+<int>5</int>
+</width>
+<size>
+<int>5</int>
+</size>
+<shift>
+<int>3</int>
+</shift>
+<offset>
+<int>0</int>
+</offset>
+<mask>
+<str>0x0000000000001c60</str>
+</mask>
+<display>
+<str>dec</str>
+</display>
+<type>
+<str>imm</str>
+</type>
+</instrfield>
+<instrfield name="immd_css">
+<doc>
+<str><![CDATA[
+    Immediate offset value for compressed-instruction long/double stores.
+    
+]]></str>
+</doc>
+<bits>
+<range>
+<int>9</int>
+<int>7</int>
+</range>
+<range>
+<int>12</int>
+<int>10</int>
+</range>
+</bits>
+<width>
+<int>6</int>
+</width>
+<size>
+<int>6</int>
+</size>
+<shift>
+<int>3</int>
+</shift>
+<offset>
+<int>0</int>
+</offset>
+<mask>
+<str>0x0000000000001f80</str>
+</mask>
+<display>
+<str>dec</str>
+</display>
+<type>
+<str>imm</str>
+</type>
+</instrfield>
+<instrfield name="op_c">
+<doc>
+<str><![CDATA[
+    Primary opcode for compressed instructions.
+    
+]]></str>
+</doc>
+<bits>
+<range>
+<int>1</int>
+<int>0</int>
+</range>
+</bits>
+<width>
+<int>2</int>
+</width>
+<size>
+<int>2</int>
+</size>
+<shift>
+<int>0</int>
+</shift>
+<offset>
+<int>0</int>
+</offset>
+<mask>
+<str>0x0000000000000003</str>
+</mask>
+<type>
+<str>imm</str>
+</type>
+</instrfield>
+<instrfield name="opcode">
+<doc>
+<str><![CDATA[
+    Primary opcode field.
+    
+]]></str>
+</doc>
+<bits>
+<range>
+<int>6</int>
+<int>0</int>
+</range>
+</bits>
+<width>
+<int>7</int>
+</width>
+<size>
+<int>7</int>
+</size>
+<shift>
+<int>0</int>
+</shift>
+<offset>
+<int>0</int>
+</offset>
+<mask>
+<str>0x7f</str>
+</mask>
+<type>
+<str>imm</str>
+</type>
+</instrfield>
+<instrfield name="rd">
+<doc>
+<str><![CDATA[
+    Destination/target register field.
+    
+]]></str>
+</doc>
+<bits>
+<range>
+<int>11</int>
+<int>7</int>
+</range>
+</bits>
+<width>
+<int>5</int>
+</width>
+<size>
+<int>5</int>
+</size>
+<shift>
+<int>0</int>
+</shift>
+<offset>
+<int>0</int>
+</offset>
+<mask>
+<str>0xf80</str>
+</mask>
+<enumerated>
+<option name="0">
+<str>zero</str>
+</option>
+<option name="0">
+<str>x0</str>
+</option>
+<option name="1">
+<str>ra</str>
+</option>
+<option name="1">
+<str>x1</str>
+</option>
+<option name="2">
+<str>sp</str>
+</option>
+<option name="2">
+<str>x2</str>
+</option>
+<option name="3">
+<str>gp</str>
+</option>
+<option name="3">
+<str>x3</str>
+</option>
+<option name="4">
+<str>tp</str>
+</option>
+<option name="4">
+<str>x4</str>
+</option>
+<option name="5">
+<str>t0</str>
+</option>
+<option name="5">
+<str>x5</str>
+</option>
+<option name="6">
+<str>t1</str>
+</option>
+<option name="6">
+<str>x6</str>
+</option>
+<option name="7">
+<str>t2</str>
+</option>
+<option name="7">
+<str>x7</str>
+</option>
+<option name="8">
+<str>s0</str>
+</option>
+<option name="8">
+<str>x8</str>
+</option>
+<option name="9">
+<str>s1</str>
+</option>
+<option name="9">
+<str>x9</str>
+</option>
+<option name="10">
+<str>a0</str>
+</option>
+<option name="10">
+<str>x10</str>
+</option>
+<option name="11">
+<str>a1</str>
+</option>
+<option name="11">
+<str>x11</str>
+</option>
+<option name="12">
+<str>a2</str>
+</option>
+<option name="12">
+<str>x12</str>
+</option>
+<option name="13">
+<str>a3</str>
+</option>
+<option name="13">
+<str>x13</str>
+</option>
+<option name="14">
+<str>a4</str>
+</option>
+<option name="14">
+<str>x14</str>
+</option>
+<option name="15">
+<str>a5</str>
+</option>
+<option name="15">
+<str>x15</str>
+</option>
+<option name="16">
+<str>a6</str>
+</option>
+<option name="16">
+<str>x16</str>
+</option>
+<option name="17">
+<str>a7</str>
+</option>
+<option name="17">
+<str>x17</str>
+</option>
+<option name="18">
+<str>s2</str>
+</option>
+<option name="18">
+<str>x18</str>
+</option>
+<option name="19">
+<str>s3</str>
+</option>
+<option name="19">
+<str>x19</str>
+</option>
+<option name="20">
+<str>s4</str>
+</option>
+<option name="20">
+<str>x20</str>
+</option>
+<option name="21">
+<str>s5</str>
+</option>
+<option name="21">
+<str>x21</str>
+</option>
+<option name="22">
+<str>s6</str>
+</option>
+<option name="22">
+<str>x22</str>
+</option>
+<option name="23">
+<str>s7</str>
+</option>
+<option name="23">
+<str>x23</str>
+</option>
+<option name="24">
+<str>s8</str>
+</option>
+<option name="24">
+<str>x24</str>
+</option>
+<option name="25">
+<str>s9</str>
+</option>
+<option name="25">
+<str>x25</str>
+</option>
+<option name="26">
+<str>s10</str>
+</option>
+<option name="26">
+<str>x26</str>
+</option>
+<option name="27">
+<str>s11</str>
+</option>
+<option name="27">
+<str>x27</str>
+</option>
+<option name="28">
+<str>t3</str>
+</option>
+<option name="28">
+<str>x28</str>
+</option>
+<option name="29">
+<str>t4</str>
+</option>
+<option name="29">
+<str>x29</str>
+</option>
+<option name="30">
+<str>t5</str>
+</option>
+<option name="30">
+<str>x30</str>
+</option>
+<option name="31">
+<str>t6</str>
+</option>
+<option name="31">
+<str>x31</str>
+</option>
+</enumerated>
+<type>
+<str>regfile</str>
+</type>
+<ref>
+<str>GPR</str>
+</ref>
+</instrfield>
+<instrfield name="rx">
+<doc>
+<str><![CDATA[
+    First source register field.
+    
+]]></str>
+</doc>
+<bits>
+<range>
+<int>11</int>
+<int>7</int>
+</range>
+</bits>
+<width>
+<int>5</int>
+</width>
+<size>
+<int>5</int>
+</size>
+<mask>
+<str>0x0000000000000f80</str>
+</mask>
+<shift>
+<int>0</int>
+</shift>
+<offset>
+<int>1</int>
+</offset>
+<enumerated>
+<option name="0">
+<str>zero</str>
+</option>
+<option name="0">
+<str>x0</str>
+</option>
+<option name="1">
+<str>ra</str>
+</option>
+<option name="1">
+<str>x1</str>
+</option>
+<option name="2">
+<str>sp</str>
+</option>
+<option name="2">
+<str>x2</str>
+</option>
+<option name="3">
+<str>gp</str>
+</option>
+<option name="3">
+<str>x3</str>
+</option>
+<option name="4">
+<str>tp</str>
+</option>
+<option name="4">
+<str>x4</str>
+</option>
+<option name="5">
+<str>t0</str>
+</option>
+<option name="5">
+<str>x5</str>
+</option>
+<option name="6">
+<str>t1</str>
+</option>
+<option name="6">
+<str>x6</str>
+</option>
+<option name="7">
+<str>t2</str>
+</option>
+<option name="7">
+<str>x7</str>
+</option>
+<option name="8">
+<str>s0</str>
+</option>
+<option name="8">
+<str>x8</str>
+</option>
+<option name="8">
+<str>fp</str>
+</option>
+<option name="9">
+<str>s1</str>
+</option>
+<option name="9">
+<str>x9</str>
+</option>
+<option name="10">
+<str>a0</str>
+</option>
+<option name="10">
+<str>x10</str>
+</option>
+<option name="11">
+<str>a1</str>
+</option>
+<option name="11">
+<str>x11</str>
+</option>
+<option name="12">
+<str>a2</str>
+</option>
+<option name="12">
+<str>x12</str>
+</option>
+<option name="13">
+<str>a3</str>
+</option>
+<option name="13">
+<str>x13</str>
+</option>
+<option name="14">
+<str>a4</str>
+</option>
+<option name="14">
+<str>x14</str>
+</option>
+<option name="15">
+<str>a5</str>
+</option>
+<option name="15">
+<str>x15</str>
+</option>
+<option name="16">
+<str>a6</str>
+</option>
+<option name="16">
+<str>x16</str>
+</option>
+<option name="17">
+<str>a7</str>
+</option>
+<option name="17">
+<str>x17</str>
+</option>
+<option name="18">
+<str>s2</str>
+</option>
+<option name="18">
+<str>x18</str>
+</option>
+<option name="19">
+<str>s3</str>
+</option>
+<option name="19">
+<str>x19</str>
+</option>
+<option name="20">
+<str>s4</str>
+</option>
+<option name="20">
+<str>x20</str>
+</option>
+<option name="21">
+<str>s5</str>
+</option>
+<option name="21">
+<str>x21</str>
+</option>
+<option name="22">
+<str>s6</str>
+</option>
+<option name="22">
+<str>x22</str>
+</option>
+<option name="23">
+<str>s7</str>
+</option>
+<option name="23">
+<str>x23</str>
+</option>
+<option name="24">
+<str>s8</str>
+</option>
+<option name="24">
+<str>x24</str>
+</option>
+<option name="25">
+<str>s9</str>
+</option>
+<option name="25">
+<str>x25</str>
+</option>
+<option name="26">
+<str>s10</str>
+</option>
+<option name="26">
+<str>x26</str>
+</option>
+<option name="27">
+<str>s11</str>
+</option>
+<option name="27">
+<str>x27</str>
+</option>
+<option name="28">
+<str>t3</str>
+</option>
+<option name="28">
+<str>x28</str>
+</option>
+<option name="29">
+<str>t4</str>
+</option>
+<option name="29">
+<str>x29</str>
+</option>
+<option name="30">
+<str>t5</str>
+</option>
+<option name="30">
+<str>x30</str>
+</option>
+<option name="31">
+<str>t6</str>
+</option>
+<option name="31">
+<str>x31</str>
+</option>
+</enumerated>
+<type>
+<str>regfile</str>
+</type>
+<ref>
+<str>GPR</str>
+</ref>
+</instrfield>
+<instrfield name="rdc_p">
+<doc>
+<str><![CDATA[
+    Destination/target register (limited range) for compressed instructions.
+    
+]]></str>
+</doc>
+<bits>
+<range>
+<int>4</int>
+<int>2</int>
+</range>
+</bits>
+<width>
+<int>3</int>
+</width>
+<size>
+<int>3</int>
+</size>
+<shift>
+<int>0</int>
+</shift>
+<offset>
+<int>8</int>
+</offset>
+<mask>
+<str>0x000000000000001c</str>
+</mask>
+<enumerated>
+<option name="0">
+<str>zero</str>
+</option>
+<option name="0">
+<str>x0</str>
+</option>
+<option name="1">
+<str>ra</str>
+</option>
+<option name="1">
+<str>x1</str>
+</option>
+<option name="2">
+<str>sp</str>
+</option>
+<option name="2">
+<str>x2</str>
+</option>
+<option name="3">
+<str>gp</str>
+</option>
+<option name="3">
+<str>x3</str>
+</option>
+<option name="4">
+<str>tp</str>
+</option>
+<option name="4">
+<str>x4</str>
+</option>
+<option name="5">
+<str>t0</str>
+</option>
+<option name="5">
+<str>x5</str>
+</option>
+<option name="6">
+<str>t1</str>
+</option>
+<option name="6">
+<str>x6</str>
+</option>
+<option name="7">
+<str>t2</str>
+</option>
+<option name="7">
+<str>x7</str>
+</option>
+<option name="8">
+<str>s0</str>
+</option>
+<option name="8">
+<str>x8</str>
+</option>
+<option name="9">
+<str>s1</str>
+</option>
+<option name="9">
+<str>x9</str>
+</option>
+<option name="10">
+<str>a0</str>
+</option>
+<option name="10">
+<str>x10</str>
+</option>
+<option name="11">
+<str>a1</str>
+</option>
+<option name="11">
+<str>x11</str>
+</option>
+<option name="12">
+<str>a2</str>
+</option>
+<option name="12">
+<str>x12</str>
+</option>
+<option name="13">
+<str>a3</str>
+</option>
+<option name="13">
+<str>x13</str>
+</option>
+<option name="14">
+<str>a4</str>
+</option>
+<option name="14">
+<str>x14</str>
+</option>
+<option name="15">
+<str>a5</str>
+</option>
+<option name="15">
+<str>x15</str>
+</option>
+<option name="16">
+<str>a6</str>
+</option>
+<option name="16">
+<str>x16</str>
+</option>
+<option name="17">
+<str>a7</str>
+</option>
+<option name="17">
+<str>x17</str>
+</option>
+<option name="18">
+<str>s2</str>
+</option>
+<option name="18">
+<str>x18</str>
+</option>
+<option name="19">
+<str>s3</str>
+</option>
+<option name="19">
+<str>x19</str>
+</option>
+<option name="20">
+<str>s4</str>
+</option>
+<option name="20">
+<str>x20</str>
+</option>
+<option name="21">
+<str>s5</str>
+</option>
+<option name="21">
+<str>x21</str>
+</option>
+<option name="22">
+<str>s6</str>
+</option>
+<option name="22">
+<str>x22</str>
+</option>
+<option name="23">
+<str>s7</str>
+</option>
+<option name="23">
+<str>x23</str>
+</option>
+<option name="24">
+<str>s8</str>
+</option>
+<option name="24">
+<str>x24</str>
+</option>
+<option name="25">
+<str>s9</str>
+</option>
+<option name="25">
+<str>x25</str>
+</option>
+<option name="26">
+<str>s10</str>
+</option>
+<option name="26">
+<str>x26</str>
+</option>
+<option name="27">
+<str>s11</str>
+</option>
+<option name="27">
+<str>x27</str>
+</option>
+<option name="28">
+<str>t3</str>
+</option>
+<option name="28">
+<str>x28</str>
+</option>
+<option name="29">
+<str>t4</str>
+</option>
+<option name="29">
+<str>x29</str>
+</option>
+<option name="30">
+<str>t5</str>
+</option>
+<option name="30">
+<str>x30</str>
+</option>
+<option name="31">
+<str>t6</str>
+</option>
+<option name="31">
+<str>x31</str>
+</option>
+</enumerated>
+<type>
+<str>regfile</str>
+</type>
+<ref>
+<str>GPR</str>
+</ref>
+</instrfield>
+<instrfield name="rs1">
+<doc>
+<str><![CDATA[
+    First source register field.
+    
+]]></str>
+</doc>
+<bits>
+<range>
+<int>19</int>
+<int>15</int>
+</range>
+</bits>
+<width>
+<int>5</int>
+</width>
+<size>
+<int>5</int>
+</size>
+<shift>
+<int>0</int>
+</shift>
+<offset>
+<int>0</int>
+</offset>
+<mask>
+<str>0xf8000</str>
+</mask>
+<enumerated>
+<option name="0">
+<str>zero</str>
+</option>
+<option name="0">
+<str>x0</str>
+</option>
+<option name="1">
+<str>ra</str>
+</option>
+<option name="1">
+<str>x1</str>
+</option>
+<option name="2">
+<str>sp</str>
+</option>
+<option name="2">
+<str>x2</str>
+</option>
+<option name="3">
+<str>gp</str>
+</option>
+<option name="3">
+<str>x3</str>
+</option>
+<option name="4">
+<str>tp</str>
+</option>
+<option name="4">
+<str>x4</str>
+</option>
+<option name="5">
+<str>t0</str>
+</option>
+<option name="5">
+<str>x5</str>
+</option>
+<option name="6">
+<str>t1</str>
+</option>
+<option name="6">
+<str>x6</str>
+</option>
+<option name="7">
+<str>t2</str>
+</option>
+<option name="7">
+<str>x7</str>
+</option>
+<option name="8">
+<str>s0</str>
+</option>
+<option name="8">
+<str>x8</str>
+</option>
+<option name="9">
+<str>s1</str>
+</option>
+<option name="9">
+<str>x9</str>
+</option>
+<option name="10">
+<str>a0</str>
+</option>
+<option name="10">
+<str>x10</str>
+</option>
+<option name="11">
+<str>a1</str>
+</option>
+<option name="11">
+<str>x11</str>
+</option>
+<option name="12">
+<str>a2</str>
+</option>
+<option name="12">
+<str>x12</str>
+</option>
+<option name="13">
+<str>a3</str>
+</option>
+<option name="13">
+<str>x13</str>
+</option>
+<option name="14">
+<str>a4</str>
+</option>
+<option name="14">
+<str>x14</str>
+</option>
+<option name="15">
+<str>a5</str>
+</option>
+<option name="15">
+<str>x15</str>
+</option>
+<option name="16">
+<str>a6</str>
+</option>
+<option name="16">
+<str>x16</str>
+</option>
+<option name="17">
+<str>a7</str>
+</option>
+<option name="17">
+<str>x17</str>
+</option>
+<option name="18">
+<str>s2</str>
+</option>
+<option name="18">
+<str>x18</str>
+</option>
+<option name="19">
+<str>s3</str>
+</option>
+<option name="19">
+<str>x19</str>
+</option>
+<option name="20">
+<str>s4</str>
+</option>
+<option name="20">
+<str>x20</str>
+</option>
+<option name="21">
+<str>s5</str>
+</option>
+<option name="21">
+<str>x21</str>
+</option>
+<option name="22">
+<str>s6</str>
+</option>
+<option name="22">
+<str>x22</str>
+</option>
+<option name="23">
+<str>s7</str>
+</option>
+<option name="23">
+<str>x23</str>
+</option>
+<option name="24">
+<str>s8</str>
+</option>
+<option name="24">
+<str>x24</str>
+</option>
+<option name="25">
+<str>s9</str>
+</option>
+<option name="25">
+<str>x25</str>
+</option>
+<option name="26">
+<str>s10</str>
+</option>
+<option name="26">
+<str>x26</str>
+</option>
+<option name="27">
+<str>s11</str>
+</option>
+<option name="27">
+<str>x27</str>
+</option>
+<option name="28">
+<str>t3</str>
+</option>
+<option name="28">
+<str>x28</str>
+</option>
+<option name="29">
+<str>t4</str>
+</option>
+<option name="29">
+<str>x29</str>
+</option>
+<option name="30">
+<str>t5</str>
+</option>
+<option name="30">
+<str>x30</str>
+</option>
+<option name="31">
+<str>t6</str>
+</option>
+<option name="31">
+<str>x31</str>
+</option>
+</enumerated>
+<type>
+<str>regfile</str>
+</type>
+<ref>
+<str>GPR</str>
+</ref>
+</instrfield>
+<instrfield name="rs1c">
+<doc>
+<str><![CDATA[
+    First source register field for compressed instructions.
+    
+]]></str>
+</doc>
+<bits>
+<range>
+<int>11</int>
+<int>7</int>
+</range>
+</bits>
+<width>
+<int>5</int>
+</width>
+<size>
+<int>5</int>
+</size>
+<shift>
+<int>0</int>
+</shift>
+<offset>
+<int>0</int>
+</offset>
+<mask>
+<str>0x0000000000000f80</str>
+</mask>
+<enumerated>
+<option name="0">
+<str>zero</str>
+</option>
+<option name="0">
+<str>x0</str>
+</option>
+<option name="1">
+<str>ra</str>
+</option>
+<option name="1">
+<str>x1</str>
+</option>
+<option name="2">
+<str>sp</str>
+</option>
+<option name="2">
+<str>x2</str>
+</option>
+<option name="3">
+<str>gp</str>
+</option>
+<option name="3">
+<str>x3</str>
+</option>
+<option name="4">
+<str>tp</str>
+</option>
+<option name="4">
+<str>x4</str>
+</option>
+<option name="5">
+<str>t0</str>
+</option>
+<option name="5">
+<str>x5</str>
+</option>
+<option name="6">
+<str>t1</str>
+</option>
+<option name="6">
+<str>x6</str>
+</option>
+<option name="7">
+<str>t2</str>
+</option>
+<option name="7">
+<str>x7</str>
+</option>
+<option name="8">
+<str>s0</str>
+</option>
+<option name="8">
+<str>x8</str>
+</option>
+<option name="9">
+<str>s1</str>
+</option>
+<option name="9">
+<str>x9</str>
+</option>
+<option name="10">
+<str>a0</str>
+</option>
+<option name="10">
+<str>x10</str>
+</option>
+<option name="11">
+<str>a1</str>
+</option>
+<option name="11">
+<str>x11</str>
+</option>
+<option name="12">
+<str>a2</str>
+</option>
+<option name="12">
+<str>x12</str>
+</option>
+<option name="13">
+<str>a3</str>
+</option>
+<option name="13">
+<str>x13</str>
+</option>
+<option name="14">
+<str>a4</str>
+</option>
+<option name="14">
+<str>x14</str>
+</option>
+<option name="15">
+<str>a5</str>
+</option>
+<option name="15">
+<str>x15</str>
+</option>
+<option name="16">
+<str>a6</str>
+</option>
+<option name="16">
+<str>x16</str>
+</option>
+<option name="17">
+<str>a7</str>
+</option>
+<option name="17">
+<str>x17</str>
+</option>
+<option name="18">
+<str>s2</str>
+</option>
+<option name="18">
+<str>x18</str>
+</option>
+<option name="19">
+<str>s3</str>
+</option>
+<option name="19">
+<str>x19</str>
+</option>
+<option name="20">
+<str>s4</str>
+</option>
+<option name="20">
+<str>x20</str>
+</option>
+<option name="21">
+<str>s5</str>
+</option>
+<option name="21">
+<str>x21</str>
+</option>
+<option name="22">
+<str>s6</str>
+</option>
+<option name="22">
+<str>x22</str>
+</option>
+<option name="23">
+<str>s7</str>
+</option>
+<option name="23">
+<str>x23</str>
+</option>
+<option name="24">
+<str>s8</str>
+</option>
+<option name="24">
+<str>x24</str>
+</option>
+<option name="25">
+<str>s9</str>
+</option>
+<option name="25">
+<str>x25</str>
+</option>
+<option name="26">
+<str>s10</str>
+</option>
+<option name="26">
+<str>x26</str>
+</option>
+<option name="27">
+<str>s11</str>
+</option>
+<option name="27">
+<str>x27</str>
+</option>
+<option name="28">
+<str>t3</str>
+</option>
+<option name="28">
+<str>x28</str>
+</option>
+<option name="29">
+<str>t4</str>
+</option>
+<option name="29">
+<str>x29</str>
+</option>
+<option name="30">
+<str>t5</str>
+</option>
+<option name="30">
+<str>x30</str>
+</option>
+<option name="31">
+<str>t6</str>
+</option>
+<option name="31">
+<str>x31</str>
+</option>
+</enumerated>
+<type>
+<str>regfile</str>
+</type>
+<ref>
+<str>GPR</str>
+</ref>
+</instrfield>
+<instrfield name="rs1c_p">
+<doc>
+<str><![CDATA[
+    First source register (limited range) for compressed instructions.
+    
+]]></str>
+</doc>
+<bits>
+<range>
+<int>9</int>
+<int>7</int>
+</range>
+</bits>
+<width>
+<int>3</int>
+</width>
+<size>
+<int>3</int>
+</size>
+<shift>
+<int>0</int>
+</shift>
+<offset>
+<int>8</int>
+</offset>
+<mask>
+<str>0x0000000000000380</str>
+</mask>
+<enumerated>
+<option name="0">
+<str>zero</str>
+</option>
+<option name="0">
+<str>x0</str>
+</option>
+<option name="1">
+<str>ra</str>
+</option>
+<option name="1">
+<str>x1</str>
+</option>
+<option name="2">
+<str>sp</str>
+</option>
+<option name="2">
+<str>x2</str>
+</option>
+<option name="3">
+<str>gp</str>
+</option>
+<option name="3">
+<str>x3</str>
+</option>
+<option name="4">
+<str>tp</str>
+</option>
+<option name="4">
+<str>x4</str>
+</option>
+<option name="5">
+<str>t0</str>
+</option>
+<option name="5">
+<str>x5</str>
+</option>
+<option name="6">
+<str>t1</str>
+</option>
+<option name="6">
+<str>x6</str>
+</option>
+<option name="7">
+<str>t2</str>
+</option>
+<option name="7">
+<str>x7</str>
+</option>
+<option name="8">
+<str>s0</str>
+</option>
+<option name="8">
+<str>x8</str>
+</option>
+<option name="9">
+<str>s1</str>
+</option>
+<option name="9">
+<str>x9</str>
+</option>
+<option name="10">
+<str>a0</str>
+</option>
+<option name="10">
+<str>x10</str>
+</option>
+<option name="11">
+<str>a1</str>
+</option>
+<option name="11">
+<str>x11</str>
+</option>
+<option name="12">
+<str>a2</str>
+</option>
+<option name="12">
+<str>x12</str>
+</option>
+<option name="13">
+<str>a3</str>
+</option>
+<option name="13">
+<str>x13</str>
+</option>
+<option name="14">
+<str>a4</str>
+</option>
+<option name="14">
+<str>x14</str>
+</option>
+<option name="15">
+<str>a5</str>
+</option>
+<option name="15">
+<str>x15</str>
+</option>
+<option name="16">
+<str>a6</str>
+</option>
+<option name="16">
+<str>x16</str>
+</option>
+<option name="17">
+<str>a7</str>
+</option>
+<option name="17">
+<str>x17</str>
+</option>
+<option name="18">
+<str>s2</str>
+</option>
+<option name="18">
+<str>x18</str>
+</option>
+<option name="19">
+<str>s3</str>
+</option>
+<option name="19">
+<str>x19</str>
+</option>
+<option name="20">
+<str>s4</str>
+</option>
+<option name="20">
+<str>x20</str>
+</option>
+<option name="21">
+<str>s5</str>
+</option>
+<option name="21">
+<str>x21</str>
+</option>
+<option name="22">
+<str>s6</str>
+</option>
+<option name="22">
+<str>x22</str>
+</option>
+<option name="23">
+<str>s7</str>
+</option>
+<option name="23">
+<str>x23</str>
+</option>
+<option name="24">
+<str>s8</str>
+</option>
+<option name="24">
+<str>x24</str>
+</option>
+<option name="25">
+<str>s9</str>
+</option>
+<option name="25">
+<str>x25</str>
+</option>
+<option name="26">
+<str>s10</str>
+</option>
+<option name="26">
+<str>x26</str>
+</option>
+<option name="27">
+<str>s11</str>
+</option>
+<option name="27">
+<str>x27</str>
+</option>
+<option name="28">
+<str>t3</str>
+</option>
+<option name="28">
+<str>x28</str>
+</option>
+<option name="29">
+<str>t4</str>
+</option>
+<option name="29">
+<str>x29</str>
+</option>
+<option name="30">
+<str>t5</str>
+</option>
+<option name="30">
+<str>x30</str>
+</option>
+<option name="31">
+<str>t6</str>
+</option>
+<option name="31">
+<str>x31</str>
+</option>
+</enumerated>
+<type>
+<str>regfile</str>
+</type>
+<ref>
+<str>GPR</str>
+</ref>
+</instrfield>
+<instrfield name="rs2">
+<doc>
+<str><![CDATA[
+    Second source register field.
+    
+]]></str>
+</doc>
+<bits>
+<range>
+<int>24</int>
+<int>20</int>
+</range>
+</bits>
+<width>
+<int>5</int>
+</width>
+<size>
+<int>5</int>
+</size>
+<shift>
+<int>0</int>
+</shift>
+<offset>
+<int>0</int>
+</offset>
+<mask>
+<str>0x1f00000</str>
+</mask>
+<enumerated>
+<option name="0">
+<str>zero</str>
+</option>
+<option name="0">
+<str>x0</str>
+</option>
+<option name="1">
+<str>ra</str>
+</option>
+<option name="1">
+<str>x1</str>
+</option>
+<option name="2">
+<str>sp</str>
+</option>
+<option name="2">
+<str>x2</str>
+</option>
+<option name="3">
+<str>gp</str>
+</option>
+<option name="3">
+<str>x3</str>
+</option>
+<option name="4">
+<str>tp</str>
+</option>
+<option name="4">
+<str>x4</str>
+</option>
+<option name="5">
+<str>t0</str>
+</option>
+<option name="5">
+<str>x5</str>
+</option>
+<option name="6">
+<str>t1</str>
+</option>
+<option name="6">
+<str>x6</str>
+</option>
+<option name="7">
+<str>t2</str>
+</option>
+<option name="7">
+<str>x7</str>
+</option>
+<option name="8">
+<str>s0</str>
+</option>
+<option name="8">
+<str>x8</str>
+</option>
+<option name="9">
+<str>s1</str>
+</option>
+<option name="9">
+<str>x9</str>
+</option>
+<option name="10">
+<str>a0</str>
+</option>
+<option name="10">
+<str>x10</str>
+</option>
+<option name="11">
+<str>a1</str>
+</option>
+<option name="11">
+<str>x11</str>
+</option>
+<option name="12">
+<str>a2</str>
+</option>
+<option name="12">
+<str>x12</str>
+</option>
+<option name="13">
+<str>a3</str>
+</option>
+<option name="13">
+<str>x13</str>
+</option>
+<option name="14">
+<str>a4</str>
+</option>
+<option name="14">
+<str>x14</str>
+</option>
+<option name="15">
+<str>a5</str>
+</option>
+<option name="15">
+<str>x15</str>
+</option>
+<option name="16">
+<str>a6</str>
+</option>
+<option name="16">
+<str>x16</str>
+</option>
+<option name="17">
+<str>a7</str>
+</option>
+<option name="17">
+<str>x17</str>
+</option>
+<option name="18">
+<str>s2</str>
+</option>
+<option name="18">
+<str>x18</str>
+</option>
+<option name="19">
+<str>s3</str>
+</option>
+<option name="19">
+<str>x19</str>
+</option>
+<option name="20">
+<str>s4</str>
+</option>
+<option name="20">
+<str>x20</str>
+</option>
+<option name="21">
+<str>s5</str>
+</option>
+<option name="21">
+<str>x21</str>
+</option>
+<option name="22">
+<str>s6</str>
+</option>
+<option name="22">
+<str>x22</str>
+</option>
+<option name="23">
+<str>s7</str>
+</option>
+<option name="23">
+<str>x23</str>
+</option>
+<option name="24">
+<str>s8</str>
+</option>
+<option name="24">
+<str>x24</str>
+</option>
+<option name="25">
+<str>s9</str>
+</option>
+<option name="25">
+<str>x25</str>
+</option>
+<option name="26">
+<str>s10</str>
+</option>
+<option name="26">
+<str>x26</str>
+</option>
+<option name="27">
+<str>s11</str>
+</option>
+<option name="27">
+<str>x27</str>
+</option>
+<option name="28">
+<str>t3</str>
+</option>
+<option name="28">
+<str>x28</str>
+</option>
+<option name="29">
+<str>t4</str>
+</option>
+<option name="29">
+<str>x29</str>
+</option>
+<option name="30">
+<str>t5</str>
+</option>
+<option name="30">
+<str>x30</str>
+</option>
+<option name="31">
+<str>t6</str>
+</option>
+<option name="31">
+<str>x31</str>
+</option>
+</enumerated>
+<type>
+<str>regfile</str>
+</type>
+<ref>
+<str>GPR</str>
+</ref>
+</instrfield>
+<instrfield name="rs2c">
+<doc>
+<str><![CDATA[
+    Second source register field for compressed instructions.
+    
+]]></str>
+</doc>
+<bits>
+<range>
+<int>6</int>
+<int>2</int>
+</range>
+</bits>
+<width>
+<int>5</int>
+</width>
+<size>
+<int>5</int>
+</size>
+<shift>
+<int>0</int>
+</shift>
+<offset>
+<int>0</int>
+</offset>
+<mask>
+<str>0x000000000000007c</str>
+</mask>
+<enumerated>
+<option name="0">
+<str>zero</str>
+</option>
+<option name="0">
+<str>x0</str>
+</option>
+<option name="1">
+<str>ra</str>
+</option>
+<option name="1">
+<str>x1</str>
+</option>
+<option name="2">
+<str>sp</str>
+</option>
+<option name="2">
+<str>x2</str>
+</option>
+<option name="3">
+<str>gp</str>
+</option>
+<option name="3">
+<str>x3</str>
+</option>
+<option name="4">
+<str>tp</str>
+</option>
+<option name="4">
+<str>x4</str>
+</option>
+<option name="5">
+<str>t0</str>
+</option>
+<option name="5">
+<str>x5</str>
+</option>
+<option name="6">
+<str>t1</str>
+</option>
+<option name="6">
+<str>x6</str>
+</option>
+<option name="7">
+<str>t2</str>
+</option>
+<option name="7">
+<str>x7</str>
+</option>
+<option name="8">
+<str>s0</str>
+</option>
+<option name="8">
+<str>x8</str>
+</option>
+<option name="9">
+<str>s1</str>
+</option>
+<option name="9">
+<str>x9</str>
+</option>
+<option name="10">
+<str>a0</str>
+</option>
+<option name="10">
+<str>x10</str>
+</option>
+<option name="11">
+<str>a1</str>
+</option>
+<option name="11">
+<str>x11</str>
+</option>
+<option name="12">
+<str>a2</str>
+</option>
+<option name="12">
+<str>x12</str>
+</option>
+<option name="13">
+<str>a3</str>
+</option>
+<option name="13">
+<str>x13</str>
+</option>
+<option name="14">
+<str>a4</str>
+</option>
+<option name="14">
+<str>x14</str>
+</option>
+<option name="15">
+<str>a5</str>
+</option>
+<option name="15">
+<str>x15</str>
+</option>
+<option name="16">
+<str>a6</str>
+</option>
+<option name="16">
+<str>x16</str>
+</option>
+<option name="17">
+<str>a7</str>
+</option>
+<option name="17">
+<str>x17</str>
+</option>
+<option name="18">
+<str>s2</str>
+</option>
+<option name="18">
+<str>x18</str>
+</option>
+<option name="19">
+<str>s3</str>
+</option>
+<option name="19">
+<str>x19</str>
+</option>
+<option name="20">
+<str>s4</str>
+</option>
+<option name="20">
+<str>x20</str>
+</option>
+<option name="21">
+<str>s5</str>
+</option>
+<option name="21">
+<str>x21</str>
+</option>
+<option name="22">
+<str>s6</str>
+</option>
+<option name="22">
+<str>x22</str>
+</option>
+<option name="23">
+<str>s7</str>
+</option>
+<option name="23">
+<str>x23</str>
+</option>
+<option name="24">
+<str>s8</str>
+</option>
+<option name="24">
+<str>x24</str>
+</option>
+<option name="25">
+<str>s9</str>
+</option>
+<option name="25">
+<str>x25</str>
+</option>
+<option name="26">
+<str>s10</str>
+</option>
+<option name="26">
+<str>x26</str>
+</option>
+<option name="27">
+<str>s11</str>
+</option>
+<option name="27">
+<str>x27</str>
+</option>
+<option name="28">
+<str>t3</str>
+</option>
+<option name="28">
+<str>x28</str>
+</option>
+<option name="29">
+<str>t4</str>
+</option>
+<option name="29">
+<str>x29</str>
+</option>
+<option name="30">
+<str>t5</str>
+</option>
+<option name="30">
+<str>x30</str>
+</option>
+<option name="31">
+<str>t6</str>
+</option>
+<option name="31">
+<str>x31</str>
+</option>
+</enumerated>
+<type>
+<str>regfile</str>
+</type>
+<ref>
+<str>GPR</str>
+</ref>
+</instrfield>
+<instrfield name="rs2c_p">
+<doc>
+<str><![CDATA[
+    Second source register (limited range) for compressed instructions.
+    
+]]></str>
+</doc>
+<bits>
+<range>
+<int>4</int>
+<int>2</int>
+</range>
+</bits>
+<width>
+<int>3</int>
+</width>
+<size>
+<int>3</int>
+</size>
+<shift>
+<int>0</int>
+</shift>
+<offset>
+<int>8</int>
+</offset>
+<mask>
+<str>0x000000000000001c</str>
+</mask>
+<enumerated>
+<option name="0">
+<str>zero</str>
+</option>
+<option name="0">
+<str>x0</str>
+</option>
+<option name="1">
+<str>ra</str>
+</option>
+<option name="1">
+<str>x1</str>
+</option>
+<option name="2">
+<str>sp</str>
+</option>
+<option name="2">
+<str>x2</str>
+</option>
+<option name="3">
+<str>gp</str>
+</option>
+<option name="3">
+<str>x3</str>
+</option>
+<option name="4">
+<str>tp</str>
+</option>
+<option name="4">
+<str>x4</str>
+</option>
+<option name="5">
+<str>t0</str>
+</option>
+<option name="5">
+<str>x5</str>
+</option>
+<option name="6">
+<str>t1</str>
+</option>
+<option name="6">
+<str>x6</str>
+</option>
+<option name="7">
+<str>t2</str>
+</option>
+<option name="7">
+<str>x7</str>
+</option>
+<option name="8">
+<str>s0</str>
+</option>
+<option name="8">
+<str>x8</str>
+</option>
+<option name="9">
+<str>s1</str>
+</option>
+<option name="9">
+<str>x9</str>
+</option>
+<option name="10">
+<str>a0</str>
+</option>
+<option name="10">
+<str>x10</str>
+</option>
+<option name="11">
+<str>a1</str>
+</option>
+<option name="11">
+<str>x11</str>
+</option>
+<option name="12">
+<str>a2</str>
+</option>
+<option name="12">
+<str>x12</str>
+</option>
+<option name="13">
+<str>a3</str>
+</option>
+<option name="13">
+<str>x13</str>
+</option>
+<option name="14">
+<str>a4</str>
+</option>
+<option name="14">
+<str>x14</str>
+</option>
+<option name="15">
+<str>a5</str>
+</option>
+<option name="15">
+<str>x15</str>
+</option>
+<option name="16">
+<str>a6</str>
+</option>
+<option name="16">
+<str>x16</str>
+</option>
+<option name="17">
+<str>a7</str>
+</option>
+<option name="17">
+<str>x17</str>
+</option>
+<option name="18">
+<str>s2</str>
+</option>
+<option name="18">
+<str>x18</str>
+</option>
+<option name="19">
+<str>s3</str>
+</option>
+<option name="19">
+<str>x19</str>
+</option>
+<option name="20">
+<str>s4</str>
+</option>
+<option name="20">
+<str>x20</str>
+</option>
+<option name="21">
+<str>s5</str>
+</option>
+<option name="21">
+<str>x21</str>
+</option>
+<option name="22">
+<str>s6</str>
+</option>
+<option name="22">
+<str>x22</str>
+</option>
+<option name="23">
+<str>s7</str>
+</option>
+<option name="23">
+<str>x23</str>
+</option>
+<option name="24">
+<str>s8</str>
+</option>
+<option name="24">
+<str>x24</str>
+</option>
+<option name="25">
+<str>s9</str>
+</option>
+<option name="25">
+<str>x25</str>
+</option>
+<option name="26">
+<str>s10</str>
+</option>
+<option name="26">
+<str>x26</str>
+</option>
+<option name="27">
+<str>s11</str>
+</option>
+<option name="27">
+<str>x27</str>
+</option>
+<option name="28">
+<str>t3</str>
+</option>
+<option name="28">
+<str>x28</str>
+</option>
+<option name="29">
+<str>t4</str>
+</option>
+<option name="29">
+<str>x29</str>
+</option>
+<option name="30">
+<str>t5</str>
+</option>
+<option name="30">
+<str>x30</str>
+</option>
+<option name="31">
+<str>t6</str>
+</option>
+<option name="31">
+<str>x31</str>
+</option>
+</enumerated>
+<type>
+<str>regfile</str>
+</type>
+<ref>
+<str>GPR</str>
+</ref>
+</instrfield>
+</instrfields>
+<instrs>
+<instruction name="add">
+<width>
+<int>32</int>
+</width>
+<doc>
+<str><![CDATA[
+    Add operation.
+    
+]]></str>
+</doc>
+<syntax>
+<str>add rd,rs1,rs2</str>
+</syntax>
+<dsyntax>
+<str>add ${rd},${rs1},${rs2}</str>
+</dsyntax>
+<attributes>
+<attribute name="rv32i">
+<str></str>
+</attribute>
+</attributes>
+<fields>
+<field name="funct7">
+<int>0</int>
+</field>
+<field name="rs2">
+<str></str>
+</field>
+<field name="rs1">
+<str></str>
+</field>
+<field name="funct3">
+<int>0</int>
+</field>
+<field name="rd">
+<str></str>
+</field>
+<field name="opcode">
+<int>51</int>
+</field>
+</fields>
+<action>
+<str><![CDATA[
+{
+    GPR ( rd ) = GPR ( rs1 ) + GPR ( rs2 ) ;
+}
+]]></str>
+</action>
+<disassemble>
+<str>true</str>
+</disassemble>
+<inputs>
+<str>GPR(rs1)</str>
+<str>GPR(rs2)</str>
+<str>RV32E_ENABLE</str>
+</inputs>
+<outputs>
+<str>GPR(rd)</str>
+</outputs>
+</instruction>
+<instruction name="add_tprel">
+<width>
+<int>32</int>
+</width>
+<doc>
+<str><![CDATA[
+    Four-argument version used for thread-local storage. The fourth argument
+    is ignored; it's just used for a dummy relocation that associated the add
+    instruction with the rest of the thread-local storage setup operation.
+    
+]]></str>
+</doc>
+<syntax>
+<str>add rd,rs1,tp,imm_add_tprel</str>
+</syntax>
+<dsyntax>
+<str>add ${rd},${rs1},${tp},${imm_add_tprel}</str>
+</dsyntax>
+<attributes>
+<attribute name="rv32i">
+<str></str>
+</attribute>
+</attributes>
+<aliases>
+<alias name="add">
+<sources>
+<source>
+<field>
+<str>rs2</str>
+</field>
+<value>
+<str>rs2</str>
+</value>
+</source>
+<source>
+<field>
+<str>rs1</str>
+</field>
+<value>
+<str>rs1</str>
+</value>
+</source>
+</sources>
+<destinations>
+<destination>
+<field>
+<str>rd</str>
+</field>
+<value>
+<str>rd</str>
+</value>
+</destination>
+</destinations>
+<parent_action>
+<str><![CDATA[
+{
+    GPR ( rd ) = GPR ( rs1 ) + GPR ( rs2 ) ;
+}
+]]></str>
+</parent_action>
+</alias>
+</aliases>
+<disassemble>
+<str>false</str>
+</disassemble>
+<inputs>
+<str>GPR(rs1)</str>
+<str>GPR(rs2)</str>
+</inputs>
+<outputs>
+<str>GPR(rd)</str>
+</outputs>
+</instruction>
+<instruction name="auipc">
+<width>
+<int>32</int>
+</width>
+<doc>
+<str><![CDATA[
+    Add upper immediate to pc.
+    
+]]></str>
+</doc>
+<syntax>
+<str>auipc rd,imm_u_pc</str>
+</syntax>
+<dsyntax>
+<str>auipc ${rd},${imm_u_pc}</str>
+</dsyntax>
+<attributes>
+<attribute name="rv32i">
+<str></str>
+</attribute>
+</attributes>
+<fields>
+<field name="imm_u_pc">
+<str></str>
+</field>
+<field name="rd">
+<str></str>
+</field>
+<field name="opcode">
+<int>23</int>
+</field>
+</fields>
+<action>
+<str><![CDATA[
+{
+    GPR ( rd ) = signExtend ( concat ( imm_u_pc , zero ( 12 ) ) , 32 ) + PC ;
+}
+]]></str>
+</action>
+<disassemble>
+<str>true </str>
+</disassemble>
+<inputs>
+<str>PC</str>
+</inputs>
+<outputs>
+<str>GPR(rd)</str>
+</outputs>
+</instruction>
+<instruction name="c.ld">
+<width>
+<int>16</int>
+</width>
+<doc>
+<str><![CDATA[
+    Load long .
+    
+]]></str>
+</doc>
+<syntax>
+<str>c.ld rdc_p,immd_cl(rs1c_p)</str>
+</syntax>
+<dsyntax>
+<str>c.ld ${rdc_p},${immd_cl}(${rs1c_p})</str>
+</dsyntax>
+<attributes>
+<attribute name="rv32c">
+<str></str>
+</attribute>
+<attribute name="load">
+<str></str>
+</attribute>
+<attribute name="zilsd">
+<str></str>
+</attribute>
+<attribute name="zcmlsd">
+<str></str>
+</attribute>
+</attributes>
+<fields>
+<field name="funct3_c">
+<int>3</int>
+</field>
+<field name="immd_cl">
+<str></str>
+</field>
+<field name="rs1c_p">
+<str></str>
+</field>
+<field name="rdc_p">
+<str></str>
+</field>
+<field name="op_c">
+<int>0</int>
+</field>
+</fields>
+<action>
+<str><![CDATA[
+{
+     var vaddr = GPR ( rs1c_p ) + imm_i ;
+    var result = Mem ( vaddr, 4) ;
+    var result1 = Mem (vaddr + 4, 4);
+    GPR ( rdc_p ) = result ; 
+    GPR ( rdc_p + 1 ) = result1 ;
+}
+]]></str>
+</action>
+<disassemble>
+<str>true</str>
+</disassemble>
+<inputs>
+<str>GPR(rs1c_p)</str>
+</inputs>
+<outputs>
+<str>GPR(rdc_p)</str>
+<str>GPR(rdc_p + 1)</str>
+</outputs>
+<input_mems>
+<str>Mem</str>
+</input_mems>
+</instruction>
+<instruction name="c.ldsp">
+<width>
+<int>16</int>
+</width>
+<doc>
+<str><![CDATA[
+    Load sign-extended long.
+
+    Address is calculated based upon the stack pointer.
+    
+]]></str>
+</doc>
+<syntax>
+<str>c.ldsp rx,immd_ci(sp)</str>
+</syntax>
+<dsyntax>
+<str>c.ldsp ${rx},${immd_ci}(sp)</str>
+</dsyntax>
+<attributes>
+<attribute name="rv32c">
+<str></str>
+</attribute>
+<attribute name="load">
+<str></str>
+</attribute>
+<attribute name="zilsd">
+<str></str>
+</attribute>
+<attribute name="zcmlsd">
+<str></str>
+</attribute>
+</attributes>
+<fields>
+<field name="funct3_c">
+<int>3</int>
+</field>
+<field name="immd_ci">
+<str></str>
+</field>
+<field name="rx">
+<str></str>
+</field>
+<field name="op_c">
+<int>2</int>
+</field>
+</fields>
+<action>
+<str><![CDATA[
+{
+     var vaddr = GPR ( 2 ) + imm_i ;
+    var result = Mem (vaddr, 4) ;
+    var result1 = Mem (vaddr + 4, 4) ;
+    GPR ( rd ) = result ;
+    GPR ( rd + 1 ) = result1 ;
+}
+]]></str>
+</action>
+<disassemble>
+<str>true</str>
+</disassemble>
+<inputs>
+<str>GPR(2)</str>
+</inputs>
+<outputs>
+<str>GPR(rx)</str>
+<str>GPR(rx + 1)</str>
+</outputs>
+<input_mems>
+<str>Mem</str>
+</input_mems>
+</instruction>
+<instruction name="c.sd">
+<width>
+<int>16</int>
+</width>
+<doc>
+<str><![CDATA[
+    Store long.
+    
+]]></str>
+</doc>
+<syntax>
+<str>c.sd rs2c_p,immd_cs(rs1c_p)</str>
+</syntax>
+<dsyntax>
+<str>c.sd ${rs2c_p},${immd_cs}(${rs1c_p})</str>
+</dsyntax>
+<attributes>
+<attribute name="rv32c">
+<str></str>
+</attribute>
+<attribute name="store">
+<str></str>
+</attribute>
+<attribute name="zilsd">
+<str></str>
+</attribute>
+<attribute name="zcmlsd">
+<str></str>
+</attribute>
+</attributes>
+<fields>
+<field name="funct3_c">
+<int>7</int>
+</field>
+<field name="immd_cs">
+<str></str>
+</field>
+<field name="rs1c_p">
+<str></str>
+</field>
+<field name="rs2c_p">
+<str></str>
+</field>
+<field name="op_c">
+<int>0</int>
+</field>
+</fields>
+<action>
+<str><![CDATA[
+{
+     var ea = GPR ( rs1c_p ) + immd_cs ;
+    var result = GPR ( rs2c_p ) ;
+    var result1 = GPR ( rs2c_p + 1 ) ; 
+    Mem ( ea , 4 ) = result ;
+    Mem ( ea + 4 , 4 ) = result1 ;
+}
+]]></str>
+</action>
+<disassemble>
+<str>true</str>
+</disassemble>
+<inputs>
+<str>GPR(rs1c_p)</str>
+<str>GPR(rs2c_p)</str>
+<str>GPR(rs2c_p + 1)</str>
+</inputs>
+<output_mems>
+<str>Mem</str>
+</output_mems>
+</instruction>
+<instruction name="c.sdsp">
+<width>
+<int>16</int>
+</width>
+<doc>
+<str><![CDATA[
+    Store long.
+
+    Address is calculated based upon the stack pointer.
+    
+]]></str>
+</doc>
+<syntax>
+<str>c.sdsp rs2c,immd_css(sp)</str>
+</syntax>
+<dsyntax>
+<str>c.sdsp ${rs2c},${immd_css}(sp)</str>
+</dsyntax>
+<attributes>
+<attribute name="rv32c">
+<str></str>
+</attribute>
+<attribute name="store">
+<str></str>
+</attribute>
+<attribute name="zilsd">
+<str></str>
+</attribute>
+<attribute name="zcmlsd">
+<str></str>
+</attribute>
+</attributes>
+<fields>
+<field name="funct3_c">
+<int>7</int>
+</field>
+<field name="immd_css">
+<str></str>
+</field>
+<field name="rs2c">
+<str></str>
+</field>
+<field name="op_c">
+<int>2</int>
+</field>
+</fields>
+<action>
+<str><![CDATA[
+{
+     var ea = GPR ( 2 ) + immd_css ;
+    var result = GPR ( rs2c ) ; 
+    var result1 = GPR ( rs2c + 1 ) ;
+    Mem ( ea , 4 ) = result ;
+    Mem ( ea + 4 , 4 ) = result1 ;
+}
+]]></str>
+</action>
+<disassemble>
+<str>true</str>
+</disassemble>
+<inputs>
+<str>GPR(2)</str>
+<str>GPR(rs2c)</str>
+<str>GPR(rs2c + 1)</str>
+</inputs>
+<output_mems>
+<str>Mem</str>
+</output_mems>
+</instruction>
+<instruction name="ld">
+<width>
+<int>32</int>
+</width>
+<doc>
+<str><![CDATA[
+    Load double.
+    
+]]></str>
+</doc>
+<syntax>
+<str>ld rd,imm_i(rs1)</str>
+</syntax>
+<dsyntax>
+<str>ld ${rd},${imm_i}(${rs1})</str>
+</dsyntax>
+<attributes>
+<attribute name="rv32i">
+<str></str>
+</attribute>
+<attribute name="load">
+<str></str>
+</attribute>
+<attribute name="zilsd">
+<str></str>
+</attribute>
+</attributes>
+<fields>
+<field name="imm_i">
+<str></str>
+</field>
+<field name="rs1">
+<str></str>
+</field>
+<field name="funct3">
+<int>3</int>
+</field>
+<field name="rd">
+<str></str>
+</field>
+<field name="opcode">
+<int>3</int>
+</field>
+</fields>
+<action>
+<str><![CDATA[
+{
+     var vaddr = GPR ( rs1 ) + imm_i ;
+    var result = Mem ( vaddr, 4) ;
+    var result1 = Mem (vaddr + 4, 4) ;
+    GPR ( rd ) = result ;
+    GPR ( rd + 1 ) = result1 ;
+}
+]]></str>
+</action>
+<disassemble>
+<str>true</str>
+</disassemble>
+<inputs>
+<str>GPR(rs1)</str>
+</inputs>
+<outputs>
+<str>GPR(rd)</str>
+<str>GPR(rd + 1)</str>
+</outputs>
+<input_mems>
+<str>Mem</str>
+</input_mems>
+</instruction>
+<instruction name="lui">
+<width>
+<int>32</int>
+</width>
+<doc>
+<str><![CDATA[
+    Load unsigned immediate.
+    
+]]></str>
+</doc>
+<syntax>
+<str>lui rd,imm_u</str>
+</syntax>
+<dsyntax>
+<str>lui ${rd},${imm_u}</str>
+</dsyntax>
+<attributes>
+<attribute name="rv32i">
+<str></str>
+</attribute>
+</attributes>
+<fields>
+<field name="imm_u">
+<str></str>
+</field>
+<field name="rd">
+<str></str>
+</field>
+<field name="opcode">
+<int>55</int>
+</field>
+</fields>
+<action>
+<str><![CDATA[
+{
+    GPR ( rd ) = signExtend ( concat ( imm_u , zero ( 12 ) ) , 32 ) ;
+}
+]]></str>
+</action>
+<disassemble>
+<str>true </str>
+</disassemble>
+<outputs>
+<str>GPR(rd)</str>
+</outputs>
+</instruction>
+<instruction name="sd">
+<width>
+<int>32</int>
+</width>
+<doc>
+<str><![CDATA[
+    Store double.
+    
+]]></str>
+</doc>
+<syntax>
+<str>sd rs2,imm_s(rs1)</str>
+</syntax>
+<dsyntax>
+<str>sd ${rs2},${imm_s}(${rs1})</str>
+</dsyntax>
+<attributes>
+<attribute name="rv32i">
+<str></str>
+</attribute>
+<attribute name="store">
+<str></str>
+</attribute>
+<attribute name="zilsd">
+<str></str>
+</attribute>
+</attributes>
+<fields>
+<field name="imm_s">
+<str></str>
+</field>
+<field name="rs2">
+<str></str>
+</field>
+<field name="rs1">
+<str></str>
+</field>
+<field name="funct3">
+<int>3</int>
+</field>
+<field name="opcode">
+<int>35</int>
+</field>
+</fields>
+<action>
+<str><![CDATA[
+{
+     var ea = GPR ( rs1 ) + imm_s ;
+    var result = GPR ( rs2 ) ; 
+    var result1 = GPR ( rs2 + 1 ) ; 
+    Mem ( ea , 4 ) = result ;
+    Mem ( ea + 4 , 4 ) = result1 ;
+}
+]]></str>
+</action>
+<disassemble>
+<str>true</str>
+</disassemble>
+<inputs>
+<str>GPR(rs1)</str>
+<str>GPR(rs2)</str>
+<str>GPR(rs2 + 1)</str>
+</inputs>
+<output_mems>
+<str>Mem</str>
+</output_mems>
+</instruction>
+</instrs>
+<sched-tables>
+<sched-table name="zilsd">
+<ModelType>
+<str>in_order</str>
+</ModelType>
+<IssueWidth>
+<int>1</int>
+</IssueWidth>
+<LoadLatency>
+<int>2</int>
+</LoadLatency>
+<MispredictPenalty>
+<int>5</int>
+</MispredictPenalty>
+<CompleteModel>
+<str>False</str>
+</CompleteModel>
+<UnsupportedFeatures>
+<str>HasStdExtV</str>
+</UnsupportedFeatures>
+<FunctionalUnits>
+<functional-unit name="RISCVPipelineMEMORY">
+<doc>
+<str>Load/Store/Memory operations</str>
+</doc>
+</functional-unit>
+</FunctionalUnits>
+<instruction-sched name="ST">
+<instruction_list>
+<str>c.sd,c.sdsp,sd</str>
+</instruction_list>
+<latency>
+<str>2</str>
+</latency>
+<throughput>
+<str>2</str>
+</throughput>
+<pipeline>
+<str>RISCVPipelineMEMORY</str>
+</pipeline>
+</instruction-sched>
+<instruction-sched name="LD">
+<instruction_list>
+<str>c.ld,c.ldsp,ld</str>
+</instruction_list>
+<latency>
+<str>2</str>
+</latency>
+<throughput>
+<str>2</str>
+</throughput>
+<pipeline>
+<str>RISCVPipelineMEMORY</str>
+</pipeline>
+</instruction-sched>
+</sched-table>
+</sched-tables>
+<asm_config>
+<comments>
+<str>#</str>
+</comments>
+<line_comments>
+<str>#</str>
+</line_comments>
+<arch>
+<str>riscv32</str>
+</arch>
+<attributes>
+<str>rv32i2p1_c2p0_zilsd0p9_zcmlsd0p9</str>
+</attributes>
+<mattrib>
+<str>+c,+experimental-zilsd,+experimental-zcmlsd</str>
+</mattrib>
+</asm_config>
+<helpers>
+</helpers>
+</core>
+</cores>
+<systems>
+</systems>
+</data>
