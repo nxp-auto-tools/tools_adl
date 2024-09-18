@@ -1647,9 +1647,9 @@ def generate_instruction_define(
                 if instrfield == element.split(" ")[0].rstrip(" "):
                     element = element.replace(" ", "")
                     if "+1" in element:
-                        register_pair_app_outs[instrfield] += 1
-                        if instrfield not in outs:
-                            outs.append(instrfield)
+                        register_pair_app_ins[instrfield] += 1
+                        if instrfield not in ins:
+                            ins.append(instrfield)
     ins.sort()
     outs_copy = outs.copy()
     outs_copy.sort()
@@ -1909,6 +1909,101 @@ def generate_instruction_define(
                 instrfield_regs_outs.insert(
                     len(instrfield_regs_outs), ref + ":" + "$" + instrfield
                 )
+    for instrfield in ins:
+        ref = ""
+        if instrfield in instrfield_ref.keys():
+            for reg_key in register_classes.keys():
+                if instrfield in register_classes[reg_key]:
+                    if "alias" + reg_key in config_variables.keys():
+                        if "excluded_values" in instrfield_data_ref[instrfield]:
+                            for element in instrfield_data_ref[instrfield][
+                                "excluded_values"
+                            ].keys():
+                                if (
+                                    "alias"
+                                    + reg_key
+                                    + "No"
+                                    + instrfield_data_ref[instrfield][
+                                        "excluded_values"
+                                    ][element][0]
+                                    in config_variables.keys()
+                                ):
+                                    ref = config_variables[
+                                        "alias"
+                                        + reg_key
+                                        + "No"
+                                        + instrfield_data_ref[instrfield][
+                                            "excluded_values"
+                                        ][element][0]
+                                    ]
+                                    break
+                        else:
+                            ref = config_variables["alias" + reg_key]
+                        if (
+                            instrfield in register_pair_app_ins.keys()
+                            and register_pair_app_ins[instrfield] == 2
+                        ) or (
+                            instrfield in register_pair_app_ins.keys()
+                            and register_pair_app_ins[instrfield]
+                        ) == 2:
+                            if "No" in ref:
+                                ref_copy = ref
+                                ref = ref.split("No", 1)[0]
+                                rest = ref_copy.split("No", 1)[1]
+                                ref += "P"
+                                ref += "No" + rest
+                                check_reference_pairs.append(ref)
+                            else:
+                                ref += "P"
+                                check_reference_pairs.append(ref)
+                            if ref not in register_pairs.keys():
+                                list_aux = list()
+                                list_aux.append(instrfield)
+                                register_pairs[ref] = list_aux
+                            elif ref in register_pairs.keys():
+                                list_aux = list()
+                                list_aux.extend(register_pairs[ref])
+                                list_aux.append(instrfield)
+                                register_pairs[ref] = list_aux
+                        if ref not in register_references:
+                            if ref is not None:
+                                register_references.append(ref)
+                    else:
+                        ref = reg_key
+                        if (
+                            instrfield in register_pair_app_ins.keys()
+                            and register_pair_app_ins[instrfield] == 2
+                        ) or (
+                            instrfield in register_pair_app_ins.keys()
+                            and register_pair_app_ins[instrfield]
+                        ) == 2:
+                            if "No" in ref:
+                                ref_copy = ref
+                                ref = ref.split("No", 1)[0]
+                                rest = ref_copy.split("No", 1)[1]
+                                ref += "P"
+                                ref += "No" + rest
+                                check_reference_pairs.append(ref)
+                            else:
+                                ref += "P"
+                                check_reference_pairs.append(ref)
+                            if ref not in register_pairs.keys():
+                                list_aux = list()
+                                list_aux.append(instrfield)
+                                register_pairs[ref] = list_aux
+                            elif ref in register_pairs.keys():
+                                list_aux = list()
+                                list_aux.extend(register_pairs[ref])
+                                list_aux.append(instrfield)
+                                register_pairs[ref] = list_aux
+                        if ref not in register_references:
+                            if ref is not None:
+                                register_references.append(ref)
+            if instrfield not in regs_in:
+                regs_in.insert(len(regs_out), instrfield)
+                instrfield_regs_ins.insert(
+                    len(instrfield_regs_ins), ref + ":" + "$" + instrfield
+                )
     alias_dict = adl_parser.get_alias_for_regs(config_variables["ADLName"])
     for elem in instructions[key]["inputs"]:
         for regclass in register_classes:
@@ -1962,6 +2057,44 @@ def generate_instruction_define(
                                     0, regclass + ":" + "$" + reg_in
                                 )
                                 decoderMethodRegs.append(reg_in)
+    for elem in instructions[key]["inputs"]:
+        for regclass in register_classes:
+            if regclass in elem:
+                ins = re.split(r"[()]", elem)
+                for elem_ins in ins:
+                    if regclass in alias_dict.keys():
+                        if elem_ins in alias_dict[regclass].keys():
+                            reg_in = alias_dict[regclass][elem_ins]
+                            reg_in = reg_in[0]
+                            regs_in.insert(len(regs_in), reg_in)
+                            if (
+                                elem_ins in register_pair_app_ins.keys()
+                                and register_pair_app_ins[elem_ins] == 2
+                            ):
+                                if "No" in regclass:
+                                    regclass_copy = regclass
+                                    regclass = regclass.split("No", 1)[0]
+                                    rest = regclass_copy.split("No", 1)[1]
+                                    regclass += "P"
+                                    regclass += "No" + rest
+                                    check_reference_pairs.append(regclass)
+                                else:
+                                    regclass += "P"
+                                    check_reference_pairs.append(regclass)
+                                if regclass not in register_pairs.keys():
+                                    list_aux = list()
+                                    list_aux.append(reg_in)
+                                    register_pairs[regclass] = list_aux
+                                elif regclass in register_pairs.keys():
+                                    list_aux = list()
+                                    list_aux.extend(register_pairs[regclass])
+                                    list_aux.append(reg_in)
+                                    register_pairs[regclass] = list_aux
+                                instrfield_regs_ins.insert(
+                                    len(instrfield_regs_ins),
+                                    regclass + ":" + "$" + reg_in,
+                                )
+                                decoderMethodRegs.append(reg_out)
     for elem in instructions[key]["outputs"]:
         for regclass in register_classes:
             if regclass in elem:
@@ -1986,20 +2119,20 @@ def generate_instruction_define(
                                 else:
                                     regclass += "P"
                                     check_reference_pairs.append(regclass)
-                            if regclass not in register_pairs.keys():
-                                list_aux = list()
-                                list_aux.append(reg_out)
-                                register_pairs[regclass] = list_aux
-                            elif regclass in register_pairs.keys():
-                                list_aux = list()
-                                list_aux.extend(register_pairs[regclass])
-                                list_aux.append(reg_out)
-                                register_pairs[regclass] = list_aux
-                            instrfield_regs_outs.insert(
-                                len(instrfield_regs_outs),
-                                regclass + ":" + "$" + reg_out,
-                            )
-                            decoderMethodRegs.append(reg_out)
+                                if regclass not in register_pairs.keys():
+                                    list_aux = list()
+                                    list_aux.append(reg_out)
+                                    register_pairs[regclass] = list_aux
+                                elif regclass in register_pairs.keys():
+                                    list_aux = list()
+                                    list_aux.extend(register_pairs[regclass])
+                                    list_aux.append(reg_out)
+                                    register_pairs[regclass] = list_aux
+                                instrfield_regs_outs.insert(
+                                    len(instrfield_regs_outs),
+                                    regclass + ":" + "$" + reg_out,
+                                )
+                                decoderMethodRegs.append(reg_out)
     syntax_elements_list = list()
     for instrfield in syntax_elements[1:]:
         skip_element = False
@@ -2285,13 +2418,14 @@ def generate_instruction_define(
             if "sp" in element:
                 aux = element.split(":$")[1]
                 if "sp" in instrfield_regs_outs_ord[reg]:
-                    instrfield_regs_outs.remove(instrfield_regs_outs_ord[reg])
-                    instrfield_regs_outs_ord[reg] = instrfield_regs_outs_ord[
-                        reg
-                    ].replace(aux, aux + "_wb")
-                    if instrfield_regs_outs_ord[reg] not in instrfield_regs_outs:
-                        instrfield_regs_outs.append(instrfield_regs_outs_ord[reg])
-                    exitValue = True
+                    if instrfield_regs_outs_ord[reg] in instrfield_regs_outs:
+                        instrfield_regs_outs.remove(instrfield_regs_outs_ord[reg])
+                        instrfield_regs_outs_ord[reg] = instrfield_regs_outs_ord[
+                            reg
+                        ].replace(aux, aux + "_wb")
+                if instrfield_regs_outs_ord[reg] not in instrfield_regs_outs:
+                    instrfield_regs_outs.append(instrfield_regs_outs_ord[reg])
+                exitValue = True
     write_sched = ""
     read_sched = ""
     if key in scheduling_instr_info.keys():
@@ -2312,6 +2446,13 @@ def generate_instruction_define(
             register = element.split(":$")[1]
             if register in instrfield_ref.keys():
                 scheduling_list.append(read_sched.replace("'", ""))
+            else:
+                for register_ref in registers_parsed.keys():
+                    for input in instructions[key]['inputs']:
+                        reg_found = input.replace(register_ref, "").replace("(", "").replace(")", "")
+                        if reg_found in alias_dict[register_ref].keys():
+                            if register in alias_dict[register_ref][reg_found]:
+                                scheduling_list.append(read_sched.replace("'", ""))
         schedule = str(scheduling_list).replace("'", "")
     instrfield_regs_outs = str(instrfield_regs_outs)
     instrfield_regs_ins = str(instrfield_regs_ins)

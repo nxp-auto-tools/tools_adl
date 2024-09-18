@@ -16,15 +16,15 @@ def make_td_function():
     if "tools" in list_dir:
         if extension_command_line != "":
             os.system(
-                "python ./tools/main.py " + sys.argv[1] + " " + extension_command_line
+                "python3 ./tools/main.py " + sys.argv[1] + " " + extension_command_line
             )
         else:
-            os.system("python ./tools/main.py " + sys.argv[1])
+            os.system("python3 ./tools/main.py " + sys.argv[1])
     else:
         if extension_command_line != "":
-            os.system("python ./main.py " + sys.argv[1] + " " + extension_command_line)
+            os.system("python3 ./main.py " + sys.argv[1] + " " + extension_command_line)
         else:
-            os.system("python ./main.py " + sys.argv[1])
+            os.system("python3 ./main.py " + sys.argv[1])
 
 
 if __name__ == "__main__":
