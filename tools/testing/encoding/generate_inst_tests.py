@@ -9,25 +9,21 @@ import importlib
 import os
 import glob
 from datetime import datetime
-import shutil
 import re
 import sys
+import utils
 
-sys.path.append('./../../')
-module_config = "config"
-try:
-    config = importlib.import_module(module_config)
-except ImportError:
-    print("Cannot find configuration module.")
-
+sys.path.append(os.path.join(os.path.dirname(__file__), "./../../"))
+import config
 
 ## Writes all information about a test at the beginning of the file
 def write_header():
-    adl_file_path = sys.argv[1]
-    adl_file_name, adl_file_ext = os.path.splitext(
-        os.path.basename(adl_file_path))
-    cmd_extensions = sys.argv[2]
-    cmd_ext = cmd_extensions.split(",")
+    
+    # Get the command line arguments
+    adl_file_path, adl_file_name, cmd_extensions, output_dir = utils.cmd_args()
+
+    # Get the path of the script
+    script_directory = os.path.dirname(os.path.abspath(__file__))
 
     try:
         info = importlib.import_module('info')
@@ -40,16 +36,9 @@ def write_header():
     except ImportError:
         print('Please run parse.py first to generate the info module.')
         return None
-
-    # check if the "tests" folder exists
-    if os.path.exists("tests"):
-        shutil.rmtree("tests")
-
-    # create the "tests" folder
-    os.makedirs("tests")
     
     # A dictionary for the configuration environment
-    llvm_config_dict = config.config_environment("../../config.txt", "../../llvm_config.txt")
+    llvm_config_dict = config.config_environment(os.path.join(script_directory, "../../config.txt"), os.path.join(script_directory, "../../llvm_config.txt"))
 
     # architecture and attributes
     architecture, attributes, mattrib = parse.assembler_and_cmdLine_args(adl_file_path)
@@ -74,12 +63,14 @@ def write_header():
         if match:
             extension_versions_dict[match.group(1)] = match.group(2)
 
+    instr_op_dict, instrName_syntaxName_dict, imm_width_dict, imm_shift_dict, imm_signed_dict, instr_field_value_dict = parse.instructions_operands(adl_file_path)
+
     # loop through the instructions dictionary
     for i, (instruction, operands) in enumerate(info.instructions.items()):
         # generate tests only for specific extensions
-        if any(element in cmd_ext for element in instruction_attribute_dict[instruction]):
+        if any(element in cmd_extensions for element in instruction_attribute_dict[instruction]):
             # create a folder for each instruction
-            folder_name = os.path.join("tests", f"{i:03d}_{instruction}")
+            folder_name = os.path.join(output_dir, 'results_' + adl_file_name, "tests_" + '_'.join(cmd_extensions), f"{i:03d}_{instruction}")
             os.makedirs(folder_name)
             # create a file in the folder with the same name as the instruction
             file_name = os.path.join(folder_name, f"{instruction}.asm")
@@ -89,7 +80,7 @@ def write_header():
                 f.write("Data:\n")
                 f.write(f"#   Copyright (c) {now.strftime('%Y')} NXP\n")
                 f.write("#   SPDX-License-Identifier: BSD-2-Clause\n")
-                f.write('#   @file    %s' % file_name + '\n')
+                f.write('#   @file    %s' % adl_file_name + '\n')
                 f.write('#   @version 1.0\n')
                 f.write('#\n')
                 f.write(
@@ -99,9 +90,9 @@ def write_header():
                 f.write(
                     '#-----------------\n')
                 f.write('#\n')
-                f.write('# @test_id        %s' % file_name + '\n')
+                f.write('# @test_id        %s' % adl_file_name + '\n')
                 f.write('# @brief          Encode %s %s' %
-                        (instruction, ",".join(operands)) + '\n')
+                        (instrName_syntaxName_dict[instruction], ",".join(operands)) + '\n')
                 f.write('# @details        Tests if each bit is encoded correctly for %s instruction' %
                         instruction + '\n')
                 f.write('# @pre            Python 3.9+\n')
@@ -143,20 +134,18 @@ def generate_instructions():
     except ImportError:
         print('Please run parse.py first to generate the info module.')
         return None
-
-    if len(sys.argv) > 2:
-        adl_file = sys.argv[1]
-        cmd_extensions = sys.argv[2]
-        cmd_ext = cmd_extensions.split(",")
-
-    instr_op_dict, instr_name_syntaxName_dict, imm_width_dict, imm_shift_dict, imm_signed_dict, instr_field_value_dict = parse.instructions_operands(adl_file)
-    op_val_dict, widths_dict, op_signExt_dict = parse.operands_values(adl_file)
-    instruction_register_pair_dict, instrfield_optionName_dict = parse.register_pairs(adl_file)
+    
+    # Get the command line arguments
+    adl_file_path, adl_file_name, cmd_extensions, output_dir = utils.cmd_args()
+    
+    instr_op_dict, instrName_syntaxName_dict, imm_width_dict, imm_shift_dict, imm_signed_dict, instr_field_value_dict = parse.instructions_operands(adl_file_path)
+    op_val_dict, widths_dict, op_signExt_dict = parse.operands_values(adl_file_path)
+    instruction_register_pair_dict, instrfield_optionName_dict = parse.register_pairs(adl_file_path)
 
     operands_dict = info.operands.copy()
 
     # A dictionary with instructions and associated attribute prefixes
-    instruction_attribute_dict, new_instruction_attribute_dict = parse.instruction_attribute(adl_file)
+    instruction_attribute_dict, new_instruction_attribute_dict = parse.instruction_attribute(adl_file_path)
 
     # Initialize an empty dictionary to convert instr_field_value_dict into a dict of dicts
     instrfield_value_double_dict = {}
@@ -176,28 +165,20 @@ def generate_instructions():
             del imm_width_dict[key]
             del imm_shift_dict[key]
 
-    current_dir = os.getcwd()
-    file_paths = glob.glob(current_dir + '/tests/**/*.asm', recursive=True)
+    file_paths = glob.glob(os.path.join(output_dir, 'results_' + adl_file_name, 'tests_' + '_'.join(cmd_extensions), '**', '*.asm'), recursive=True)
     if len(file_paths) != len(info.instructions):
         raise ValueError("Number of strings to add must match number of .asm files")
 
     for file_path, (instruction, operands) in zip(sorted(file_paths), info.instructions.items()):
         # generate tests only for specific extensions
-        if any(element in cmd_ext for element in instruction_attribute_dict[instruction]):
+        if any(element in cmd_extensions for element in instruction_attribute_dict[instruction]):
             # case if instruction has no operands
             if operands == []:
                 with open(file_path, 'a') as f:
-                    # check if instruction is hint
-                    if '_hint' in instruction:
-                        f.write(f'\n{instruction}:\n')
-                        f.write(f"\n\t{instr_name_syntaxName_dict[instruction]}\n")
-                        f.write(f'.{instruction}_end:\n')
-                        f.write(f'\t.size   {instruction}, .{instruction}_end-{instruction}')
-                    else:
-                        f.write(f'\n{instruction}:\n')
-                        f.write(f"\t{instruction}\n")
-                        f.write(f'.{instruction}_end:\n')
-                        f.write(f'\t.size   {instruction}, .{instruction}_end-{instruction}')
+                    f.write(f'\n{instruction}:\n')
+                    f.write(f"\n\t{instrName_syntaxName_dict[instruction]}\n")
+                    f.write(f'.{instruction}_end:\n')
+                    f.write(f'\t.size   {instruction}, .{instruction}_end-{instruction}')
             # case if instruction has only register operands
             elif all(op in info.operands for op in operands):
                 with open(file_path, 'a') as f:
@@ -231,23 +212,15 @@ def generate_instructions():
                                         found_constant = True
                                         break
                             instr_line = other_operand_values[:]
-                            instr_line.insert(i, value)
-                            
-                            # check if instruction is hint
-                            if '_hint' in instruction:
-                                f.write(f"\t{instr_name_syntaxName_dict[instruction]} {','.join(instr_line)}\n")
-                            else:
-                                f.write(f"\t{instruction} {','.join(instr_line)}\n")                       
+                            instr_line.insert(i, value)                           
+                            f.write(f"\t{instrName_syntaxName_dict[instruction]} {','.join(instr_line)}\n") 
+
                             # if there is a register with constant value, take only the possible values  
                             if found_constant:
                                 value = info.operands[operand][2 * int(tuple[1]) + 1]
                                 instr_line = other_operand_values[:]
                                 instr_line.insert(i, value)
-                                # check if instruction is hint
-                                if '_hint' in instruction:
-                                    f.write(f"\t{instr_name_syntaxName_dict[instruction]} {','.join(instr_line)}\n")
-                                else:
-                                    f.write(f"\t{instruction} {','.join(instr_line)}\n")
+                                f.write(f"\t{instrName_syntaxName_dict[instruction]} {','.join(instr_line)}\n")
                                 break
                     f.write(f'.{instruction}_end:\n')
                     f.write(
@@ -427,11 +400,7 @@ def generate_instructions():
                             for val in op_values:
                                 test_values = fixed_operands[:op_index] + \
                                     [val] + fixed_operands[op_index:]
-                                # check if instruction is hint
-                                if '_hint' in instruction:
-                                    test_output = f"\t{instr_name_syntaxName_dict[instruction]} {','.join(map(str, test_values))}\n"
-                                else:
-                                    test_output = f"\t{instruction} {','.join(map(str, test_values))}\n"
+                                test_output = f"\t{instrName_syntaxName_dict[instruction]} {','.join(map(str, test_values))}\n"
                                 f.write(test_output)
                         else:
                             # if it does, concatenate last operand without comma
@@ -440,9 +409,9 @@ def generate_instructions():
                                     [val] + fixed_operands[op_index:]
                                 # check if instruction is hint
                                 if '_hint' in instruction:
-                                    test_output = f"\t{instr_name_syntaxName_dict[instruction]} {','.join(test_values[:0]) + '' + test_values[0]}\n"
+                                    test_output = f"\t{instrName_syntaxName_dict[instruction]} {','.join(map(str, test_values))}\n"
                                 else:
-                                    test_output = f"\t{instruction} {','.join(test_values[:-1]) + '' + test_values[-1]}\n"
+                                    test_output = f"\t{instruction} {','.join(map(str, test_values))}\n"
                                 f.write(test_output)
                     f.write(f'.{instruction}_end:\n')
                     f.write(f'\t.size   {instruction}, .{instruction}_end-{instruction}')

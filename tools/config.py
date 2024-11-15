@@ -21,7 +21,7 @@ def config_environment(config_file, llvm_file):
     for line in Lines[1:]:
         newline = line.strip()
         x = re.findall(
-            '\.*[\#"a-z_A-Z0-9]*\/*\:*[\#"a-z_A-Z0-9]*\/*\.*[\#"a-z_A-Z0-9]*\/*\.*[\#"a-zA-z0-9\.]*',
+            r'\.*[\#"a-z_A-Z0-9]*\/*\:*[\#"a-z_A-Z0-9]*\/*\.*[\#"a-z_A-Z0-9]*\/*\.*[\#"a-zA-z0-9\.]*',
             newline,
         )
         args = [elem.strip(" ") for elem in x if elem != ""]
@@ -50,12 +50,12 @@ def config_environment(config_file, llvm_file):
         if newline.startswith("//"):
             continue
         x = re.findall(
-                '\.*[\#"a-z_A-Z0-9]*\/*\:*[\#"a-z_A-Z0-9]*\/*\.*[\#"a-z_A-Z0-9]*\/*\.*[\#"a-zA-z0-9\.]*\/*[\-*a-zA-Z\/*]*',
+                r'\.*[\#"a-z_A-Z0-9]*\/*\:*[\#"a-z_A-Z0-9]*\/*\.*[\#"a-z_A-Z0-9]*\/*\.*[\#"a-zA-z0-9\.]*\/*[\-*a-zA-Z\/*]*',
             newline,
         )
         args = [elem.strip(" ") for elem in x if elem != ""]
         if args[0] == "XLenRI":
-            x = re.findall("[A-Za-z0-9]*\<[0-9\,]*\>", newline)
+            x = re.findall(r"[A-Za-z0-9]*\<[0-9\,]*\>", newline)
             args_len = [elem for elem in x if elem != ""]
             config_vars[args[0]] = args_len[0]
         elif args[0] == "AsmString":
@@ -123,7 +123,7 @@ def config_environment(config_file, llvm_file):
             for line in Lines[1:]:
                 newline = line.strip()
                 x = re.findall(
-                    '[\#"a-z_A-Z0-9]*\:*[\#"a-z_A-Z0-9]*\.*[\#"a-z_A-Z0-9]*\.*[\#"a-zA-z0-9\.]*',
+                    r'[\#"a-z_A-Z0-9]*\:*[\#"a-z_A-Z0-9]*\.*[\#"a-z_A-Z0-9]*\.*[\#"a-zA-z0-9\.]*',
                     newline,
                 )
                 args = [elem.strip(" ") for elem in x if elem != ""]
@@ -229,6 +229,14 @@ def config_environment(config_file, llvm_file):
                 )
             config_vars[args[0]] = calling_convention
         elif args[0] == "XLenVTValueType" or args[0] == "XLenRIRegInfo":
+            lines = line.strip().split("\n")
+            for line in lines:
+                match = re.match(r"(\w+)\s*=\s*(.+)", line)
+                if match:
+                    key = match.group(1)
+                    value = match.group(2)
+                    config_vars[key] = value.strip()
+        elif args[0] == "SubReg_GPR_Even" or args[0] == "SubReg_GPR_Odd":
             lines = line.strip().split("\n")
             for line in lines:
                 match = re.match(r"(\w+)\s*=\s*(.+)", line)

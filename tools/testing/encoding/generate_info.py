@@ -6,6 +6,7 @@
 
 import sys
 import parse
+import os
 
 ## Writes the information about instructions and operands in info.py
 # @param file_name Name of the adl file
@@ -17,10 +18,14 @@ def generate_info_file(file_name, instr_op_dict, op_val_dict):
     cmd_extensions = sys.argv[2]
     cmd_ext = cmd_extensions.split(",")
 
+    # Get the path of the script
+    script_directory = os.path.dirname(os.path.abspath(__file__))
+    info_file_path = os.path.join(script_directory, file_name)
+
     # A dictionary with instructions and associated attribute prefixes
     instruction_attribute_dict, new_instruction_attribute_dict = parse.instruction_attribute(adl_file_path)
 
-    f = open(file_name, "w")
+    f = open(info_file_path, "w")
     f.write("#Copyright 2024 NXP\n") 
     f.write("#SPDX-License-Identifier: BSD-2-Clause\n\n")
     # print the instructions - operands dictionary

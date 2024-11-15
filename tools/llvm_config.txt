@@ -21,7 +21,7 @@ ScheduleFile = ./examples/TD/RISCVSchedule_gen.td
 SchedulePath = ./examples/TD/
 ScheduleFileTable = ./examples/TD/RISCVScheduleTable_gen.td
 TestScheduling = ./tools/testing/scheduling/zilsd/
-SailDescription = ./examples/sail/RISCV_insts_ext.sail
+SailDescription = ./examples/sail/riscv_insts_ext.sail
 
 // ---- Environment variables and setup -----------------------------------------------------------------------
 Namespace = RISCV
@@ -34,7 +34,7 @@ InstructionClass = RVInst
 InstructionClassC = RVInst16
 InstructionFormat = InstFormat
 RegAltNameIndex = ABIRegAltName
-LLVMGPRBasicWidth = 32
+LLVMRegBasicWidth = 32
 LLVMStandardInstructionWidth = 32
 AsmString = opcodestr # "\t" # argstr
 DwarfCSR = 4096
@@ -86,7 +86,7 @@ ImmAsmOperandName = {prefix, width, suffix}
 ImmAsmOperandRenderMethod = addImmOperands
 ImmAsmOperandDiagnosticType = !strconcat("Invalid", Name)
 basicDecodeMethod = {decodeUImmOperand, decodeSImmOperand}
-LLVMVFlags = {VLMul, ForceTailAgnostic, IsTiedPseudo, HasSEWOp, HasVLOp, HasVecPolicyOp, IsRVVWideningReduction, UsesMaskPolicy, IsSignExtendingOpW, HasRoundModeOp, UsesVXRM}
+LLVMVFlags = {VLMul, ForceTailAgnostic, IsTiedPseudo, HasSEWOp, HasVLOp, HasVecPolicyOp, IsRVVWideningReduction, UsesMaskPolicy, IsSignExtendingOpW, HasRoundModeOp, UsesVXRM, TargetOverlapConstraintType}
 VLMul = 0
 VLMulTSFlagsStart = 10
 VLMulTSFlagsEnd = 8
@@ -120,6 +120,9 @@ HasRoundModeOpTSFlagsEnd = 19
 UsesVXRM = 0
 UsesVXRMTSFlagsStart = 20
 UsesVXRMTSFlagsEnd = 20
+TargetOverlapConstraintType = 0
+TargetOverlapConstraintTypeTSFlagsStart = 22
+TargetOverlapConstraintTypeTSFlagsEnd = 21
 
 // ---- Calling Convention -----------------------------------------------------------------------------------
 RegisterAllocationOrder = {GPR: [Function_arguments, Temporary, Saved_register, Hard_wired_zero, Return_address, Stack_pointer, Global_pointer, Thread_pointer]}
@@ -128,7 +131,9 @@ CallingConventionAllocationExcluded = {CSR_Interrupt: [Hard_wired_zero, Stack_po
 CSR_ILP32_LP64_Ref = GPR
 CSR_Interrupt_Ref = GPR
 XLenRIRegInfo = RegInfoByHwMode<[RV32, RV64], [RegInfo<32,32,32>, RegInfo<64,64,64>]>
-XLenVTValueType = ValueTypeByHwMode<[RV32, RV64], [i32,  i64]>
+XLenVTValueType = ValueTypeByHwMode<[RV32, RV64], [i32, i64]>
+SubReg_GPR_Even = SubRegIndex<32>
+SubReg_GPR_Odd = SubRegIndex<32, 32>
 
 // ----Extensions Declaration-----------------------------------------------------------------------------------
 LLVMExtRv32i = IsRV32
@@ -136,8 +141,8 @@ LLVMExtRv32c = HasStdExtC
 HasStdExtCExtension = C
 LLVMExtZilsd = HasStdExtZilsd
 HasStdExtZilsdExtension = Zilsd
-LLVMExtZcmlsd = HasStdExtZcmlsd
-HasStdExtZcmlsdExtension = Zcmlsd
+LLVMExtZclsd = HasStdExtZclsd
+HasStdExtZclsdExtension = Zclsd
 HasStdRv32iExtension = Rv32i
 HasStdRv32cExtension = Rv32c
 
@@ -150,5 +155,5 @@ imm_u = {disableImmLeaf=True, AliasImmClass=uimm20_lui, ParserMatchClass=UImmAsm
 imm_sb = {disableImmLeaf=True, EncoderMethod=getImmOpValue, DecoderMethod=decodeSImmOperandAndLsl1<13>}
 
 // ----Additional Extension Info------------------------------------------------------------------------------------------------------------
-ExtensionPrefixed = {Zilsd}
+ExtensionPrefixed = {Zclsd, Zilsd}
 DecoderNamespace = {Zilsd=Zilsd, Others=RISCV32Only_}

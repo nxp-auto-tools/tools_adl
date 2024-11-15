@@ -766,48 +766,60 @@ def parse_sched_table_from_adl(adl_name):
         for sched_table in core.iter("sched-table"):
             if sched_table.attrib["name"] not in sched_table_dict.keys():
                 sched_table_dict[sched_table.attrib["name"]] = {}
+                resource_forwarding = dict()
+                pipelines = dict()
+                resources_list = list()
+                pipelines_list = list()
+                aux_pipeline = dict()
                 instruction_sched = dict()
                 for instr in core.iter("instruction-sched"):
-                    parameters = dict()
-                    aux_list = list()
-                    resource_cycle = list()
                     if "name" in instr.attrib.keys():
+                        parameters = dict()
                         instruction_name = instr.attrib["name"]
                         for instruction_info in instr:
-                            for elem in instruction_info:
-                                if instruction_info.tag == 'instruction_list':
+                            if instruction_info.tag == 'instruction_list':
+                                for elem in instruction_info:
                                     aux = elem.text.split(",")
-                                    parameters[instruction_info.tag] = aux
-                                elif instruction_info.tag == "pipeline":
-                                    if elem.text not in aux_list:
-                                        aux_list.append(elem.text)
-                                    parameters[instruction_info.tag] = aux_list
-                                elif instruction_info.tag == "resource_cycle":
-                                    if elem.text not in resource_cycle:
-                                        resource_cycle.append(elem.text)
-                                    parameters[instruction_info.tag] = resource_cycle
-                                else:
-                                    parameters[instruction_info.tag] = elem.text
-                        instruction_sched[instruction_name] = parameters
-                    elif "group" in instr.attrib.keys():
-                        instruction_group = instr.attrib["group"]
-                        for instruction_info in instr:
-                            for elem in instruction_info:
-                                if instruction_info.tag == 'instruction_list':
-                                    aux = elem.text.split(",")
-                                    parameters[instruction_info.tag] = aux
-                                elif instruction_info.tag == "pipeline":
-                                    if elem.text not in aux_list:
-                                        aux_list.append(elem.text)
-                                    parameters[instruction_info.tag] = aux_list
-                                elif instruction_info.tag == "resource_cycle":
-                                    if elem.text not in resource_cycle:
-                                        resource_cycle.append(elem.text)
-                                    parameters[instruction_info.tag] = resource_cycle
-                                else:
-                                    parameters[instruction_info.tag] = elem.text
-                        instruction_sched[instruction_group] = parameters
-                    sched_table_dict[sched_table.attrib["name"]].update(instruction_sched)
+                                parameters[instruction_info.tag] = aux
+                            else:
+                                for elem in instruction_info:
+                                    if instruction_info.tag == "pipelines":
+                                        pipeline_dict = dict()
+                                        for pipeline in instruction_info:
+                                            pipeline_name = pipeline.attrib['name']
+                                            pipeline_tags = dict()
+                                            for element in pipeline:
+                                                pipeline_tags[element.tag] = element[0].text
+                                            pipeline_dict[pipeline_name] = pipeline_tags
+                                            parameters[instruction_info.tag] = pipeline_dict
+                                    elif instruction_info.tag == "forwarding":
+                                        for resource in core.iter("read_resource"):
+                                            resource_dict = dict()
+                                            resources = dict()
+                                            resource_name = resource.attrib['name']
+                                            for element in resource:
+                                                for element_parsed in element:
+                                                    if element.tag == 'resource_list':
+                                                        if element_parsed.text is not None:
+                                                            resource_dict[element.tag] = element_parsed.text.split(",")
+                                                        else:
+                                                            resource_dict[element.tag] = []
+                                                    else:
+                                                        resource_dict[element.tag] = element_parsed.text
+                                            resources[resource_name] = resource_dict
+                                            if instruction_name not in resource_forwarding.keys():
+                                                if resource_name not in resources_list:
+                                                    aux = dict()
+                                                    aux[resource_name] = resource_dict
+                                                    resource_forwarding[instruction_name] = aux
+                                                    resources_list.append(resource_name)
+                                    else:
+                                        parameters[instruction_info.tag] = elem.text
+                    aux = dict()
+                    aux['forwarding'] = resource_forwarding[instruction_name]
+                    instruction_sched[instruction_name] = parameters
+                    instruction_sched[instruction_name].update(aux)
+                sched_table_dict[sched_table.attrib["name"]].update(instruction_sched)
     return sched_table_dict
 
 def parse_scheduling_model_params(adl_name):
@@ -822,16 +834,17 @@ def parse_scheduling_model_params(adl_name):
             for info in sched_table:
                 for elem in info:
                     if info.tag != 'instruction-sched':
-                        parameters[info.tag] = elem.text
-            func_units_list = list()
-            for func_unit in core.iter('functional-unit'):
-                if "name" in func_unit.attrib.keys():
-                    func_unit_name = func_unit.attrib["name"]
-                    if func_unit_name not in func_units_list:
-                        func_units_list.append(func_unit_name)
-            if len(func_units_list) > 0:
-                parameters['FunctionalUnits'] = func_units_list
-            sched_table_params[sched_table.attrib["name"]] = parameters
+                            parameters[info.tag] = elem.text
+                    if info.tag == 'FunctionalUnits':
+                        functional_dict = dict()
+                        for functional_unit in info :
+                            func_unit_dict = dict()
+                            func_unit_name = functional_unit.attrib['name']
+                            for element in functional_unit:
+                                func_unit_dict[element.tag] = element[0].text
+                            functional_dict[func_unit_name] = func_unit_dict
+                        parameters[info.tag] = functional_dict
+            sched_table_params[sched_table.attrib["name"]].update(parameters)
     return sched_table_params
 
 

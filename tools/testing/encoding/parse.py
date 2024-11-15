@@ -10,27 +10,8 @@ import sys
 import os
 import importlib
 
-sys.path.append('./../../')
-module_config = "config"
-try:
-    config = importlib.import_module(module_config)
-except ImportError:
-    print("Cannot find configuration module.")
-
-def get_absolute_path(relative_path):
-    # Get the directory of the current script
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    # Construct the absolute path
-    return os.path.join(script_dir, relative_path)
-
-def load_config():
-    # Relative paths based on the location of the current script
-    config_path = get_absolute_path("../../config.txt")
-    llvm_config_path = get_absolute_path("../../llvm_config.txt")
-
-    # Call the function with absolute paths
-    llvm_config_dict = config.config_environment(config_path, llvm_config_path)
-    return llvm_config_dict
+sys.path.append(os.path.join(os.path.dirname(__file__), "./../../"))
+import config
 
 
 ## Extract info about architecture and attributes
@@ -62,6 +43,9 @@ def instructions_operands(adl_file):
     tree = ET.parse(adl_file)
     root = tree.getroot()
 
+    # Get the path of the script
+    script_directory = os.path.dirname(os.path.abspath(__file__))
+    
     registers = list()
     model_only = list()
     ignored = list()
@@ -72,7 +56,7 @@ def instructions_operands(adl_file):
     instr_op_dict = dict()
     instr_name_syntaxName_dict = dict()
     instr_field_value_dict = dict()
-    llvm_config_dict = load_config()
+    llvm_config_dict = config.config_environment(os.path.join(script_directory, "../../config.txt"), os.path.join(script_directory, "../../llvm_config.txt"))
 
     # select only desired attributes
     selected_keys = {key for key in llvm_config_dict.keys() if key.startswith('HasStd') and key.endswith('Extension')}
@@ -363,8 +347,11 @@ def instruction_attribute(adl_file):
     tree = ET.parse(adl_file)
     root = tree.getroot()
 
+    # Get the path of the script
+    script_directory = os.path.dirname(os.path.abspath(__file__))
+
     # A dictionary for the configuration environment
-    llvm_config_dict = load_config()
+    llvm_config_dict = config.config_environment(os.path.join(script_directory, "../../config.txt"), os.path.join(script_directory, "../../llvm_config.txt"))
     
     base_architecture = llvm_config_dict["BaseArchitecture"]
     instruction_attribute_dict = dict()

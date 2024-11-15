@@ -236,9 +236,6 @@ def instruction_syntaxName(adl_file):
     for cores in root.iter("cores"):
         for instruction in cores.iter("instruction"):
             for syntax in instruction.iter("syntax"):
-                if "hint" in instruction.get("name"):
-                    instruction_syntaxName_dict[instruction.get("name")] = (syntax.find("str").text).split()[0]
-                else:
-                    instruction_syntaxName_dict[instruction.get("name")] = instruction.get("name")
+                instruction_syntaxName_dict[instruction.get("name")] = (syntax.find("str").text).split()[0]
     
     return instruction_syntaxName_dict

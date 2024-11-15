@@ -9,22 +9,43 @@ import os
 def make_td_function():
     list_dir = list()
     extension_command_line = ""
-    if len(sys.argv) > 2:
+    output_dir = ""
+    if len(sys.argv) == 3:
+        if "--extension" in sys.argv[2]:
+            extension_command_line = sys.argv[2]
+        if "--output" in sys.argv[2]:
+            output_dir = sys.argv[2]
+    if len(sys.argv) == 4:
         extension_command_line = sys.argv[2]
+        output_dir = sys.argv[3]
     for fname in os.listdir("."):
         list_dir.append(fname)
     if "tools" in list_dir:
         if extension_command_line != "":
-            os.system(
-                "python3 ./tools/main.py " + sys.argv[1] + " " + extension_command_line
-            )
+            if output_dir != "":
+                    os.system(
+                    "python3 ./tools/main.py " + sys.argv[1] + " " + extension_command_line + " " + output_dir
+                )
+            else:
+                os.system(
+                    "python3 ./tools/main.py " + sys.argv[1] + " " + extension_command_line
+                )
         else:
-            os.system("python3 ./tools/main.py " + sys.argv[1])
+            if output_dir != "":
+                os.system("python3 ./tools/main.py " + sys.argv[1] + " " + output_dir)
+            else:
+                os.system("python3 ./tools/main.py " + sys.argv[1])
     else:
         if extension_command_line != "":
-            os.system("python3 ./main.py " + sys.argv[1] + " " + extension_command_line)
+            if output_dir != "":
+                os.system("python3 ./main.py " + sys.argv[1] + " " + extension_command_line + " " + output_dir)        
+            else:
+                os.system("python3 ./main.py " + sys.argv[1] + " " + extension_command_line)
         else:
-            os.system("python3 ./main.py " + sys.argv[1])
+            if output_dir != "":
+                os.system("python3 ./main.py " + sys.argv[1] + " " + output_dir)
+            else:
+                os.system("python3 ./main.py " + sys.argv[1])
 
 
 if __name__ == "__main__":

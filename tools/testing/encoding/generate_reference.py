@@ -6,27 +6,21 @@
 #
 # Generates references for all instructions encoding tests
 import os
-import shutil
 import re
 import parse_reference
 from datetime import datetime
+import utils
 
 ## Writes the reference information for each instruction line inside each instruction test
 # @param adl_file Name of the adl file
 def generate_reference(adl_file):
-    # Define the root directory where you have the "tests" and "references" directories
-    root_directory = "./"
+
+    # Get the command line arguments
+    adl_file_path, adl_file_name, cmd_extensions, output_dir = utils.cmd_args()
 
     # Define the paths to the "tests" and "references" directories
-    tests_directory = os.path.join(root_directory, "tests")
-    references_directory = os.path.join(root_directory, "references")
-
-    # check if the references folder exists
-    if os.path.exists(references_directory):
-        shutil.rmtree(references_directory)
-
-    # Create the "references" directory if it doesn't exist
-    os.makedirs(references_directory, exist_ok=True)
+    tests_directory = os.path.join(output_dir, 'results_' + adl_file_name, "tests_" + '_'.join(cmd_extensions))
+    references_directory = os.path.join(output_dir, 'results_' + adl_file_name, "refs_" + '_'.join(cmd_extensions))
 
     # Define a regular expression syntax_pattern to match the desired line
     syntax_pattern = r'# @brief\s+Encode\s+(.+)$'
@@ -43,13 +37,13 @@ def generate_reference(adl_file):
     bit_endianness = parse_reference.bit_endianness(adl_file)
     instruction_syntaxName_dict = parse_reference.instruction_syntaxName(adl_file)
 
-    # Iterate through all directories and subdirectories under "tests"
+    # Iterate through all directories and subdirectories under "tests_" directory
     for dirpath, dirnames, filenames in os.walk(tests_directory):
         for filename in filenames:
             if filename.endswith(".asm"):
                 # Construct the full path to the source .asm file
                 source_asm_file_path = os.path.join(dirpath, filename)
-                
+
                 # Construct the corresponding path in the "references" directory
                 references_asm_file_path = os.path.join(references_directory, filename)
 
@@ -139,10 +133,10 @@ def generate_reference(adl_file):
 
                 # Write the matched line to the corresponding file in the "references" directory
                 with open(references_asm_file_path, 'w') as references_asm_file:
-                    # Check instruction width
                     now = datetime.now()
                     references_asm_file.write(f"# Copyright (c) {now.strftime('%Y')} NXP\n")
                     references_asm_file.write("# SPDX-License-Identifier: BSD-2-Clause\n\n")
+                    # Check instruction width
                     if int(instruction_width_dict[instruction_name]) == 32:
                         for ref in references_list:
                             references_asm_file.write(f".word {hex(ref)}\n")

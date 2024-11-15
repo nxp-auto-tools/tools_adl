@@ -166,6 +166,23 @@ def relocations_suffixes(adl_file, relocation_instructions_dict):
     return dict(sorted(relocation_suffix_dict.items()))
 
 
+## Generates a dictionary with all the relocations as keys and their table values as values
+# @param adl_file Name of the adl file
+# @return A dictionary with all the relocations as keys and their table values as values
+def relocations_values(adl_file):
+    tree = ET.parse(adl_file)
+    root = tree.getroot()
+
+    relocation_value_dict = {}
+    for relocations in root.iter("relocations"):
+        for reloc in relocations.iter("reloc"):
+            value = reloc.find("value")
+            if value is not None:
+                relocation_value_dict[reloc.get("name")] = value.find("int").text
+    
+    return dict(sorted(relocation_value_dict.items()))
+
+
 ## Generates a dictionary with all the instructions as keys and their syntax as values
 # @param adl_file Name of the adl file
 # @return A dictionary with all the instructions as keys and their syntax name as values
@@ -181,6 +198,42 @@ def instructions_syntaxNames(adl_file):
         instruction_syntaxName_dict[instruction_name] = syntax
 
     return instruction_syntaxName_dict
+
+
+## Generates a dictionary with all the instructions as keys and their width as values
+# @param adl_file Name of the adl file
+# @return A dictionary with all the instructions as keys and their width as values
+def instructions_widths(adl_file):
+    tree = ET.parse(adl_file)
+    root = tree.getroot()
+
+    instruction_width_dict = {}
+
+    for instruction in root.iter("instruction"):
+        instruction_name = instruction.get("name")
+        width = instruction.find("width").find("int").text
+        instruction_width_dict[instruction_name] = int(width)
+
+    return instruction_width_dict
+
+
+## Generates a dictionary with all the instructions as keys and their aliases as values
+# @param adl_file Name of the adl file
+# @return A dictionary with all the instructions as keys and their aliases as values
+def instructions_aliases(adl_file):
+    tree = ET.parse(adl_file)
+    root = tree.getroot()
+
+    instruction_alias_dict = {}
+
+    for instruction in root.iter("instruction"):
+        instruction_name = instruction.get("name")
+        if instruction.find("aliases") is not None:
+            alias = instruction.find("aliases").find("alias").get("name")
+            if alias is not None:
+                instruction_alias_dict[instruction_name] = alias
+
+    return instruction_alias_dict
 
 
 ## Generates a dictionary with all the relocations as keys and a list of their dependencies as values
@@ -256,3 +309,40 @@ def instrfields_signed(adl_file, relocation_instrfield_dict):
                 instrfield_signed_dict[instrfield.get("name")] = 0
 
     return instrfield_signed_dict
+
+
+## A function that generates a dictionary only with the data relocations
+# @param adl_file Name of the adl file
+# @param relocation_instructions_dict A dictionary containing data relocations as keys and a boolean as values
+def relocations_labels(adl_file):
+    tree = ET.parse(adl_file)
+    root = tree.getroot()
+
+    relocation_label_dict = dict()
+    for relocations in root.iter("relocations"):
+        for reloc in relocations.iter("reloc"):
+            if reloc.find("label") is not None:
+                label = reloc.find("label").find("str").text
+                relocation_label_dict[reloc.get("name")] = label
+
+    return relocation_label_dict
+
+
+## A function that generates a dictionary with all the relocations that have directives as keys and their directives as values
+# @param adl_file Name of the adl file
+# @return A dictionary with all the relocations as keys and their directives as values
+def relocations_directives(adl_file):
+    tree = ET.parse(adl_file)
+    root = tree.getroot()
+
+    relocation_directives_dict = dict()
+    for relocations in root.iter("relocations"):
+        for reloc in relocations.iter("reloc"):
+            if reloc.find("directive") is not None:
+                directives = reloc.find("directive").findall("str")
+                directives_list = []
+                for directive in directives:
+                    directives_list.append(directive.text)
+                relocation_directives_dict[reloc.get("name")] = directives_list
+
+    return relocation_directives_dict

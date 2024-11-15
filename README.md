@@ -1,34 +1,36 @@
 # ADL-Tools Project
 
 
-## Getting Started
+## Description
 
-ADL-Tools is a tool suite designed for automatically generating target description files and encoding tests 
-using an XML file. 
-Practically, ADL-Tools parses an XML file, which contains an ADL model for one or more RISC-V extensions, 
-and generates all the necessary .td files required by a compiler to integrate these new extensions. 
-In simpler terms, the ADL represented as an XML file is crucial in this process, 
-alongside the actual tools used.
+ADL-Tools is a suite of utilities designed to automatically generate target description files and encoding tests from an XML file. Specifically, ADL-Tools processes an XML file containing an ADL model for one or more RISC-V extensions and produces the essential .td files needed for a compiler to incorporate these new extensions. In essence, the XML-based ADL model is a critical component in this process, working in tandem with the ADL-Tools suite.
+
+## Requirements
+
+- Python 3.10 or higher
+- 'numpy' package installed (pip install numpy)
+
+## Installation
+
+No installation is required; simply cloning the repository is sufficient.
 
 ## Project Structure
 
 ```
 tools-adl
 |
-| - demos
-| - docs                               //This folder contains the documentation
-| - examples                          // This folder will contain the target description files generated
-|   | - examples
-|   |   | - TD
-|   |   |   | - rv32i                // This folder will contain target description files and other LLVM files generated
+| - docs                            // Project documentation
+| - examples                        // Generated target description files
+|   | - sail                    // Sail description generated from ADL
+|   | - TD                      // Target description files and other LLVM files generated for specific extensions          
 | - models
-|   | - adl
-|   |   | - rv32i                  //This folder contains the XML file that will be parsed
-| - tools                         // This folder contains target description and test generation tools
-|   | - testing                  // This folder contains all tests generated and also the tools used for tests generation
-|   |    | - intrinsics         // This folder contains intrinsic tests generated
-|   |    |   | - tests
-|   |    | - references       // This content contains testing references
-|   |    | - relocations     // This folder contains relocations tests
-|   |    | - tests          // This folder contains tests for each instruction generated
+|   | - adl                         // Parsed XML files for specific extensions				
+| - tools                           // Target description and test generation tools
+|   | - testing                     // Tools used for tests generation
+|   |    | - encoding               // Tools for generating encoding tests and references
+|   |    | - intrinsics             // Generated intrinsics tests
+|   |    | - relocations            // Tools for generating relocations tests and references
+|   |    | - scheduling             // Generated scheduling tests
+|   |    |   | - tests              // Tests using a diverse set of randomly chosen registers (generated)
+|   |    |   | - tests_dependecy    // Data dependency tests between the source and destination registers of the tested instructions (generated)
 ```

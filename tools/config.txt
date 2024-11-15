@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: BSD-2-Clause
 Configuration file for ADL parser & .td files generator
 
-ADLName = PATH
+ADLName = ./models/adl/zilsd/rv32ic_zilsd_zclsd_release.adl.xml
 IgnoredAttrib = {nia, cia}
 legalDisclaimer = legalDisclaimer.py
-InstructionIgnoredAttrib = ""
+InstructionIgnoredAttrib = model_only
 IgnoredInstructions = {}

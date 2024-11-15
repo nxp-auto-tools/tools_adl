@@ -1392,6 +1392,9 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 <option name="8">
 <str>x8</str>
 </option>
+<option name="8">
+<str>fp</str>
+</option>
 <option name="9">
 <str>s1</str>
 </option>
@@ -1620,6 +1623,9 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 </option>
 <option name="8">
 <str>x8</str>
+</option>
+<option name="8">
+<str>fp</str>
 </option>
 <option name="9">
 <str>s1</str>
@@ -1850,6 +1856,9 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 <option name="8">
 <str>x8</str>
 </option>
+<option name="8">
+<str>fp</str>
+</option>
 <option name="9">
 <str>s1</str>
 </option>
@@ -2075,6 +2084,9 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 </option>
 <option name="8">
 <str>x8</str>
+</option>
+<option name="8">
+<str>fp</str>
 </option>
 <option name="9">
 <str>s1</str>

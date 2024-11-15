@@ -9,13 +9,14 @@ import importlib
 import os
 import glob
 from datetime import datetime
-import shutil
 import re
 import sys
 import parse_reloc
+import utils_reloc
 
-sys.path.append(os.path.abspath('../encoding'))
-sys.path.append(os.path.abspath('../..'))
+sys.path.append(os.path.join(os.path.dirname(__file__), "../encoding/"))
+sys.path.append(os.path.join(os.path.dirname(__file__), "../../"))
+import config
 import parse
 module_info = "info"
 try:
@@ -27,10 +28,9 @@ except ImportError:
 # Function that filters relocations instructions dictionary based on the instructions that are generated for encoding tests
 # @return @b filtered_relocations_instructions-> Dictionary containing relocations and their corresponding instructions matching the ones from the encoding tests
 def filter_relocations_instructions_dict():
-    try:
-        adl_file_path = sys.argv[1]
-    except:
-        raise ValueError("Please provide adl file as the 1st argument")
+
+    # Get the command line arguments
+    adl_file_path, adl_file_name, symbol_max_value, output_dir = utils_reloc.cmd_args()
     
     relocations_instructions_dict = parse_reloc.relocations_instructions(adl_file_path, parse_reloc.operands_instructions(parse_reloc.instructions_operands(adl_file_path)))
     instruction_operands_dict = info.instructions
@@ -44,54 +44,18 @@ def filter_relocations_instructions_dict():
     return filtered_relocations_instructions           
 
 
-## Searches for the next character after instruction name inside the name of the test file
-# @param input_string Name of the test file
-# @param substring Instruction name
-# @return @b char_after_substring-> Next character after instruction name
-#
-# Additional check in order to take only relocations tests into consideration
-def get_char_after_substring(input_string, substring):
-    index = input_string.find(substring)
-    if index != -1 and index + len(substring) < len(input_string):
-        char_after_substring = input_string[index + len(substring)]
-        return char_after_substring
-    else:
-        return None
-
-
-## Searches for a substring between two separators (_ and .) in order to identify the instruction name
-# @param string Name of the test file
-# @param substring Separator (instruction name)
-# @return @b match.group(0)-> Substring between two separators
-def search_with_separators(string, substring):
-    # Define the regular expression pattern with lookbehind and lookahead
-    pattern = rf'(?<=[._]){re.escape(substring)}(?=[._])'
-    
-    # Use re.search to find a match
-    match = re.search(pattern, string)
-    
-    if match:
-        return match.group(0)
-    else:
-        return None
-
-
 ## Function that creates the folder structure used to store relocations tests
 def generate_file_structure():
     
+    # Get the command line arguments
+    adl_file_path, adl_file_name, symbol_max_value, output_dir = utils_reloc.cmd_args()
+
     relocations_instructions_dict = filter_relocations_instructions_dict()
-
-    # check if the "tests" folder exists
-    if os.path.exists("tests"):
-        shutil.rmtree("tests")
-
-    # create the "tests" folder
-    os.makedirs("tests")
 
     # create a folder for each relocation
     for i, (relocation, instructions) in enumerate(relocations_instructions_dict.items()):
         # create a folder for each instruction
-        folder_name = os.path.join("tests", f"{relocation}")
+        folder_name = os.path.join(output_dir, 'reloc_results_' + adl_file_name, 'tests', f"{relocation}")
         os.makedirs(folder_name)
 
         # create a file for each instruction
@@ -103,67 +67,51 @@ def generate_file_structure():
     return
 
 
-# Function that extracts the highest even value for pair instructions
-# @param my_dict Dictionary containing the instructions and their corresponding tuples
-# @param key Key used to extract the tuples
-# @return @b max_tuples[-1][1]-> The second element of the last tuple with the maximum value
-def extract_highest_even_value_for_pair_instructions(my_dict, key):
-    # Check if the key exists in the dictionary
-    if key in my_dict:
-        # Get the list of tuples associated with the key
-        tuples = my_dict[key]
-        
-        # Convert string numbers to integers for comparison
-        even_tuples = [(int(t[0]), t[1]) for t in tuples if int(t[0]) % 2 == 0]
-        
-        # Check if there are any even tuples
-        if even_tuples:
-            # Find the maximum value
-            max_value = max(x[0] for x in even_tuples)
-            # Filter for tuples that have the maximum value
-            max_tuples = [t for t in even_tuples if t[0] == max_value]
-            # Return the second element of the last tuple with the maximum value
-            return max_tuples[-1][1]
-    
-    # Return None if the key doesn't exist or no even tuples found
-    return None
-
-
 ## Function that generates symbols used in relocations tests
 def generate_symbols():
 
-    try:
-        symbol_max_value = sys.argv[2]
-    except:
-        raise ValueError("Please provide symbol table max value as the 2nd argument")
-    
-    current_dir = os.getcwd()
-    file_list = os.listdir(current_dir)
-    
-    for old_sym_file in file_list:
-        if old_sym_file.startswith("sym") and old_sym_file.endswith(".inc"):
-            os.remove(old_sym_file)
+    # Get the command line arguments
+    adl_file_path, adl_file_name, symbol_max_value, output_dir = utils_reloc.cmd_args()
 
-    file_name = os.path.join(current_dir, f"sym{symbol_max_value}.inc")
+    # Get all the directories containing the relocations tests
+    dir_paths = glob.glob(output_dir + '/reloc_results_' + adl_file_name + '/tests/*/', recursive=True)
+    
+    file_list = os.listdir(output_dir + '/reloc_results_' + adl_file_name)
+    
+    # Check in file_list if there are any old symbol files and remove them
+    for item in file_list:
+        if item.startswith("sym") and item.endswith(".inc"):
+            os.remove(os.path.join(output_dir, 'reloc_results_' + adl_file_name, item))
 
+    file_name = os.path.join(output_dir, 'reloc_results_' + adl_file_name, 'tests', f"sym{symbol_max_value}.inc")
+
+    # Create a file with the symbols in the tests folder
     with open(file_name, "w") as f:
         for i in range(0,2**(int(symbol_max_value) - 1)):
             f.write(f"\t .global var{i}\n")
         f.close()
+
+    # Copy the file with the symbols in each relocation folder
+    for dir in dir_paths:
+        file_name = os.path.join(dir, f"sym{symbol_max_value}.inc")
+        with open(file_name, "w") as f:
+            for i in range(0,2**(int(symbol_max_value) - 1)):
+                f.write(f"\t .global var{i}\n")
+        f.close()
+        
     return
 
 
 ## Function that generates labels used in relocations tests based on each operand width and shift info
 def generate_labels():
 
-    try:
-        adl_file_path = sys.argv[1]
-    except:
-        raise ValueError("Please provide adl file as the 1st argument")
+    # Get the command line arguments
+    adl_file_path, adl_file_name, symbol_max_value, output_dir = utils_reloc.cmd_args()
     
-    current_dir = os.getcwd()
-    dir_paths = glob.glob(current_dir + '/tests/*/', recursive=True)
+    # Get all the directories containing the relocations tests
+    dir_paths = glob.glob(output_dir + '/reloc_results_' + adl_file_name + '/tests/*/', recursive=True)
 
+    # Get all the information needed for generating labels
     relocation_instructions_dict = filter_relocations_instructions_dict()
     relocation_instrfield_dict = parse_reloc.relocations_instrfields(adl_file_path, relocation_instructions_dict)
     instrfield_width_dict = parse_reloc.instrfields_widths(adl_file_path, relocation_instrfield_dict)
@@ -193,19 +141,14 @@ def generate_labels():
 ## Writes all information about a test at the beginning of the file
 def write_header():
 
-    try:
-        adl_file_path = sys.argv[1]
-    except:
-        raise ValueError("Please provide adl file as the 1st argument")
-    
-    try:
-        symbol_max_value = sys.argv[2]
-    except:
-        raise ValueError("Please provide symbol table max value as the 2nd argument")
-    
-    llvm_config_dict = parse.load_config()
+    # Get the command line arguments
+    adl_file_path, adl_file_name, symbol_max_value, output_dir = utils_reloc.cmd_args()
+
+    # Get the path of the script
+    script_directory = os.path.dirname(os.path.abspath(__file__))
 
     # Architecture and attributes
+    llvm_config_dict = config.config_environment(os.path.join(script_directory, "../../config.txt"), os.path.join(script_directory, "../../llvm_config.txt"))
     architecture, attributes, mattrib = parse.assembler_and_cmdLine_args(adl_file_path)
     baseArchitecture = llvm_config_dict["BaseArchitecture"]
 
@@ -228,10 +171,8 @@ def write_header():
         if match:
             extension_versions_dict[match.group(1)] = match.group(2)
 
-    adl_file_name, adl_file_ext = os.path.splitext(
-        os.path.basename(adl_file_path))
-    current_dir = os.getcwd()
-    file_paths = glob.glob(current_dir + '/tests/**/*.s', recursive=True)
+    # Get all the directories containing the relocations tests
+    file_paths = glob.glob(output_dir + '/reloc_results_' + adl_file_name + '/tests/**/*.s', recursive=True)
 
     relocation_instructions_dict = filter_relocations_instructions_dict()
     relocation_dependency_dict = parse_reloc.relocations_dependencies(adl_file_path, relocation_instructions_dict)
@@ -269,6 +210,8 @@ def write_header():
                             f.write('# @requirements   \"%s\" syntax and encoding from %s' % (instruction, adl_file_name) + '\n')
                             f.write('# @execution_type Automated\n')
                             f.write('\n')
+                            f.write(f'// RUN: %asm -I/{os.path.abspath(output_dir)}/reloc_results_{adl_file_name}/tests/{relocation} -arch={architecture} -mattr="{mattrib}" %s -o %s.o -filetype=obj\n')
+                            f.write(f'// RUN: %readelf -r %s.o | %filecheck {os.path.abspath(output_dir)}/reloc_results_{adl_file_name}/refs/{os.path.basename(file_path)}\n\n')
                             if relocation not in relocation_dependency_dict.keys():
                                 f.write(f'\t.include "sym{symbol_max_value}.inc"\n')
                             file_list = os.listdir(os.path.dirname(file_path))
@@ -292,16 +235,13 @@ def write_header():
 ## Writes all relocation tests cases for each instruction inside the assembly file
 def generate_relocations():
 
-    # Set all the needed variables
-    try:
-        adl_file_path = sys.argv[1]
-    except:
-        raise ValueError("Please provide adl file as the 1st argument")
+    # Get the command line arguments
+    adl_file_path, adl_file_name, symbol_max_value, output_dir = utils_reloc.cmd_args()
     
-    current_dir = os.getcwd()
-    test_file_paths = glob.glob(current_dir + '/tests/**/*.s', recursive=True)
-    label_file_paths = glob.glob(current_dir + '/tests/**/*.asm', recursive=True)
-    sym_file_path = glob.glob(current_dir + '/*.inc', recursive=True)
+    # Set all the needed variables
+    test_file_paths = glob.glob(output_dir + '/reloc_results_' + adl_file_name + '/tests/**/*.s', recursive=True)
+    label_file_paths = glob.glob(output_dir + '/reloc_results_' + adl_file_name + '/tests/**/labels*.asm', recursive=True)
+    sym_file_path = glob.glob(output_dir + '/reloc_results_' + adl_file_name + '/tests/*.inc', recursive=True)
     instruction_operands_dict = info.instructions
     operand_values_dict = info.operands
     instruction_register_pair_dict, instrfield_optionName_dict = parse.register_pairs(adl_file_path)
@@ -331,9 +271,8 @@ def generate_relocations():
                 f.close()
             for relocation, instructions in relocation_instructions_dict.items():
                 for instruction in instructions:
-                    char_after_substring = get_char_after_substring(test_file, instruction)
-                    instruction_substring = search_with_separators(test_file, instruction)
-
+                    char_after_substring = utils_reloc.get_char_after_substring(os.path.basename(test_file), instruction)
+                    instruction_substring = utils_reloc.search_with_separators(os.path.basename(test_file), instruction)
                     # start instruction generation
                     if relocation in test_file and relocation in label_file and instruction == instruction_substring and char_after_substring == '.':
                         with open(test_file, 'a') as f:
@@ -361,13 +300,13 @@ def generate_relocations():
                                 # if operand has offset and it's a value from info dict put its value between ()
                                 if op in offsets and op in operand_values_dict:
                                     if instruction in instruction_register_pair_dict:
-                                        return '(' + str(extract_highest_even_value_for_pair_instructions(instrfield_optionName_dict, instruction_register_pair_dict[instruction][0])) + ')'                                   
+                                        return '(' + str(utils_reloc.extract_highest_even_value_for_pair_instructions(instrfield_optionName_dict, instruction_register_pair_dict[instruction][0])) + ')'                                   
                                     else:
                                         return '(' + str(operand_values_dict[op][-1]) + ')'
                                 # if operands doen't have offset but it's a value from info dict take its register value
                                 elif op in operand_values_dict:
                                     if instruction in instruction_register_pair_dict:
-                                        return str(extract_highest_even_value_for_pair_instructions(instrfield_optionName_dict, instruction_register_pair_dict[instruction][0]))  
+                                        return str(utils_reloc.extract_highest_even_value_for_pair_instructions(instrfield_optionName_dict, instruction_register_pair_dict[instruction][0]))  
                                     else:
                                         return operand_values_dict[op][-1]
                                 # if operand is an immediate generate values based on label
@@ -386,7 +325,7 @@ def generate_relocations():
                                 # if operands doen't have offset but it's a value from info dict take its register value
                                 if op in operand_values_dict:
                                     if instruction in instruction_register_pair_dict:
-                                        return str(extract_highest_even_value_for_pair_instructions(instrfield_optionName_dict, instruction_register_pair_dict[instruction][0]))
+                                        return str(utils_reloc.extract_highest_even_value_for_pair_instructions(instrfield_optionName_dict, instruction_register_pair_dict[instruction][0]))
                                     else:
                                         return operand_values_dict[op][-1]
                                 # if operand is an immediate generate values based on label
@@ -405,13 +344,13 @@ def generate_relocations():
                                 # if operand has offset and it's a value from info dict put its value between ()
                                 if op in offsets and op in operand_values_dict:
                                     if instruction in instruction_register_pair_dict:
-                                        return '(' + str(extract_highest_even_value_for_pair_instructions(instrfield_optionName_dict, instruction_register_pair_dict[instruction][0])) + ')'
+                                        return '(' + str(utils_reloc.extract_highest_even_value_for_pair_instructions(instrfield_optionName_dict, instruction_register_pair_dict[instruction][0])) + ')'
                                     else:
                                         return '(' + str(operand_values_dict[op][-1]) + ')'
                                 # if operands doen't have offset but it's a value from info dict take its register value
                                 elif op in operand_values_dict:
                                     if instruction in instruction_register_pair_dict:
-                                        return str(extract_highest_even_value_for_pair_instructions(instrfield_optionName_dict, instruction_register_pair_dict[instruction][0]))
+                                        return str(utils_reloc.extract_highest_even_value_for_pair_instructions(instrfield_optionName_dict, instruction_register_pair_dict[instruction][0]))
                                     else:
                                         return operand_values_dict[op][-1]
                                 # if operand is an immediate generate values based on label + addend
@@ -438,13 +377,13 @@ def generate_relocations():
                                 # if operand has offset and it's a value from info dict put its value between ()
                                 if op in offsets and op in operand_values_dict:
                                     if instruction in instruction_register_pair_dict:
-                                        return '(' + str(extract_highest_even_value_for_pair_instructions(instrfield_optionName_dict, instruction_register_pair_dict[instruction][0])) + ')'
+                                        return '(' + str(utils_reloc.extract_highest_even_value_for_pair_instructions(instrfield_optionName_dict, instruction_register_pair_dict[instruction][0])) + ')'
                                     else:
                                         return '(' + str(operand_values_dict[op][-1]) + ')'
                                 # if operands doen't have offset but it's a value from info dict take its register value
                                 elif op in operand_values_dict:
                                     if instruction in instruction_register_pair_dict:
-                                        return str(extract_highest_even_value_for_pair_instructions(instrfield_optionName_dict, instruction_register_pair_dict[instruction][0]))
+                                        return str(utils_reloc.extract_highest_even_value_for_pair_instructions(instrfield_optionName_dict, instruction_register_pair_dict[instruction][0]))
                                     else:
                                         return operand_values_dict[op][-1]
                                 # if operand is an immediate generate values based on a global variable
@@ -577,4 +516,94 @@ def generate_relocations():
                                         if (2**i - 1) in sym_numbers:
                                             f.write(f"\t{instruction_syntaxName_dict[instruction]} {','.join(op_values[:-1]) + '' + op_values[-1]}\n")
                         f.close()
+    return
+
+
+## Function that generates relocation tests for data relocations
+def generate_data_relocations():
+
+    # Get the command line arguments
+    adl_file_path, adl_file_name, symbol_max_value, output_dir = utils_reloc.cmd_args()
+
+    # Get the path of the script
+    script_directory = os.path.dirname(os.path.abspath(__file__))
+
+    # Architecture and attributes
+    llvm_config_dict = config.config_environment(os.path.join(script_directory, "../../config.txt"), os.path.join(script_directory, "../../llvm_config.txt"))
+    architecture, attributes, mattrib = parse.assembler_and_cmdLine_args(adl_file_path)
+    baseArchitecture = llvm_config_dict["BaseArchitecture"]
+
+    # Split the keyword by the base architecture
+    base_arch, extensions = attributes.split(baseArchitecture)
+
+    # Split the extension by underscores in order to get extensions and versions
+    extensions_and_versions = extensions.split('_')
+
+    # Initialize a dictionary to map extensions to versions
+    extension_versions_dict = {}
+
+    # Iterate through the extensions and their versions
+    for item in extensions_and_versions:
+        # split the string when sequence <number>p<number> is found
+        match = re.search(r'(\D+)(\d+p\d+)', item)
+        if match:
+            extension_versions_dict[match.group(1)] = match.group(2)
+
+    # Set all the needed variables
+    relocation_label_dict = parse_reloc.relocations_labels(adl_file_path)
+    relocation_directives_dict = parse_reloc.relocations_directives(adl_file_path)
+
+    for relocation in relocation_label_dict.keys():
+        # create a folder for each instruction
+        folder_name = os.path.join(output_dir, 'reloc_results_' + adl_file_name, 'tests', f"{relocation}")
+        os.makedirs(folder_name)
+
+        # create a file for each directive
+        if relocation in relocation_directives_dict.keys():
+            for directive in relocation_directives_dict[relocation]:
+                file_name = os.path.join(folder_name, f"{relocation}_{directive}.s")
+                with open(file_name, "w") as f:
+                            # Write header information
+                            now = datetime.now() 
+                            f.write('Data:\n')
+                            f.write(f"#   Copyright (c) {now.strftime('%Y')} NXP\n")
+                            f.write("#   SPDX-License-Identifier: BSD-2-Clause\n")
+                            f.write(f'#   @file    {relocation}_{directive}.s\n')
+                            f.write('#   @version 1.0\n')
+                            f.write('#\n')
+                            f.write(
+                                '#-----------------\n')
+                            f.write('# Date D/M/Y\n')
+                            f.write(f"# {now.strftime('%d-%m-%Y')}\n")
+                            f.write(
+                                '#-----------------\n')
+                            f.write('#\n')
+                            f.write(f'# @test_id        {relocation}_{directive}.s\n')
+                            f.write(f'# @brief          {relocation} relocation testing\n') 
+                            f.write('# @details        Tests if the relocation for the source address is generated correctly\n')
+                            f.write('# @pre            Python 3.9+\n')
+                            f.write('# @test_level     Unit\n')
+                            f.write('# @test_type      Functional\n')
+                            f.write('# @test_technique Blackbox\n')
+                            f.write(f'# @pass_criteria  Relocation {relocation} generated\n')
+                            f.write('# @test_method    Analysis of requirements\n')
+                            f.write('# @requirements   \"%s\" syntax and encoding from %s' % (directive, adl_file_name) + '\n')
+                            f.write('# @execution_type Automated\n')
+                            f.write('\n')
+                            f.write(f'// RUN: %asm -I/{os.path.abspath(output_dir)}/reloc_results_{adl_file_name}/tests/{relocation} -arch={architecture} -mattr="{mattrib}" %s -o %s.o -filetype=obj\n')
+                            f.write(f'// RUN: %readelf -r %s.o | %filecheck {os.path.abspath(output_dir)}/reloc_results_{adl_file_name}/refs/{os.path.basename(file_name)}\n\n')
+                            f.write(f'\t.include "sym{symbol_max_value}.inc"\n')
+                            f.write('\t.text\n')
+                            f.write('\t.attribute	4, 16\n\n')
+                            f.write('#Testing data relocation directives\n')
+                            offset = 0x0
+                            for i in range(0, int(symbol_max_value)):
+                                if (directive == ".reloc"):                          
+                                    f.write(f'\t{directive} {hex(offset)},{relocation},var{str(int((pow(2, i) - 1)))}\n')
+                                    offset += 0x4
+                                else:
+                                    #TODO add other directives
+                                    continue                 
+                            f.close()
+
     return

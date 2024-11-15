@@ -4,6 +4,8 @@
 #
 # The module which writes information about registers inside ReigsterInfo.td file
 import math
+
+import word2number.w2n
 import utils
 import config
 import adl_parser
@@ -17,6 +19,7 @@ import make_td
 import xml.etree.ElementTree as ET
 import random
 import operator
+import word2number
 
 config_file = "config.txt"
 llvm_config = "llvm_config.txt"
@@ -50,17 +53,22 @@ register_references = list()
 ## A dictionary which contains all the register pairs generated
 register_pairs = dict()
 
-
+## A dictionary which contains instruction fields for each register class 
 reg_instrfields = dict()
 
+## A dictionary which contains values available for instruction fields
 instrfields_values = dict()
 
+## A dictionary in which information generated about scheduling is gathered
 scheduling_instr_info = dict()
 
+## A dictionary containing scheduling tests structure for each instruction
 scheduling_tests_struct = dict()
 
+## A dictionary containing aliases based on the ABI for register classes 
 alias_register_dict = dict()
 
+## A dictionary containing instruction encodings used for sail description
 instruction_encoding_dict = dict()
 
 ## Function for generating define content
@@ -186,7 +194,6 @@ def generate_registers_by_prefix(
     let_subregs = ""
     if "fields" in registers_subregs[reg_class.upper()].keys():
         fields = registers_subregs[reg_class.upper()]["fields"]
-        f = open(config_variables["RegisterInfoFile"], "a")
         class_definition = False
         for field_key in fields:
             if "bits" in fields[field_key].keys():
@@ -656,6 +663,7 @@ def generate_file(
     regclass, file_name, config_variables, alias_dict, offset_dict, instrfield_ref_dict
 ):
     f = open(file_name, "a")
+    instructions = adl_parser.parse_instructions_from_adl(config_variables["ADLName"])[0]
     global register_classes
     additional_register_classes = dict()
     for key in regclass.keys():
@@ -792,7 +800,90 @@ def generate_file(
                         f.write("\n")
                         check_register_class_width.append(regclass[key].width)
     f.write(generate_define(config_variables["RegAltNameIndex"], "RegAltNameIndex"))
-    f.write("\n}\n\n")
+    f.write("\n")
+    register_pair_app_ins = dict()
+    register_pair_app_outs = dict()
+    instrfield_ref = adl_parser.get_instrfield_from_adl(config_variables["ADLName"])[1]
+    for register in instrfield_ref:
+        register_pair_app_ins[register] = int(0)
+        register_pair_app_outs[register] = int(0)
+    for instruction in instructions.keys():
+        outs = str(instructions[instruction]["outputs"])
+        ins = str(instructions[instruction]["inputs"])
+        outs = re.split(r"[()]", outs)
+        ins = re.split(r"[()]", ins)
+        for element in ins:
+            for instrfield in instrfield_ref:
+                if instrfield == element.split(".")[0].rstrip(" "):
+                    if register_pair_app_ins[instrfield] == 0:
+                        register_pair_app_ins[instrfield] += 1
+                        if instrfield not in ins:
+                            ins.append(instrfield)
+                    else:
+                        element = element.replace(" ", "")
+                        if "+1" in element:
+                            register_pair_app_ins[instrfield] += 1
+                            if instrfield not in ins:
+                                ins.append(instrfield)
+                else:
+                    if instrfield == element.split(" ")[0].rstrip(" "):
+                        element = element.replace(" ", "")
+                        if "+1" in element:
+                            register_pair_app_ins[instrfield] += 1
+                            if instrfield not in ins:
+                                ins.append(instrfield)
+        ins.sort()
+        outs_copy = outs.copy()
+        outs_copy.sort()
+        for element in outs_copy:
+            for instrfield in instrfield_ref:
+                if instrfield == element.split(".")[0].rstrip(" "):
+                    if register_pair_app_outs[instrfield] == 0:
+                        register_pair_app_outs[instrfield] += 1
+                        if instrfield not in outs:
+                            outs.append(instrfield)
+                    else:
+                        element = element.replace(" ", "")
+                        if "+1" in element:
+                            register_pair_app_outs[instrfield] += 1
+                            if instrfield not in outs:
+                                outs.append(instrfield)
+                else:
+                    if instrfield == element.split(" ")[0].rstrip(" "):
+                        element = element.replace(" ", "")
+                        if "+1" in element:
+                            register_pair_app_outs[instrfield] += 1
+                            if instrfield not in outs:
+                                outs.append(instrfield)
+        outs.sort()
+    max_out = 0
+    max_in = 0
+    for element in register_pair_app_outs.keys():
+        if register_pair_app_outs[element] > max_out:
+            max_out = register_pair_app_outs[element]
+    for element in register_pair_app_ins.keys():
+        if register_pair_app_ins[element] > max_in:
+            max_in = register_pair_app_ins[element]
+    registers = adl_parser.get_alias_for_regs(config_variables["ADLName"])
+    sub_reg_even = ""
+    sub_reg_odd = ""
+    if max_in > 1:
+        for register in registers.keys():
+            if 'SubReg_' + register.upper() + "_Even" in config_variables.keys():
+                sub_reg_even = "def " + ("Sub_" + register.upper() + "_Even").lower() + " : " + config_variables['SubReg_' + register.upper() + "_Even"] + ";\n"
+            if 'SubReg_' + register.upper() + "_Odd" in config_variables.keys():
+                sub_reg_odd = "def " + ("Sub_" + register.upper() + "_Odd").lower() + " : " + config_variables['SubReg_' + register.upper() + "_Odd"] + ";\n"
+    elif max_out > 1:
+        for register in registers.keys():
+            if 'SubReg_' + register.upper() + "_Even" in config_variables.keys():
+                sub_reg_even = "def " + ("Sub_" + register.upper() + "_Even").lower() + " : " + config_variables['SubReg_' + register.upper() + "_Even"] + ";\n"
+            if 'SubReg_' + register.upper() + "_Odd" in config_variables.keys():
+                sub_reg_odd = "def " + ("Sub_" + register.upper() + "_Odd").lower() + " : " + config_variables['SubReg_' + register.upper() + "_Odd"] + ";\n"
+    if sub_reg_even != "":
+        f.write(sub_reg_even)
+    if sub_reg_odd != "":
+        f.write(sub_reg_odd)
+    f.write("}\n\n")
     f.write(generate_define("XLenRI", config_variables["XLenRIRegInfo"]))
     f.write("\n")
     f.write(generate_define("XLenVT", config_variables["XLenVTValueType"]))
@@ -1074,8 +1165,12 @@ def generate_file(
     register_classes = register_classes_copy.copy()
     f.close()
 
-
-def generate_scheduling_table(file_name):
+## Function which generates scheduling table description
+#
+# @file_name string specifying the name given to the file in which scheduling model is generated
+# @schedule_file string specifying in which file the resources should be defined
+# @return both files presented before with specific content
+def generate_scheduling_table(file_name, schedule_file):
     config_variables = config.config_environment(config_file, llvm_config)
     instructions = adl_parser.parse_instructions_from_adl(config_variables["ADLName"])[0]
     scheduling_table_dict = adl_parser.parse_sched_table_from_adl(config_variables["ADLName"])
@@ -1103,31 +1198,33 @@ def generate_scheduling_table(file_name):
         if key not in instructions_inputs_outputs.keys():
             instructions_inputs_outputs[key] = {}
         instructions_inputs_outputs[key].update(outputs_dict)
-        for sched_key in scheduling_table_dict.keys():
-            for key_instr in scheduling_table_dict[sched_key].keys():
-                if 'instruction_list' in scheduling_table_dict[sched_key][key_instr].keys():
-                    for element in scheduling_table_dict[sched_key][key_instr]['instruction_list']:
-                        if key == element.lower():
-                            if 'sizeof' in scheduling_table_dict[sched_key][key_instr]['latency'] and \
-                                'sizeof' in scheduling_table_dict[sched_key][key_instr]['throughput']:
-                                if 'sizeof(inputs)' in scheduling_table_dict[sched_key][key_instr]['latency'] and \
-                                    'sizeof(inputs)' in scheduling_table_dict[sched_key][key_instr]['throughput']:
-                                    sizeof = len(inputs_list)
-                                    formula = scheduling_table_dict[sched_key][key_instr]['latency']
-                                    formula = formula.replace("sizeof(inputs)", str(sizeof))
-                                    scheduling_table_dict[sched_key][key_instr]['latency'] = eval(formula)
-                                    if eval(formula) not in latency_list:
-                                        latency_list.append(eval(formula))
-                                elif 'sizeof(outputs)' in scheduling_table_dict[sched_key][key_instr]['latency'] and \
-                                    'sizeof(outputs)' in scheduling_table_dict[sched_key][key_instr]['throughput']:
-                                    sizeof = len(outputs_list)
-                                    formula = scheduling_table_dict[sched_key][key_instr]['latency']
-                                    formula = formula.replace("sizeof(outputs)", str(sizeof))
-                                    scheduling_table_dict[sched_key][key_instr]['latency'] = eval(formula)
-    for sched_key in scheduling_table_dict.keys():
-        for sched_class in scheduling_table_dict[sched_key].keys():
-            if int(scheduling_table_dict[sched_key][sched_class]['latency']) not in latency_list:
-                latency_list.append(int(scheduling_table_dict[sched_key][sched_class]['latency']))
+    instrfield_ref = adl_parser.get_instrfield_from_adl(config_variables["ADLName"])[1]
+    scheduling_instrfields_dict = dict()
+    register_parsed = adl_parser.parse_adl(config_variables["ADLName"])
+    for instruction in instructions.keys():
+        inputs = instructions[instruction]['inputs']
+        list_instrfields = list()
+        for input in inputs:
+            check = False
+            for instrfield in instrfield_ref.keys():
+                x = re.search(instrfield_ref[instrfield]['ref'] + r"\(" + instrfield + r"\)", input.strip(" "))
+                if x is not None:
+                    list_instrfields.append(instrfield)
+                    check = True
+                    break
+            if check is False:
+                for instrfield in instrfield_ref.keys():
+                    x = re.search(instrfield_ref[instrfield]['ref'] + r"\(+\w*\+*\d*\)\?*[a-z]*", input.strip(" "))
+                    if x is not None:
+                        input_elem = input.replace(instrfield_ref[instrfield]['ref'], "").replace("(", "").replace(")", "").replace("?", "").replace("/p", "")
+                        prefix = register_parsed[instrfield_ref[instrfield]['ref']].prefix
+                        if prefix.upper() + input_elem in alias_register_dict.keys():
+                            if alias_register_dict[prefix.upper() + input_elem] in instructions[instruction]['syntax'][1:]:
+                                list_instrfields.append(alias_register_dict[prefix.upper() + input_elem])
+                                check = True
+                                break
+        if len(list_instrfields) > 0:
+            scheduling_instrfields_dict[instruction] = list_instrfields
     for sched_key in scheduling_table_dict.keys():
         generate_schedule_definition_read = ""
         generate_schedule_definition_write= ""
@@ -1155,6 +1252,26 @@ def generate_scheduling_table(file_name):
                     if key in scheduling_table_dict[sched_key][key_instr]['instruction_list']:
                         if key not in scheduling_instr_info.keys():
                             scheduling_instr_info[key] = scheduling_instr_res
+        for sched_key in scheduling_table_dict.keys():
+            for sched_class in scheduling_table_dict[sched_key].keys():
+                generate_read = ""
+                for instruction in scheduling_instrfields_dict.keys():
+                    index = 1
+                    if instruction in scheduling_table_dict[sched_key][sched_class]['instruction_list']:
+                        if len(scheduling_instrfields_dict[instruction]) > 1:
+                            for _ in scheduling_instrfields_dict[instruction]:
+                                if len(re.findall(r'\d+', sched_class)) > 0:
+                                    if read_sched_enabled is True:
+                                        if "def " + "Read" + sched_class + "_" + str(index) + " :" + "SchedRead;\n" not in generate_read:
+                                            generate_read += "def " + "Read" + sched_class + "_" + str(index) + " :" + "SchedRead;\n"
+                                            index += 1
+                                else:
+                                    if read_sched_enabled is True:
+                                        if "def " + "Read" + sched_class + str(index) + " :" + "SchedRead;\n" not in generate_read:
+                                            generate_read += "def " + "Read" + sched_class + str(index) + " :" + "SchedRead;\n"
+                                            index += 1
+                if generate_read != "":
+                    generate_schedule_definition_read = generate_schedule_definition_read.replace("def " + "Read" + sched_class + " :" + "SchedRead;\n", generate_read)                        
         f = open(file_name, "a")
         legalDisclaimer.get_copyright(file_name)
         f.write(generate_schedule_definition_write)
@@ -1164,67 +1281,105 @@ def generate_scheduling_table(file_name):
         sched_parameters = adl_parser.parse_scheduling_model_params(config_variables['ADLName'])
         sched_statement = "def " + sched_key.upper() + "Model" + " : " + "SchedMachineModel "
         content = "{\n"
+        load_latency_list = list()
+        max_high_load_latency = list()
         for key in sched_parameters[sched_key].keys():
-            if key != "FunctionalUnits":
-                if key == "ModelType":
-                    if sched_parameters[sched_key][key] == "in_order":
-                        content += "\t" + "let MicroOpBufferSize = 0;\n"
-                    elif sched_parameters[sched_key][key] == "out-of-order":
-                        content += "\t" + "let MicroOpBufferSize = 1;\n"
-                elif key == "CompleteModel":
-                    if sched_parameters[sched_key][key] == 'True':
-                         content += "\t" + "let CompleteModel = 1;\n"
-                    elif sched_parameters[sched_key][key] == 'False':
-                         content += "\t" + "let CompleteModel = 0;\n"
-                elif key == "UnsupportedFeatures":
-                    content += "\t" + "let " + key + " = " + "[" + str(sched_parameters[sched_key][key]) + "]" + ";\n"
-                else:
-                    if sched_parameters[sched_key][key] is not None:
-                        content += "\t" + "let " + key + " = " + str(sched_parameters[sched_key][key]) + ";\n"
-        content += "}\n"
+            if key != "FunctionalUnits" and key != "BufferSize":
+                if sched_parameters[sched_key][key] is not None:
+                    content += "\t" + "let " + key + " = " + str(sched_parameters[sched_key][key]) + ";\n"
         sched_model_define = "let SchedModel" + " = " + sched_key.upper() + "Model" + " in {\n"
         sched_model_content = ""
-        sched_model_content += "let BufferSize = 0 in {\n"
-        for key in sched_parameters[sched_key].keys():
-            if key == "FunctionalUnits":
-                for element in sched_parameters[sched_key][key]:
-                    define_func_unit = "\tdef " + element + " : " + "ProcResource<1>;\n"
-                    sched_model_content += define_func_unit
-        sched_model_define += sched_model_content + "}\n"
+        buffersize_dict = dict()
+        for parameter in sched_parameters[sched_key].keys():
+            if parameter == 'FunctionalUnits':
+                for funct_unit in sched_parameters[sched_key][parameter].keys():
+                    buffersize_dict[funct_unit] = sched_parameters[sched_key][parameter][funct_unit]['BufferSize']
+        inv_map = {}
+        for k, v in buffersize_dict.items():
+            inv_map[v] = inv_map.get(v, []) + [k]
+        for unit in inv_map.keys():
+            define_func_unit = ""
+            for key in sched_parameters[sched_key].keys():
+                if key == "FunctionalUnits":
+                    for funct_unit in sched_parameters[sched_key][key].keys():
+                        if funct_unit in inv_map[unit]:          
+                            define_func_unit += "\tdef " + funct_unit + " : " + "ProcResource<" +  sched_parameters[sched_key][key][funct_unit]['proc_resources'] + ">;\n"
+            sched_model_content += "let BufferSize = " + str(unit) + " in {\n"
+            sched_model_content += define_func_unit + "}\n"
+        sched_model_define += sched_model_content
         latency_list.sort()
         define_write_content = ""
-        for latency in latency_list:
-            let_latency = ""
-            resource_cycle_list = list()
-            if latency > 1:
-                let_latency = "let Latency = " + str(latency) + " {\n"
-            for sched_key in scheduling_table_dict.keys():
-                for sched_class in scheduling_table_dict[sched_key].keys():
-                    define_write = ""
-                    for key in sched_parameters[sched_key].keys():
-                        aux = list()
-                        pipeline_list = list()
-                        if key == "FunctionalUnits":
-                            for element in sched_parameters[sched_key][key]:
-                                if 'pipeline' in scheduling_table_dict[sched_key][sched_class].keys():
-                                    if element in scheduling_table_dict[sched_key][sched_class]['pipeline']:
-                                        if int(scheduling_table_dict[sched_key][sched_class]['latency']) == latency:
-                                            pipeline_list.append(element)
-                            for element in sched_parameters[sched_key][key]:
-                                aux.append(element)
-                                if 'pipeline' in scheduling_table_dict[sched_key][sched_class].keys():
-                                    if element in scheduling_table_dict[sched_key][sched_class]['pipeline']:
-                                        if int(scheduling_table_dict[sched_key][sched_class]['latency']) == latency:
-                                            define_write += "def : WriteRes<" + "Write" + sched_class + ", " + str(pipeline_list).replace("'", "") + ">;\n"
-                                            if 'throughput' in scheduling_table_dict[sched_key][sched_class].keys():
-                                                resource_cycle_list.append((sched_class, sched_key))
-                                            break          
-                    if let_latency != "":
+        resource_cycle_list = dict()
+        for sched_key in scheduling_table_dict.keys():
+            for sched_class in scheduling_table_dict[sched_key].keys():
+                define_write = ""
+                for key in sched_parameters[sched_key].keys():
+                    aux = list()
+                    pipeline_list = list()
+                    for pipeline in scheduling_table_dict[sched_key][sched_class]['pipelines']:
+                        pipeline_list.append(pipeline)
+                    resource_cycle_list[sched_class] = pipeline_list
+                    if key == "FunctionalUnits":
+                        for pipeline in scheduling_table_dict[sched_key][sched_class]['pipelines']:
+                            if pipeline in scheduling_table_dict[sched_key][sched_class]['pipelines'].keys():
+                                    define_write = "def : WriteRes<" + "Write" + sched_class + ", " + str(pipeline_list).replace("'", "") + ">;\n"
                         check = False
-                        for element in resource_cycle_list:
-                            if element[0] in define_write:
-                                define_write = define_write.replace(";\n", "") + " {\n" + "\tlet Latency = " + str(latency) + ";\n"
-                                define_write += "\tlet ResourceCycles = " + str(scheduling_table_dict[element[1]][element[0]]['throughput']).replace("'", "") + ";\n"
+                        for element in resource_cycle_list.keys():
+                            if element == sched_class:
+                                if 'sizeof(inputs)' in str(scheduling_table_dict[sched_key][element]['latency']):
+                                    sizeof = len(inputs_list)
+                                    formula = scheduling_table_dict[sched_key][element]['latency']
+                                    formula = formula.replace("sizeof(inputs)", str(sizeof))
+                                    scheduling_table_dict[sched_key][element]['latency'] = eval(formula)
+                                    for instruction in scheduling_table_dict[sched_key][element]['instruction_list']:
+                                        if 'load' in instructions[instruction]['attributes']:
+                                            load_latency_list.append(int(scheduling_table_dict[sched_key][element]['latency']))
+                                        max_high_load_latency.append(int(scheduling_table_dict[sched_key][element]['latency']))
+                                elif 'sizeof(outputs)' in str(scheduling_table_dict[sched_key][element]['latency']):
+                                    sizeof = len(outputs_list)
+                                    formula = scheduling_table_dict[sched_key][element]['latency']
+                                    formula = formula.replace("sizeof(outputs)", str(sizeof))
+                                    scheduling_table_dict[sched_key][element]['latency'] = eval(formula)
+                                    for instruction in scheduling_table_dict[sched_key][element]['instruction_list']:
+                                        if 'load' in instructions[instruction]['attributes']:
+                                            load_latency_list.append(int(scheduling_table_dict[sched_key][element]['latency']))
+                                        max_high_load_latency.append(int(scheduling_table_dict[sched_key][element]['latency']))
+                                for instruction in scheduling_table_dict[sched_key][element]['instruction_list']:
+                                    if 'load' in instructions[instruction]['attributes']:
+                                        load_latency_list.append(int(scheduling_table_dict[sched_key][element]['latency']))
+                                    max_high_load_latency.append(int(scheduling_table_dict[sched_key][element]['latency']))
+                                define_write = define_write.replace(";\n", "") + " {\n" + "\tlet Latency = " + str(scheduling_table_dict[sched_key][element]['latency']) + ";\n"
+                                throughput_list = list()
+                                acquire_list = list()
+                                for pipeline in scheduling_table_dict[sched_key][element]['pipelines'].keys():
+                                    if pipeline in scheduling_table_dict[sched_key][element]['pipelines'].keys():
+                                        if 'sizeof(inputs)' in str(scheduling_table_dict[sched_key][element]['pipelines'][pipeline]['throughput']):
+                                            sizeof = len(inputs_list)
+                                            formula = scheduling_table_dict[sched_key][element]['pipelines'][pipeline]['throughput']
+                                            formula = formula.replace("sizeof(inputs)", str(sizeof))
+                                            scheduling_table_dict[sched_key][element]['pipelines'][pipeline]['throughput'] = eval(formula)
+                                            if eval(formula) not in throughput_list:
+                                                throughput_list.append(eval(formula))
+                                        elif 'sizeof(outputs)' in str(scheduling_table_dict[sched_key][element]['pipelines'][pipeline]['throughput']):
+                                            sizeof = len(outputs_list)
+                                            formula = scheduling_table_dict[sched_key][element]['pipelines'][pipeline]['throughput']
+                                            formula = formula.replace("sizeof(outputs)", str(sizeof))
+                                            scheduling_table_dict[sched_key][element]['pipelines'][pipeline]['throughput'] = eval(formula)
+                                            if eval(formula) not in throughput_list:
+                                                throughput_list.append(eval(formula))
+                                        else:
+                                            if pipeline in scheduling_table_dict[sched_key][element]['pipelines'].keys():
+                                                throughput_list.append(int(scheduling_table_dict[sched_key][element]['pipelines'][pipeline]['throughput']))
+                                for pipeline in scheduling_table_dict[sched_key][element]['pipelines']:
+                                    if 'acquire_at_cycles' in scheduling_table_dict[sched_key][element]['pipelines'][pipeline].keys():
+                                        acquire_list.append(int(scheduling_table_dict[sched_key][element]['pipelines'][pipeline]['acquire_at_cycles']))
+                                define_write += "\tlet ReleaseAtCycles = " + str(throughput_list).replace("'", "") + ";\n"
+                                if len(acquire_list) > 0:
+                                    define_write += "\tlet AcquireAtCycles = " + str(acquire_list).replace("'", "") + ";\n"
+                                if 'single_issue' in scheduling_table_dict[sched_key][sched_class].keys():
+                                     define_write += "\tlet SingleIssue = " + scheduling_table_dict[sched_key][sched_class]['single_issue'] + ";\n"
+                                if 'num_micro_ops' in scheduling_table_dict[sched_key][sched_class].keys():
+                                     define_write += "\tlet NumMicroOps = " + scheduling_table_dict[sched_key][sched_class]['num_micro_ops'] + ";\n"
                                 define_write += "}\n"
                                 check = True
                                 break
@@ -1233,14 +1388,56 @@ def generate_scheduling_table(file_name):
                                 define_write += "}\n"
                     if define_write != "":
                         define_write_content += define_write
+        max_load_latency = max(load_latency_list)
+        max_high_latency = max(max_high_load_latency)
+        content += "\t" + "let " + "LoadLatency" + " = " + str(max_load_latency) + ";\n"
+        content += "\t" + "let " + "HighLatency" + " = " + str(max_high_latency) + ";\n"
+        content += "}\n"
         define_read_content = ""
+        class_parsed = list()
+        class_dict = dict()      
+        for sched_key in scheduling_table_dict.keys():
+            for key_instr in scheduling_table_dict[sched_key].keys():
+                if 'forwarding' in scheduling_table_dict[sched_key][key_instr].keys():
+                    for element in scheduling_table_dict[sched_key][key_instr]['forwarding'].keys():
+                        if element not in class_parsed:
+                            if 'resource_list' in scheduling_table_dict[sched_key][key_instr]['forwarding'][element].keys() and len(scheduling_table_dict[sched_key][key_instr]['forwarding'][element]['resource_list']) > 0: 
+                                class_resource = ""
+                                resource_read_list = list() 
+                                class_parsed.append(element)
+                                if key_instr not in class_dict:
+                                    class_dict[key_instr] = element
+                                for resource in scheduling_table_dict[sched_key][key_instr]['forwarding'][element]['resource_list']:
+                                    resource_read_list.append(resource)
+                                class_resource = "class " + element + "<SchedRead read : ReadAdvance<read, " + scheduling_table_dict[sched_key][key_instr]['forwarding'][element]['value'] + ", " + str(resource_read_list).replace("'", "") + ">;\n"
+                                define_read_content += class_resource + "\n"
         for sched_key in scheduling_table_dict.keys():
             for sched_class in scheduling_table_dict[sched_key].keys():
-                define_read = "def : ReadAdvance<" + "Read" + sched_class + ", " + "0" + ">;\n"
-                           
-                define_read_content += define_read
+                if 'forwarding' in scheduling_table_dict[sched_key][sched_class].keys(): 
+                    for element in scheduling_table_dict[sched_key][sched_class]['forwarding'].keys():  
+                        if sched_class not in class_dict.keys():
+                            for instruction in scheduling_instrfields_dict.keys():
+                                index = 1
+                                if instruction in scheduling_table_dict[sched_key][sched_class]['instruction_list']:
+                                    if len(scheduling_instrfields_dict[instruction]) > 1:
+                                        for _ in scheduling_instrfields_dict[instruction]:
+                                            if len(re.findall(r'\d+', sched_class)) > 0:
+                                                define_read = "def : ReadAdvance<" + "Read" + sched_class + "_" + str(index) + ", " + scheduling_table_dict[sched_key][sched_class]['forwarding'][element]['value'] + ">;\n"         
+                                            else:
+                                                 define_read = "def : ReadAdvance<" + "Read" + sched_class + str(index) + ", " + scheduling_table_dict[sched_key][sched_class]['forwarding'][element]['value'] + ">;\n"         
+                                            index += 1
+                                            if define_read not in define_read_content:
+                                                define_read_content += define_read
+                                    else:
+                                        define_read = "def : ReadAdvance<" + "Read" + sched_class + ", " + scheduling_table_dict[sched_key][sched_class]['forwarding'][element]['value'] + ">;\n"         
+                                        if define_read not in define_read_content:
+                                            define_read_content += define_read
+                        else:
+                            define_read = "def : " + class_dict[sched_class] + "<" + "Read" + sched_class +  scheduling_table_dict[sched_key][sched_class]['forwarding'][element]['id'] + ", " + scheduling_table_dict[sched_key][sched_class]['forwarding'][element]['value'] + ">;\n"
+                            define_read_content += define_read
+                            break
         define_read_content += "}"
-        sched_file_name = config_variables['SchedulePath'] + "RISCVSched" + sched_key.upper() + ".td"
+        sched_file_name = schedule_file + "RISCVSched" + sched_key.upper() + ".td"
         f = open(sched_file_name, "a")
         legalDisclaimer.get_copyright(sched_file_name)
         f.write(sched_statement + content)
@@ -1287,6 +1484,7 @@ def generate_instruction_define(
     sideEffects = False
     decoderNamespace = ""
     attributes = instructions[key]["attributes"]
+    instruction_fixed = key
     attributes.sort()
     attributes_list_extension = list()
     attributes_list_instruction = list()
@@ -1683,7 +1881,7 @@ def generate_instruction_define(
     for element in ins:
         if element not in instrfield_ref:
             for register in instrfield_ref:
-                if element in instrfield_data_ref[register]["enumerated"].keys():
+                if "enumerated" in instrfield_data_ref[register].keys() and element in instrfield_data_ref[register]["enumerated"].keys():
                     aux = instrfield_data_ref[register]["enumerated"][element]
                     for index in aux:
                         if (
@@ -2209,7 +2407,7 @@ def generate_instruction_define(
                                         instrfield_regs_ins.insert(
                                             len(instrfield_regs_ins),
                                             ref_imm + ":" + "$" + syntax_element,
-                                        )
+                                        )                            
     for reg_pair in check_reference_pairs:
         if reg_pair not in register_pairs.keys():
             list_aux = list()
@@ -2442,18 +2640,92 @@ def generate_instruction_define(
                 scheduling_list.append(write_sched.replace("'", ""))
         if 'store' in instructions[key]['attributes'] or 'branch' in instructions[key]['attributes']:
             scheduling_list.append(write_sched.replace("'", ""))
+        index = 1
+        first = False
+        scheduling_original_list = list()
+        scheduling_original_list = scheduling_list.copy()
+        fixed_digit = list()
+        fixed_digit = re.findall(r'\d+', read_sched)
         for element in instrfield_regs_ins:
             register = element.split(":$")[1]
             if register in instrfield_ref.keys():
-                scheduling_list.append(read_sched.replace("'", ""))
+                read_sched = re.sub(r"\_*\d*", "", read_sched)
+                if read_sched.replace("'", "") in scheduling_original_list:
+                    if first is False:
+                        scheduling_original_list.append(read_sched.replace("'", ""))
+                        scheduling_list.remove(read_sched.replace("'", ""))
+                        if len(fixed_digit) > 0:
+                            read_sched += fixed_digit[0] + "_"
+                        read_sched += str(index)
+                        scheduling_list.append(read_sched.replace("'", ""))
+                        index += 1
+                        first = True
+                        read_sched = re.sub(r"\_*\d*", "", read_sched)
+                        if len(fixed_digit) > 0:
+                            read_sched += fixed_digit[0] + "_"
+                        read_sched += str(index)
+                        scheduling_list.append(read_sched.replace("'", ""))
+                        index += 1
+                    else:
+                        read_sched = re.sub(r"\_*\d*", "", read_sched)
+                        scheduling_original_list.append(read_sched.replace("'", ""))
+                        if len(fixed_digit) > 0:
+                            read_sched += fixed_digit[0] + "_"
+                        read_sched += str(index)
+                        scheduling_list.append(read_sched.replace("'", ""))
+                        index += 1
+                else:
+                    scheduling_list.append(read_sched.replace("'", ""))
+                    scheduling_original_list.append(read_sched.replace("'", ""))
             else:
                 for register_ref in registers_parsed.keys():
                     for input in instructions[key]['inputs']:
                         reg_found = input.replace(register_ref, "").replace("(", "").replace(")", "")
-                        if reg_found in alias_dict[register_ref].keys():
+                        if register_ref in alias_dict.keys() and reg_found in alias_dict[register_ref].keys():
                             if register in alias_dict[register_ref][reg_found]:
-                                scheduling_list.append(read_sched.replace("'", ""))
+                                if read_sched.replace("'", "") in scheduling_original_list:
+                                    if first is False:
+                                        scheduling_original_list.append(read_sched.replace("'", ""))
+                                        scheduling_list.remove(read_sched.replace("'", ""))
+                                        if len(fixed_digit) > 0:
+                                            read_sched += fixed_digit[0] + "_"
+                                        read_sched += str(index)
+                                        scheduling_list.append(read_sched.replace("'", ""))
+                                        index += 1
+                                        first = True
+                                    else:
+                                        scheduling_original_list.append(read_sched.replace("'", ""))
+                                        if len(fixed_digit) > 0:
+                                            read_sched += fixed_digit[0] + "_"
+                                        read_sched += str(index)
+                                        scheduling_list.append(read_sched.replace("'", ""))
+                                        index += 1
+                                else:
+                                    scheduling_list.append(read_sched.replace("'", ""))
+                                    scheduling_original_list.append(read_sched.replace("'", ""))
         schedule = str(scheduling_list).replace("'", "")
+    instructions_parsed = adl_parser.parse_instructions_from_adl(config_variables["ADLName"])[0]
+    for instruction in instructions_parsed.keys():
+        if instruction == instruction_fixed:
+            scheduling_list = list()
+            if len(instrfield_regs_outs) == 0 and len(instrfield_regs_ins) == 0:
+                if instruction in scheduling_instr_info.keys():
+                    if 'write' in scheduling_instr_info[instruction].keys():
+                        write_sched = scheduling_instr_info[instruction]['write']
+                        scheduling_list.append(write_sched.replace("'", ""))
+                    schedule = str(scheduling_list).replace("'", "")
+            else:
+                check = False
+                for element in instrfield_regs_ins:
+                    if element.split(":$")[1] in instrfield_ref.keys():
+                        check = True
+                if check is False:
+                    if len(instrfield_regs_outs) == 0:
+                        if instruction in scheduling_instr_info.keys():
+                            if 'write' in scheduling_instr_info[instruction].keys():
+                                write_sched = scheduling_instr_info[instruction]['write']
+                                scheduling_list.append(write_sched.replace("'", ""))
+                            schedule = str(scheduling_list).replace("'", "")
     instrfield_regs_outs = str(instrfield_regs_outs)
     instrfield_regs_ins = str(instrfield_regs_ins)
     for reg in regs_in:
@@ -2477,10 +2749,6 @@ def generate_instruction_define(
                 + reg_constraint
                 + '";\n'
             )
-            if disableEncoding is True:
-                disableEncodingLet += (
-                    '\tlet DisableEncoding = "' + "$" + reg_constraint + '";'
-                )
         if (
             "sideEffectInstrfield" in config_variables.keys()
             and reg == config_variables["sideEffectInstrfield"]
@@ -3196,7 +3464,6 @@ def generate_file_instructions(file_name, extensions_list):
     for attribute in sorting_attributes:
         changed_file_name = False
         if "LLVMExt" + str(attribute).capitalize() not in config_variables.keys():
-            file_name = config_variables["InstructionInfoFile"]
             f = open(file_name, "a")
             for key in instructions.keys():
                 if "ignored" not in instructions[key]["attributes"]:
@@ -4305,7 +4572,7 @@ def generate_constraint_define(
 #
 # @param file_name ADL file which is parsed for gathering all information needed
 # @return The content of RISCVInstrFormats.td file
-def generate_instruction_format(file_name):
+def generate_instruction_format(file_name, file_name_c):
     config_variables = config.config_environment(config_file, llvm_config)
     instructions = adl_parser.parse_instructions_from_adl(config_variables["ADLName"])[
         0
@@ -4414,14 +4681,14 @@ def generate_instruction_format(file_name):
                 )
                 f.write("\n\n")
         else:
-            file_name = config_variables["InstructionFormatFile" + width]
+            file_name =  os.path.basename(config_variables["InstructionFormatFile" + width])
+            file_name = file_name_c + file_name
             if os.getcwd().endswith("tools"):
                 file_name = "." + file_name
             if os.path.exists(config_variables["InstructionFormatFile" + width]):
                 os.remove(config_variables["InstructionFormatFile" + width])
             g = open(file_name, "a")
             legalDisclaimer.get_copyright(file_name)
-            #legalDisclaimer.get_generated_file(file_name)
             opcode = list(instruction_opcode[width].keys())
             opcode_range = list(instruction_opcode[width].values())
             for index in opcode_range:
@@ -8129,6 +8396,45 @@ def generate_imms_class(key, instructions, immediate_key):
                                             + ";\n"
                                         )
                                     else:
+                                        if 'signed' in instrfield_imm[imm_key].keys():
+                                            content += (
+                                                '\tlet DecoderMethod = "decodeSImmOperand<'
+                                                + str(
+                                                    int(instrfield_imm[imm_key]["size"])
+                                                    + int(instrfield_imm[imm_key]["shift"])
+                                                )
+                                                + '>";\n'
+                                            )
+                                            decoderMethod = (
+                                                '\tlet DecoderMethod = "decodeSImmOperand<'
+                                                + str(
+                                                    int(instrfield_imm[imm_key]["size"])
+                                                    + int(instrfield_imm[imm_key]["shift"])
+                                                )
+                                                + '>";\n'
+                                            )
+                                            break
+                                        else:
+                                            content += (
+                                                '\tlet DecoderMethod = "decodeSImmOperand<'
+                                                + str(
+                                                    int(instrfield_imm[imm_key]["size"])
+                                                    + int(instrfield_imm[imm_key]["shift"])
+                                                )
+                                                + '>";\n'
+                                            )
+                                            decoderMethod = (
+                                                '\tlet DecoderMethod = "decodeSImmOperand<'
+                                                + str(
+                                                    int(instrfield_imm[imm_key]["size"])
+                                                    + int(instrfield_imm[imm_key]["shift"])
+                                                )
+                                                + '>";\n'
+                                            )
+                                            break
+                                            
+                                else:
+                                    if 'signed' in instrfield_imm[imm_key].keys():
                                         content += (
                                             '\tlet DecoderMethod = "decodeSImmOperand<'
                                             + str(
@@ -8145,25 +8451,25 @@ def generate_imms_class(key, instructions, immediate_key):
                                             )
                                             + '>";\n'
                                         )
-                                    break
-                                else:
-                                    content += (
-                                        '\tlet DecoderMethod = "decodeSImmOperand<'
-                                        + str(
-                                            int(instrfield_imm[imm_key]["size"])
-                                            + int(instrfield_imm[imm_key]["shift"])
-                                        )
-                                        + '>";\n'
-                                    )
-                                    decoderMethod = (
-                                        '\tlet DecoderMethod = "decodeSImmOperand<'
-                                        + str(
-                                            int(instrfield_imm[imm_key]["size"])
-                                            + int(instrfield_imm[imm_key]["shift"])
-                                        )
-                                        + '>";\n'
-                                    )
-                                    break
+                                        break
+                                    else:
+                                            content += (
+                                                '\tlet DecoderMethod = "decodeSImmOperand<'
+                                                + str(
+                                                    int(instrfield_imm[imm_key]["size"])
+                                                    + int(instrfield_imm[imm_key]["shift"])
+                                                )
+                                                + '>";\n'
+                                            )
+                                            decoderMethod = (
+                                                '\tlet DecoderMethod = "decodeSImmOperand<'
+                                                + str(
+                                                    int(instrfield_imm[imm_key]["size"])
+                                                    + int(instrfield_imm[imm_key]["shift"])
+                                                )
+                                                + '>";\n'
+                                            )
+                                            break
                         break
                     else:
                         for instruction in instructions.keys():
@@ -8188,6 +8494,44 @@ def generate_imms_class(key, instructions, immediate_key):
                                             + ";\n"
                                         )
                                     else:
+                                        if 'signed' in instrfield_imm[imm_key].keys():
+                                            content += (
+                                                '\tlet DecoderMethod = "decodeSImmOperand<'
+                                                + str(
+                                                    int(instrfield_imm[imm_key]["size"])
+                                                    + int(instrfield_imm[imm_key]["shift"])
+                                                )
+                                                + '>";\n'
+                                            )
+                                            decoderMethod = (
+                                                '\tlet DecoderMethod = "decodeSImmOperand<'
+                                                + str(
+                                                    int(instrfield_imm[imm_key]["size"])
+                                                    + int(instrfield_imm[imm_key]["shift"])
+                                                )
+                                                + '>";\n'
+                                            )
+                                            break
+                                        else:
+                                            content += (
+                                                '\tlet DecoderMethod = "decodeSImmOperand<'
+                                                + str(
+                                                    int(instrfield_imm[imm_key]["size"])
+                                                    + int(instrfield_imm[imm_key]["shift"])
+                                                )
+                                                + '>";\n'
+                                            )
+                                            decoderMethod = (
+                                                '\tlet DecoderMethod = "decodeSImmOperand<'
+                                                + str(
+                                                    int(instrfield_imm[imm_key]["size"])
+                                                    + int(instrfield_imm[imm_key]["shift"])
+                                                )
+                                                + '>";\n'
+                                            )
+                                            break
+                                else:
+                                    if 'signed' in instrfield_imm[imm_key].keys():
                                         content += (
                                             '\tlet DecoderMethod = "decodeSImmOperand<'
                                             + str(
@@ -8204,25 +8548,25 @@ def generate_imms_class(key, instructions, immediate_key):
                                             )
                                             + '>";\n'
                                         )
-                                    break
-                                else:
-                                    content += (
-                                        '\tlet DecoderMethod = "decodeSImmOperand<'
-                                        + str(
-                                            int(instrfield_imm[imm_key]["size"])
-                                            + int(instrfield_imm[imm_key]["shift"])
+                                        break
+                                    else:
+                                        content += (
+                                            '\tlet DecoderMethod = "decodeSImmOperand<'
+                                            + str(
+                                                int(instrfield_imm[imm_key]["size"])
+                                                + int(instrfield_imm[imm_key]["shift"])
+                                            )
+                                            + '>";\n'
                                         )
-                                        + '>";\n'
-                                    )
-                                    decoderMethod = (
-                                        '\tlet DecoderMethod = "decodeSImmOperand<'
-                                        + str(
-                                            int(instrfield_imm[imm_key]["size"])
-                                            + int(instrfield_imm[imm_key]["shift"])
+                                        decoderMethod = (
+                                            '\tlet DecoderMethod = "decodeSImmOperand<'
+                                            + str(
+                                                int(instrfield_imm[imm_key]["size"])
+                                                + int(instrfield_imm[imm_key]["shift"])
+                                            )
+                                            + '>";\n'
                                         )
-                                        + '>";\n'
-                                    )
-                                    break
+                                        break
                         break
             else:
                 if "sign_extension" in instrfield_imm[imm_key].keys():
@@ -8731,9 +9075,10 @@ def write_imms_classes(filename, filenameC, instrfield_classes, instructions):
                                         g.write(define_content)
                                         g.write("\n")
                                         already_printed = True
-        exitFor = False
-        sameInstruction = False
+    for key in instrfield_classes:
         for imm_key in instrfield_classes[key]:
+            exitFor = False
+            sameInstruction = False
             if exitFor is False:
                 for instuction_key in instructions.keys():
                     if sameInstruction is False:
@@ -9016,7 +9361,7 @@ def generate_instruction_alias(key):
 # @param file_name The parameter represents the file in which the content will be written
 # @param extensions_list This list contains the extensions for which the instrinsics will be generated. If empty, all extensions will be generated
 # @return This function will return a file which contains all the information about aliases
-def write_instructions_aliases(file_name, extensions_list):
+def write_instructions_aliases(file_name, file_name_c,extensions_list):
     config_variables = config.config_environment(config_file, llvm_config)
     instructions = adl_parser.parse_instructions_from_adl(config_variables["ADLName"])[
         0
@@ -9057,14 +9402,12 @@ def write_instructions_aliases(file_name, extensions_list):
                                     generated = True
                                 if generated is True:
                                     new_file_name = (
-                                        config_variables["InstructionInfoFile"]
+                                        file_name_c
                                         .replace("_gen", "")
                                         .replace(".td", file_extension + "_gen" + ".td")
                                     )
                                 else:
-                                    new_file_name = config_variables[
-                                        "InstructionInfoFile"
-                                    ].replace(".td", file_extension + ".td")
+                                    new_file_name = file_name_c.replace(".td", file_extension + ".td")
                                 if os.getcwd().endswith("tools") is True:
                                     new_file_name = "." + new_file_name
                                 f = open(new_file_name, "a")
@@ -9106,14 +9449,12 @@ def write_instructions_aliases(file_name, extensions_list):
                                 generated = True
                             if generated is True:
                                 new_file_name = (
-                                    config_variables["InstructionInfoFile"]
+                                    file_name_c
                                     .replace("_gen", "")
                                     .replace(".td", file_extension + "_gen" + ".td")
                                 )
                             else:
-                                new_file_name = config_variables[
-                                    "InstructionInfoFile"
-                                ].replace(".td", file_extension + ".td")
+                                new_file_name = file_name_c.replace(".td", file_extension + ".td")
                             if os.getcwd().endswith("tools") is True:
                                 new_file_name = "." + new_file_name
                             f = open(new_file_name, "a")
@@ -9253,6 +9594,7 @@ def generate_intrinsics(file_name, extensions_list):
     aliases = adl_parser.parse_instructions_aliases_from_adl(
         config_variables["ADLName"]
     )
+    once_print = False
     for key in instructions.keys():
         if key not in aliases.keys():
             statement = ""
@@ -9404,10 +9746,6 @@ def generate_intrinsics(file_name, extensions_list):
                         file_name_cpy = (
                             file_name_cpy.replace(".td", "") + extension + ".td"
                         )
-                if file_name_cpy != file_name:
-                    if file_name_cpy not in os.listdir("."):
-                        legalDisclaimer.get_copyright(file_name_cpy)
-                        #legalDisclaimer.get_generated_file(file_name_cpy)
                 if extension_checked == False:
                     list_dir = list()
                     for fname in os.listdir("."):
@@ -9415,10 +9753,14 @@ def generate_intrinsics(file_name, extensions_list):
                     if "tools" not in list_dir:
                         if file_name_cpy.startswith("./"):
                             file_name_cpy = "." + file_name_cpy
+                    if once_print is False:
+                        legalDisclaimer.get_copyright(file_name_cpy)
+                        once_print = True
                     f = open(file_name_cpy, "a")
                     f.write(statement)
                     f.write("\n")
                     f.close()
+    once_print = False
     for alias in aliases.keys():
         statement = ""
         if "intrinsic" in aliases[alias].keys():
@@ -9553,12 +9895,11 @@ def generate_intrinsics(file_name, extensions_list):
                     )
                 else:
                     file_name_cpy = file_name_cpy.replace(".td", "") + extension + ".td"
-            if file_name_cpy != file_name:
-                if file_name_cpy not in os.listdir("."):
-                    legalDisclaimer.get_copyright(file_name_cpy)
-                    #legalDisclaimer.get_generated_file(file_name_cpy)
             if extension_checked == False:
-                f = open(file_name, "a")
+                if once_print is False:
+                    legalDisclaimer.get_copyright(file_name_cpy)
+                    once_print = True
+                f = open(file_name_cpy, "a")
                 f.write(statement)
                 f.write("\n")
                 f.close()
@@ -9911,10 +10252,10 @@ def generate_pattern_for_instructions(instruction_key):
 # @return The function will write the content for builtin definitions in 2 files as presented before
 def generate_builtin(file_name, header_name, extensions_list):
     config_variables = config.config_environment(config_file, llvm_config)
-    instructions = adl_parser.parse_instructions_from_adl(config_variables["ADLName"])[
-        0
-    ]
+    instructions = adl_parser.parse_instructions_from_adl(config_variables["ADLName"])[0]
     instrfields = adl_parser.get_instrfield_from_adl(config_variables["ADLName"])[1]
+    once_print = False
+    once_print_header = False
     for key in instructions.keys():
         intrinsic_outputs = list()
         intrinsic_inputs = list()
@@ -10023,20 +10364,15 @@ def generate_builtin(file_name, header_name, extensions_list):
                 header_name_cpy = header_name
                 header_name_cpy = header_name_cpy.replace(".h", "")
                 header_name_cpy += extension + ".h"
-                if file_name_cpy != file_name:
-                    if file_name_cpy not in os.listdir("."):
-                        legalDisclaimer.get_copyright(file_name_cpy)
-                        #legalDisclaimer.get_generated_file(file_name_cpy)
-                if header_name_cpy != header_name:
-                    if header_name_cpy not in os.listdir("."):
-                        legalDisclaimer.get_copyright(header_name_cpy)
-                        #legalDisclaimer.get_generated_file(header_name_cpy)
                 list_dir = list()
                 for fname in os.listdir("."):
                     list_dir.append(fname)
                 if "tools" not in list_dir:
                     if file_name_cpy.startswith("./"):
                         file_name_cpy = "." + file_name_cpy
+                if once_print is False:
+                    legalDisclaimer.get_copyright(file_name_cpy)
+                    once_print = True
                 f = open(file_name_cpy, "a")
                 f.write(statement)
                 f.write("\n")
@@ -10048,16 +10384,18 @@ def generate_builtin(file_name, header_name, extensions_list):
                     if header_name_cpy.startswith("./"):
                         header_name_cpy = "." + header_name_cpy
                 if naming_definition != "":
+                    if once_print_header is False:
+                        legalDisclaimer.get_copyright(header_name_cpy)
+                        once_print_header = True
                     g = open(header_name_cpy, "a")
                     g.write(naming_definition)
                     g.write("\n")
                     g.close()
-
-
 ## This function will generate intrinsic tests for verifying and validating intrinsic usage
 #
+# @include_path path to the location of builtin file that has to be included
 # @return This function will return a folder containing a test for each intrinsic generated
-def generate_intrinsic_tests():
+def generate_intrinsic_tests(folder, include_path):
     config_variables = config.config_environment(config_file, llvm_config)
     tree = ET.parse(config_variables["ADLName"])
     root = tree.getroot()
@@ -10071,7 +10409,8 @@ def generate_intrinsic_tests():
             mattrib = asm_config.find("mattrib").find("str").text
     if mattrib is not None:
         mattrib = mattrib.replace("+", "").replace(",", "")
-        mattrib = "rv32i" + mattrib
+        mattrib =  attributes
+        mattrib = mattrib + " -menable-experimental-extensions"
     else:
         mattrib = ""
     architecture = architecture
@@ -10083,39 +10422,48 @@ def generate_intrinsic_tests():
         + " %s -S -o %s.s\n"
     )
     command2 = "// RUN: cat %s.s | %filecheck %s\n\n"
-    instructions = adl_parser.parse_instructions_from_adl(config_variables["ADLName"])[
-        0
-    ]
-    folder_name = config_variables["TestIntrinsics"]
+    instructions = adl_parser.parse_instructions_from_adl(config_variables["ADLName"])[0]
+    folder_name = folder
     list_dir = list()
-    legal_disclaimer = """// Copyright 2024 NXP
-// SPDX-License-Identifier: BSD-2-Clause"""
     for fname in os.listdir("."):
         list_dir.append(fname)
     if "tools" not in list_dir:
-        config_variables["TestIntrinsics"] = config_variables["TestIntrinsics"].replace(
+        folder = folder.replace(
             "/tools", ""
         )
     folder = folder_name.split("/")[0]
     if 'tools' in list_dir:
-        list_dir_aux = list()
-        folder_name += "/tests"
-        for fname in os.listdir(config_variables["TestIntrinsics"]):
-            list_dir_aux.append(fname)
-        if 'tests' in list_dir_aux:
-            shutil.rmtree(config_variables["TestIntrinsics"] + '/tests')
-        os.mkdir(folder_name)
+        if "/tests_intrinsics" not in folder_name:
+            if folder_name.endswith("/") is False:
+                folder_name += "/tests_intrinsics"
+            else:
+                folder_name += "tests_intrinsics"
+        if os.path.exists(folder_name):
+            shutil.rmtree(folder_name)
+            os.mkdir(folder_name)
     else:
-        list_dir_aux = list()
-        folder_name += "/tests"
-        for fname in os.listdir(config_variables["TestIntrinsics"]):
-            list_dir_aux.append(fname)
-        if 'tests' in list_dir_aux:
-            shutil.rmtree(config_variables["TestIntrinsics"] + '/tests')
+        if "/tests_intrinsics" not in folder_name:
+            if folder_name.endswith("/") is False:
+                folder_name += "/tests_intrinsics"
+            else:
+                folder_name += "tests_intrinsics"
+        if os.path.exists(folder_name):
+            shutil.rmtree(folder_name, ignore_errors=True)
         if folder_name.startswith("/"):
             os.mkdir("." + folder_name)
         else:
              os.mkdir("./" + folder_name)
+    if 'tools' not in list_dir:
+        if folder_name.startswith("/"):
+            folder_name = "." + folder_name
+        else:
+            folder_name = "./" + folder_name
+    if folder_name != config_variables['TestIntrinsics']:
+        if os.path.exists(folder_name):
+            shutil.rmtree(folder_name, ignore_errors=True)
+            os.mkdir(folder_name)
+        else:
+            os.mkdir(folder_name)
     for key in instructions.keys():
         character = "int *values_set"
         character2 = "*values_set"
@@ -10179,23 +10527,19 @@ def generate_intrinsic_tests():
                 header_name_cpy = header_name_cpy.replace(".h", "")
                 header_name_cpy += extension + ".h"
                 include_lib = (
-                    "#include " + '"' + header_name_cpy.rsplit("/")[-1] + '"' + "\n\n"
+                    "#include " + '"' + include_path + "/" + header_name_cpy.rsplit("/")[-1] + '"' + "\n\n"
                 )
             else:
                 include_lib = (
                     "#include "
                     + '"'
-                    + config_variables["BuiltinHeader"].rsplit("/")[-1]
+                    + include_path + "/" + config_variables["BuiltinHeader"].rsplit("/")[-1]
                     + '"'
                     + "\n\n"
                 )
-            array_set1 = "int *values_set1"
-            array_set2 = "int *values_set2"
             array_results = "int *results_" + customize_name.replace("__", "").replace(
                 ".", "_"
             )
-            set1_content = "*values_set1"
-            set2_content = "*values_set2"
             results_content = "*results_" + customize_name.replace("__", "").replace(
                 ".", "_"
             )
@@ -10221,16 +10565,10 @@ def generate_intrinsic_tests():
             file_name = (
                 "test_" + customize_name.replace("__", "").replace(".", "_") + ".c"
             )
-            if 'tools' not in list_dir:
-                if folder_name.startswith("/"):
-                    folder_name = "." + folder_name
-                else:
-                    folder_name = "./" + folder_name
+            legalDisclaimer.get_copyright(folder_name + "/" + file_name)
             f = open(folder_name + "/" + file_name, "a")
             f.write(
-                legal_disclaimer
-                + "\n"
-                + include_lib
+                include_lib
                 + command1
                 + command2
                 + statement
@@ -10290,12 +10628,11 @@ def generate_operand_mem_wrapper_class(file_name):
 # @return The function returns a file containing the definitions for register pairs
 def generate_register_pairs(file_name):
     config_variables = config.config_environment(config_file, llvm_config)
-    instrfield_data_ref = adl_parser.get_instrfield_offset(config_variables["ADLName"])[
-        1
-    ]
+    instrfield_data_ref = adl_parser.get_instrfield_offset(config_variables["ADLName"])[1]
     calling_convention_order = config_variables["RegisterAllocationOrder"]
     registers = adl_parser.parse_adl(config_variables["ADLName"])
     calling_convention_pairs = dict()
+    alias_dict = adl_parser.get_alias_for_regs(config_variables["ADLName"])
     for register in register_pairs.keys():
         register_width = ""
         register_offset = ""
@@ -10362,6 +10699,131 @@ def generate_register_pairs(file_name):
                                             calling_convention_pairs[
                                                 register
                                             ] = list_aux
+    index_dummy = 0
+    for register in registers.keys():
+        prefix = registers[register].prefix
+        if prefix.upper() + str(index_dummy) in registers[register].calling_convention.keys():
+                if registers[register].calling_convention[prefix.upper() + str(index_dummy)][0] == 'Hard_wired_zero':
+                    def_dummy_reg_pair = "def DUMMY_REG_PAIR_WITH_" + prefix.upper() + str(index_dummy) + " : RISCVReg<" + str(index_dummy) + ", " + "\"" + str(index_dummy) + "\"" + ">;\n"
+                    def_add_dummy = "def " + register.upper() + "All : " + "RegisterClass<" + "\"" + config_variables['Namespace'] + "\"" + ", " + "[" + config_variables['XLenVT_key'] + "]" + ", " + config_variables['LLVMRegBasicWidth'] + ", " + "(\n"
+                    def_add_dummy += "\tadd " + register.upper() + ", DUMMY_REG_PAIR_WITH_" + prefix.upper() + str(index_dummy) + "\n\t)> {\n"
+                    def_add_dummy += "\tlet RegInfos = " + config_variables["XLenRI_key"] + ";\n"
+                    def_add_dummy += "}"
+    reg_pair_content = ""
+    check_reg_pair = False
+    for register in registers.keys():
+        check_register = False
+        reg_pair_def = "let RegAltNameIndices = [" + config_variables["RegAltNameIndex"] + "] in {\n"
+        if registers[register].prefix != "":
+            prefix = registers[register].prefix
+        for index in range(0, int(config_variables['LLVMRegBasicWidth']) - 1, 2):
+            subreg_list = list()
+            reg_odd = ""
+            reg_even = ""
+            alias = ""
+            if prefix.upper() + str(index) in registers[register].calling_convention.keys():
+                if registers[register].calling_convention[prefix.upper() + str(index)][0] == 'Hard_wired_zero':
+                    subreg_list.append(prefix.upper() + str(index))
+                    reg_even = prefix.upper() + str(index)
+                    reg_odd = prefix.upper() + str(index)
+                    subreg_list.append("DUMMY_REG_PAIR_WITH_" + prefix.upper() + str(index))
+                else:
+                    subreg_list.append(prefix.upper() + str(index))
+                    reg_even = prefix.upper() + str(index)
+                    subreg_list.append(prefix.upper() + str(index + 1))
+                    reg_odd = prefix.upper() + str(index + 1)
+                elem_reg_key = str(index)
+                if alias == "":
+                    if register in alias_dict.keys():
+                        for ref_key in alias_dict[register].keys():
+                            if ref_key == elem_reg_key:
+                                for key_reg in alias_dict[register][elem_reg_key]:
+                                    if prefix not in key_reg:
+                                        alias +=  "\"" + key_reg +  "\"" + ", "
+                                alias = alias.rstrip(", ")
+            if reg_odd != "" and reg_even != "" and alias != "":
+                check_reg_pair = True
+                check_register = True
+                reg_pair_content += "\tdef " + reg_even + "_" + reg_odd + " : RISCVRegWithSubRegs<" + str(index) + ", " + "\"" +  reg_even + "\"" + ", " + str(subreg_list).replace("'", "") + ", " + "[" + alias + "]" + ">" + " {\n"
+                reg_pair_content += "\t\tlet SubRegIndices = [sub_gpr_even, sub_gpr_odd];\n"
+                reg_pair_content += "\t\tlet CoveredBySubRegs = 1;\n"
+                reg_pair_content += "\t}\n"
+        if check_register is True:
+            reg_pair_content += "}\n"
+    f = open(file_name, "a")
+    if check_reg_pair is True:
+        f.write(def_dummy_reg_pair)
+        f.write(def_add_dummy)
+        f.write("\n")
+        f.write(reg_pair_def)
+        f.write(reg_pair_content)
+        f.write("\n\n")
+    f.close()
+    register_pair_app_ins = dict()
+    register_pair_app_outs = dict()
+    instrfield_ref = adl_parser.get_instrfield_from_adl(config_variables["ADLName"])[1]
+    instructions = adl_parser.parse_instructions_from_adl(config_variables["ADLName"])[0]
+    for register in instrfield_ref:
+        register_pair_app_ins[register] = int(0)
+        register_pair_app_outs[register] = int(0)
+    for instruction in instructions.keys():
+        outs = str(instructions[instruction]["outputs"])
+        ins = str(instructions[instruction]["inputs"])
+        outs = re.split(r"[()]", outs)
+        ins = re.split(r"[()]", ins)
+        for element in ins:
+            for instrfield in instrfield_ref:
+                if instrfield == element.split(".")[0].rstrip(" "):
+                    if register_pair_app_ins[instrfield] == 0:
+                        register_pair_app_ins[instrfield] += 1
+                        if instrfield not in ins:
+                            ins.append(instrfield)
+                    else:
+                        element = element.replace(" ", "")
+                        if "+1" in element:
+                            register_pair_app_ins[instrfield] += 1
+                            if instrfield not in ins:
+                                ins.append(instrfield)
+                else:
+                    if instrfield == element.split(" ")[0].rstrip(" "):
+                        element = element.replace(" ", "")
+                        if "+1" in element:
+                            register_pair_app_ins[instrfield] += 1
+                            if instrfield not in ins:
+                                ins.append(instrfield)
+        ins.sort()
+        outs_copy = outs.copy()
+        outs_copy.sort()
+        for element in outs_copy:
+            for instrfield in instrfield_ref:
+                if instrfield == element.split(".")[0].rstrip(" "):
+                    if register_pair_app_outs[instrfield] == 0:
+                        register_pair_app_outs[instrfield] += 1
+                        if instrfield not in outs:
+                            outs.append(instrfield)
+                    else:
+                        element = element.replace(" ", "")
+                        if "+1" in element:
+                            register_pair_app_outs[instrfield] += 1
+                            if instrfield not in outs:
+                                outs.append(instrfield)
+                else:
+                    if instrfield == element.split(" ")[0].rstrip(" "):
+                        element = element.replace(" ", "")
+                        if "+1" in element:
+                            register_pair_app_outs[instrfield] += 1
+                            if instrfield not in outs:
+                                outs.append(instrfield)
+        outs.sort()
+    max_out = 0
+    max_in = 0
+    for element in register_pair_app_outs.keys():
+        if register_pair_app_outs[element] > max_out:
+            max_out = register_pair_app_outs[element]
+    for element in register_pair_app_ins.keys():
+        if register_pair_app_ins[element] > max_in:
+            max_in = register_pair_app_ins[element]
+    reg_pair_max = max(max_in, max_out)
     for register in calling_convention_pairs.keys():
         statement = (
             "def "
@@ -10376,7 +10838,7 @@ def generate_register_pairs(file_name):
             + config_variables["XLenVT_key"]
             + "]"
             + ", "
-            + str(2 ** int(register_width))
+            + str(2 ** (int(register_width) + reg_pair_max - 1))
             + ", ("
             + "\n"
             + "\t"
@@ -10384,12 +10846,23 @@ def generate_register_pairs(file_name):
         content = "add" + " "
         position = 0
         for element in calling_convention_pairs[register]:
-            content += element + "_PD" + ", "
-            position += 1
-            if position % 4 == 0:
-                if position < len(calling_convention_pairs[register]):
-                    content += "\n"
-                content += "\t"
+            pattern = r'[\d+\d*]'
+            index = ""
+            list_pattern = re.findall(pattern, element)
+            index = "".join(list_pattern)
+            if index != "":
+                first_index = index
+                if int(index) == 0: 
+                    pair_element = element.replace(first_index, str(index))
+                else:
+                    index = int(index) + 1
+                    pair_element = element.replace(first_index, str(index))
+                content += element + "_" + pair_element + ", "
+                position += 1
+                if position % 4 == 0:
+                    if position < len(calling_convention_pairs[register]):
+                        content += "\n"
+                    content += "\t"
         content = content.rstrip("\t")
         content = content.rstrip(", ")
         content += "\n\t)> {\n"
@@ -10402,7 +10875,10 @@ def generate_register_pairs(file_name):
         f.write("\n\n")
         f.close()
 
-
+## Function which generates scheduling tests based on the information from scheduling table parsed from XML
+#
+# @path string specifying the path to the actual folder in which tests will be generated
+# @return Scheduling tests for the instructions parsed from XML
 def generate_sched_tests(path):
     config_variables = config.config_environment(config_file, llvm_config)
     instructions = adl_parser.parse_instructions_from_adl(config_variables["ADLName"])[0]
@@ -10418,12 +10894,12 @@ def generate_sched_tests(path):
     else:
         path = path + "/tests"
     if os.path.exists(path):
-        shutil.rmtree(path)
-    if not os.path.exists(path):
+        shutil.rmtree(path, ignore_errors=True)
+    if os.path.exists(path) is False:
         os.makedirs(path)
     path_dependency = path.replace(os.path.basename(os.path.normpath(path)), os.path.basename(os.path.normpath(path)) + "_dependency/")                                   
     if os.path.exists(path_dependency):
-        shutil.rmtree(path_dependency)
+        shutil.rmtree(path_dependency, ignore_errors=True)
     if not os.path.exists(path_dependency):
         os.makedirs(path_dependency)
     for instr in instructions.keys():
@@ -10471,18 +10947,8 @@ def generate_sched_tests(path):
                                                             if destination_field == "" and register_parsed[key].pseudo != "":
                                                                 destination_field = register_parsed[key].pseudo
                                                     if destination_field != "":
-                                                        destination_reg = random.choice(instrfields_values[destination_field])
-                                                        numbers = re.findall(r'\d+\d*', destination_reg)
-                                                        while "".join(numbers) != "" and int("".join(numbers)) % 2:
-                                                            destination_reg = random.choice(instrfields_values[destination_field])
-                                                            numbers = re.findall(r'\d+\d*', destination_reg)
-                                                        alias = alias_register_dict[destination_reg]
-                                                        destination_reg = alias
-                                                        destinations_list.append(destination_reg)
-                                                        destination_regclass = destination_field
-                                                        if destination_dependency == "":
-                                                            destination_dependency = destination_reg
-                                                        if index >= 1 and destination_dependency == destination_reg:
+                                                        destination_reg = ""
+                                                        if len(instrfields_values[destination_field]) > 0:
                                                             destination_reg = random.choice(instrfields_values[destination_field])
                                                             numbers = re.findall(r'\d+\d*', destination_reg)
                                                             while "".join(numbers) != "" and int("".join(numbers)) % 2:
@@ -10492,6 +10958,18 @@ def generate_sched_tests(path):
                                                             destination_reg = alias
                                                             destinations_list.append(destination_reg)
                                                             destination_regclass = destination_field
+                                                            if destination_dependency == "":
+                                                                destination_dependency = destination_reg
+                                                            if index >= 1 and destination_dependency == destination_reg:
+                                                                destination_reg = random.choice(instrfields_values[destination_field])
+                                                                numbers = re.findall(r'\d+\d*', destination_reg)
+                                                                while "".join(numbers) != "" and int("".join(numbers)) % 2:
+                                                                    destination_reg = random.choice(instrfields_values[destination_field])
+                                                                    numbers = re.findall(r'\d+\d*', destination_reg)
+                                                                alias = alias_register_dict[destination_reg]
+                                                                destination_reg = alias
+                                                                destinations_list.append(destination_reg)
+                                                                destination_regclass = destination_field
                                                         break
                                     if element_not_found is False:
                                         for input_element in inputs:
@@ -10507,29 +10985,7 @@ def generate_sched_tests(path):
                                                                 if key in register_parsed.keys() and register_parsed[key].pseudo != "":
                                                                     source_field = register_parsed[key].pseudo
                                                 if source_field in reg_instrfields.keys():
-                                                    source_reg = random.choice(instrfields_values[source_field])
-                                                    numbers = re.findall(r'\d+\d*', source_reg)
-                                                    while "".join(numbers) != "" and int("".join(numbers)) % 2:
-                                                        source_reg = random.choice(instrfields_values[source_field])
-                                                        numbers = re.findall(r'\d+\d*', source_reg)
-                                                    alias = alias_register_dict[source_reg]
-                                                    source_reg = alias
-                                                    if source_reg not in sources_list:
-                                                        if source_reg != destination_reg and source_reg not in destinations_list:
-                                                            sources_list.append(source_reg.lower())
-                                                            break
-                                                        else:
-                                                            source_reg = random.choice(instrfields_values[source_field])
-                                                            numbers = re.findall(r'\d+\d*', source_reg)
-                                                            while "".join(numbers) != "" and int("".join(numbers)) % 2:
-                                                                source_reg = random.choice(instrfields_values[source_field])
-                                                                numbers = re.findall(r'\d+\d*', source_reg)
-                                                            alias = alias_register_dict[source_reg]
-                                                            source_reg = alias
-                                                            if source_reg not in sources_list and source_reg not in destinations_list:
-                                                                sources_list.append(source_reg.lower())
-                                                                break
-                                                    else:
+                                                    if len(instrfields_values[source_field]) > 0:
                                                         source_reg = random.choice(instrfields_values[source_field])
                                                         numbers = re.findall(r'\d+\d*', source_reg)
                                                         while "".join(numbers) != "" and int("".join(numbers)) % 2:
@@ -10537,9 +10993,21 @@ def generate_sched_tests(path):
                                                             numbers = re.findall(r'\d+\d*', source_reg)
                                                         alias = alias_register_dict[source_reg]
                                                         source_reg = alias
-                                                        if source_reg != destination_reg and source_reg not in destinations_list:
-                                                            sources_list.append(source_reg.lower())
-                                                            break
+                                                        if source_reg not in sources_list:
+                                                            if source_reg != destination_reg and source_reg not in destinations_list:
+                                                                sources_list.append(source_reg.lower())
+                                                                break
+                                                            else:
+                                                                source_reg = random.choice(instrfields_values[source_field])
+                                                                numbers = re.findall(r'\d+\d*', source_reg)
+                                                                while "".join(numbers) != "" and int("".join(numbers)) % 2:
+                                                                    source_reg = random.choice(instrfields_values[source_field])
+                                                                    numbers = re.findall(r'\d+\d*', source_reg)
+                                                                alias = alias_register_dict[source_reg]
+                                                                source_reg = alias
+                                                                if source_reg not in sources_list and source_reg not in destinations_list:
+                                                                    sources_list.append(source_reg.lower())
+                                                                    break
                                                         else:
                                                             source_reg = random.choice(instrfields_values[source_field])
                                                             numbers = re.findall(r'\d+\d*', source_reg)
@@ -10548,9 +11016,20 @@ def generate_sched_tests(path):
                                                                 numbers = re.findall(r'\d+\d*', source_reg)
                                                             alias = alias_register_dict[source_reg]
                                                             source_reg = alias
-                                                            if source_reg not in sources_list and source_reg not in destinations_list:
+                                                            if source_reg != destination_reg and source_reg not in destinations_list:
                                                                 sources_list.append(source_reg.lower())
                                                                 break
+                                                            else:
+                                                                source_reg = random.choice(instrfields_values[source_field])
+                                                                numbers = re.findall(r'\d+\d*', source_reg)
+                                                                while "".join(numbers) != "" and int("".join(numbers)) % 2:
+                                                                    source_reg = random.choice(instrfields_values[source_field])
+                                                                    numbers = re.findall(r'\d+\d*', source_reg)
+                                                                alias = alias_register_dict[source_reg]
+                                                                source_reg = alias
+                                                                if source_reg not in sources_list and source_reg not in destinations_list:
+                                                                    sources_list.append(source_reg.lower())
+                                                                    break
                                     if element_not_found is False:    
                                         for imm in instrfield_imm:
                                             if imm == element.split("(")[0]:
@@ -10571,83 +11050,91 @@ def generate_sched_tests(path):
                                                                     break
                                                 if reg != "" and source_field != "":
                                                     if source_field in reg_instrfields.keys():
-                                                        reg_value = random.choice(instrfields_values[source_field])
-                                                        checked = False
-                                                        for key in register_parsed.keys():
-                                                            prefix = register_parsed[key].prefix
-                                                            size = register_parsed[key].size
-                                                            offset = int(0)
-                                                            if reg.replace("(", "").replace(")", "") in instrfields.keys():
-                                                                offset = int(instrfields[reg.replace("(", "").replace(")", "")]['offset'])
-                                                                width = int(2 ** int(instrfields[reg.replace("(", "").replace(")", "")]['width']))
-                                                            index_reg = 0
-                                                            if prefix != "":
-                                                                if prefix.upper() in reg_value:
-                                                                    register_value = reg_value.replace(prefix.upper(), "")
-                                                                    while int(register_value) < offset or int(register_value) >= width + offset:
-                                                                        reg_value = random.choice(instrfields_values[source_field])
+                                                        if len(instrfields_values[source_field]):
+                                                            reg_value = random.choice(instrfields_values[source_field])
+                                                            checked = False
+                                                            for key in register_parsed.keys():
+                                                                prefix = register_parsed[key].prefix
+                                                                size = register_parsed[key].size
+                                                                offset = int(0)
+                                                                if reg.replace("(", "").replace(")", "") in instrfields.keys():
+                                                                    offset = int(instrfields[reg.replace("(", "").replace(")", "")]['offset'])
+                                                                    width = int(2 ** int(instrfields[reg.replace("(", "").replace(")", "")]['width']))
+                                                                index_reg = 0
+                                                                if prefix != "":
+                                                                    if prefix.upper() in reg_value:
                                                                         register_value = reg_value.replace(prefix.upper(), "")
-                                                                    while checked is False and index_reg <= int(size):
-                                                                        for input in inputs:
-                                                                            if key + "(" + str(register_value) + ")" in input:
-                                                                                reg_value = prefix.upper() + str(register_value)
-                                                                                checked = True
-                                                                                break
-                                                                        else:
-                                                                            register_value = index_reg
-                                                                            index_reg += 1
-                                                        alias = alias_register_dict[reg_value]
-                                                        reg_value = alias
-                                                        if instrfield_imm[imm]['shift'] != '0':
-                                                            imm_value = int(instrfield_imm[imm]['shift'])
-                                                            imm_value = 2 ** imm_value
-                                                            if 'one_extended' in instrfield_imm[imm].keys():
-                                                                if instrfield_imm[imm]['one_extended'] == 'true':
-                                                                    imm_value = str("-" + str(imm_value))
-                                                                else:
-                                                                    imm_value = (str(imm_value))
-                                                            else:
-                                                                imm_value = str(imm_value)
-                                                        else:
-                                                            imm_value = str(2)
-                                                        source_reg = element.replace(imm, imm_value).replace(reg, "(" + reg_value + ")")
-                                                        if source_reg not in imms_list:
-                                                            if source_reg != destination_reg:
-                                                                imms_list.append(source_reg.lower())
-                                                            else:
-                                                                source_reg = random.choice(instrfields_values[source_field])
-                                                                numbers = re.findall(r'\d+\d*', source_reg)
-                                                                while "".join(numbers) != "" and int("".join(numbers)) % 2:
-                                                                    source_reg = random.choice(instrfields_values[source_field])
-                                                                    numbers = re.findall(r'\d+\d*', source_reg)
-                                                                alias = alias_register_dict[reg_value]
-                                                                source_reg = alias
-                                                                if source_reg not in imms_list:
-                                                                    imms_list.append(source_reg.lower())
-                                                        else:
-                                                            source_reg = random.choice(instrfields_values[source_field])
-                                                            numbers = re.findall(r'\d+\d*', source_reg)
-                                                            while "".join(numbers) != "" and int("".join(numbers)) % 2:
-                                                                source_reg = random.choice(instrfields_values[source_field])
-                                                                numbers = re.findall(r'\d+\d*', source_reg)
+                                                                        while int(register_value) < offset or int(register_value) >= width + offset:
+                                                                            reg_value = random.choice(instrfields_values[source_field])
+                                                                            register_value = reg_value.replace(prefix.upper(), "")
+                                                                        while checked is False and index_reg <= int(size):
+                                                                            for input in inputs:
+                                                                                if key + "(" + str(register_value) + ")" in input:
+                                                                                    reg_value = prefix.upper() + str(register_value)
+                                                                                    checked = True
+                                                                                    break
+                                                                            else:
+                                                                                register_value = index_reg
+                                                                                index_reg += 1
                                                             alias = alias_register_dict[reg_value]
-                                                            source_reg = alias
-                                                            if source_reg != destination_reg:
-                                                                imms_list.append(source_reg.lower())
+                                                            reg_value = alias
+                                                            if instrfield_imm[imm]['shift'] != '0':
+                                                                imm_value = int(instrfield_imm[imm]['shift'])
+                                                                imm_value = 2 ** imm_value
+                                                                if 'one_extended' in instrfield_imm[imm].keys():
+                                                                    if instrfield_imm[imm]['one_extended'] == 'true':
+                                                                        imm_value = str("-" + str(imm_value))
+                                                                    else:
+                                                                        imm_value = (str(imm_value))
+                                                                else:
+                                                                    imm_value = str(imm_value)
+                                                            else:
+                                                                imm_value = str(2)
+                                                            source_reg = element.replace(imm, imm_value).replace(reg, "(" + reg_value + ")")
+                                                            if source_reg not in imms_list:
+                                                                if source_reg != destination_reg:
+                                                                    imms_list.append(source_reg.lower())
+                                                                else:
+                                                                    if len(instrfields_values[source_field]) > 0:
+                                                                        source_reg = random.choice(instrfields_values[source_field])
+                                                                        numbers = re.findall(r'\d+\d*', source_reg)
+                                                                    while "".join(numbers) != "" and int("".join(numbers)) % 2:
+                                                                        if len(instrfields_values[source_field]) > 0:
+                                                                            source_reg = random.choice(instrfields_values[source_field])
+                                                                            numbers = re.findall(r'\d+\d*', source_reg)
+                                                                    alias = alias_register_dict[reg_value]
+                                                                    source_reg = alias
+                                                                    if source_reg not in imms_list:
+                                                                        imms_list.append(source_reg.lower())
                                                             else:
                                                                 source_reg = random.choice(instrfields_values[source_field])
                                                                 numbers = re.findall(r'\d+\d*', source_reg)
                                                                 while "".join(numbers) != "" and int("".join(numbers)) % 2:
-                                                                    source_reg = random.choice(instrfields_values[source_field])
-                                                                    numbers = re.findall(r'\d+\d*', source_reg)
+                                                                    if len(instrfields_values[source_field]) > 0:
+                                                                        source_reg = random.choice(instrfields_values[source_field])
+                                                                        numbers = re.findall(r'\d+\d*', source_reg)
                                                                 alias = alias_register_dict[reg_value]
                                                                 source_reg = alias
-                                                                if source_reg not in imms_list:
+                                                                if source_reg != destination_reg:
                                                                     imms_list.append(source_reg.lower())
+                                                                else:
+                                                                    if len(instrfields_values[source_field]) > 0:
+                                                                        source_reg = random.choice(instrfields_values[source_field])
+                                                                        numbers = re.findall(r'\d+\d*', source_reg)
+                                                                        while "".join(numbers) != "" and int("".join(numbers)) % 2:
+                                                                            if len(instrfields_values[source_field]) > 0:
+                                                                                source_reg = random.choice(instrfields_values[source_field])
+                                                                                numbers = re.findall(r'\d+\d*', source_reg)
+                                                                        alias = alias_register_dict[reg_value]
+                                                                        source_reg = alias
+                                                                        if source_reg not in imms_list:
+                                                                            imms_list.append(source_reg.lower())
                                                 else:
                                                     if 'aliases' in instrfield_imm[imm].keys():
                                                         if instrfield_imm[imm]['aliases'] != {}:
-                                                            imms_list.append(instrfield_imm[imm]['aliases']['0'][0])
+                                                            for key in instrfield_imm[imm]['aliases'].keys():
+                                                                imms_list.append(instrfield_imm[imm]['aliases'][key][0])
+                                                                break
                                                         else:
                                                             if instrfield_imm[imm]['shift'] != '0':
                                                                 value = int(instrfield_imm[imm]['shift'])
@@ -10708,8 +11195,18 @@ def generate_sched_tests(path):
                                 else:
                                     test_content = syntax[0] + " "
                                     regex_content = syntax[0] + " "
+                                if index == 0:
+                                    test_content_copy = test_content
                                 for source in sources_imms_list:
                                     test_content += source + ", "
+                                    if index > 0 and test_content_copy.split(",")[0].replace(instr, "").strip(" ") != "":
+                                        if source == test_content_copy.split(",")[0].replace(instr, "").strip(" "):
+                                            while source_reg == source:
+                                                if len(instrfields_values[source_field]) > 0:
+                                                    source_reg = random.choice(instrfields_values[source_field])
+                                                    alias = alias_register_dict[source_reg]
+                                                    source_reg = alias
+                                            test_content = test_content.replace(source, source_reg)
                                     regex_content += r'{{\-*[0-9]*[a-z]*\(*[a-z]*[0-9]*\)*[a-z]*}}' + ", "
                                 test_content = test_content.rstrip(", ")
                                 regex_content = regex_content.rstrip(", ")
@@ -10732,6 +11229,7 @@ def generate_sched_tests(path):
                                     test_content_dep = test_content
                                     regex_content_dep = regex_content
                                 else:
+                                    destination_register = test_content_dep.split(",")[0].replace(instr, "")
                                     if destination_dependency != "":
                                         if len(sources_list) >= 1:
                                             if destination_regclass == source_field:
@@ -10744,7 +11242,32 @@ def generate_sched_tests(path):
                                     else:
                                         test_content_dep = syntax[0] + " "
                                         regex_content_dep = syntax[0] + " "
+                                    fields = instructions[instr]['fields']
+                                    inputs = instructions[instr]['inputs']
                                     for source in sources_imms_list:
+                                        if destination_register not in source:
+                                            if "(" in source:
+                                                for element in fields[0]:
+                                                    check = True
+                                                    if element in instrfields.keys():
+                                                        for element_in in inputs:
+                                                            if "(" in element_in:
+                                                                if element in element_in.split("(")[1].replace(")", "").replace(" ", "").replace("+1", ""):
+                                                                    check = False
+                                                                    break
+                                                    if check is False:
+                                                        if element in instrfields.keys():
+                                                            check_instrfield = False
+                                                            for elem in instructions[instr]['syntax']:
+                                                                for instrfield in instrfield_imm.keys():
+                                                                    if instrfield in elem:
+                                                                        if instrfield + "(" + element + ")" == elem:
+                                                                            check_instrfield = True
+                                                                            source = source.replace(source.split("(")[1], destination_register.strip(" ") + ")")
+                                                                        else:
+                                                                            check_instrfield = False
+                                                            if check_instrfield is True:
+                                                                source = source.replace(source.split("(")[1], destination_register.strip(" ") + ")")
                                         test_content_dep += source + ", "
                                         regex_content_dep += r'{{\-*[0-9]*[a-z]*\(*[a-z]*[0-9]*\)*[a-z]*}}' + ", "
                                     test_content_dep = test_content_dep.rstrip(", ")
@@ -10767,22 +11290,59 @@ def generate_sched_tests(path):
         data_test['data-dep'] = scheduling_tests_list_dep
         data_test['no-dep'] = scheduling_tests_list
         scheduling_tests_struct[instr] = data_test
-
+        
+## Function which generates scheduling references for scheduling tests
+#
+# @path string specifying the path to the actual folder in which the content will be written
+# @return scheduling references for generated tests
 def generate_scheduling_ref(path):
     config_variables = config.config_environment(config_file, llvm_config)
     scheduling_table_dict = adl_parser.parse_sched_table_from_adl(config_variables["ADLName"])
     sched_parameters = adl_parser.parse_scheduling_model_params(config_variables['ADLName'])
+    instructions = adl_parser.parse_instructions_from_adl(config_variables["ADLName"])[0]
+    registers = adl_parser.get_alias_for_regs(config_variables["ADLName"])
     if path.endswith("/"):
         path = path + "tests"
     else:
         path = path + "/tests"
     path_dependency = path.replace(os.path.basename(os.path.normpath(path)), os.path.basename(os.path.normpath(path)) + "_dependency")
-    for key in scheduling_tests_struct.keys():
-        if len(scheduling_tests_struct[key]) > 0:
-            for sched in scheduling_table_dict.keys():
-                for sched_class in scheduling_table_dict[sched].keys():
+    for sched in scheduling_table_dict.keys():
+        for sched_class in scheduling_table_dict[sched].keys():
+            for key in scheduling_tests_struct.keys():
+                if len(scheduling_tests_struct[key]) > 0:
                     if 'instruction_list' in scheduling_table_dict[sched][sched_class].keys():
                         if key in scheduling_table_dict[sched][sched_class]['instruction_list']:
+                            inputs_list = list()
+                            outputs_list = list()
+                            for register in instructions[key]['inputs']:
+                                for reg_key in registers.keys():
+                                    if reg_key in register:
+                                        inputs_list.append(register)
+                            for register in instructions[key]['outputs']:
+                                for reg_key in registers.keys():
+                                    if reg_key in register:
+                                        outputs_list.append(register)
+                            if 'sizeof(inputs)' in str(scheduling_table_dict[sched][sched_class]['latency']):
+                                    sizeof = len(inputs_list)
+                                    formula = scheduling_table_dict[sched][sched_class]['latency']
+                                    formula = formula.replace("sizeof(inputs)", str(sizeof))
+                                    scheduling_table_dict[sched][sched_class]['latency'] = eval(formula)
+                            elif 'sizeof(outputs)' in str(scheduling_table_dict[sched][sched_class]['latency']):
+                                    sizeof = len(outputs_list)
+                                    formula = scheduling_table_dict[sched][sched_class]['latency']
+                                    formula = formula.replace("sizeof(outputs)", str(sizeof))
+                                    scheduling_table_dict[sched][sched_class]['latency'] = eval(formula)
+                            for pipeline in scheduling_table_dict[sched][sched_class]['pipelines'].keys():
+                                if 'sizeof(inputs)' in str(scheduling_table_dict[sched][sched_class]['pipelines'][pipeline]['throughput']):
+                                        sizeof = len(inputs_list)
+                                        formula = scheduling_table_dict[sched][sched_class]['pipelines'][pipeline]['throughput']
+                                        formula = formula.replace("sizeof(inputs)", str(sizeof))
+                                        scheduling_table_dict[sched][sched_class]['pipelines'][pipeline]['throughput'] = eval(formula)
+                                elif 'sizeof(outputs)' in str(scheduling_table_dict[sched][sched_class]['pipelines'][pipeline]['throughput']):
+                                        sizeof = len(outputs_list)
+                                        formula = scheduling_table_dict[sched][sched_class]['pipelines'][pipeline]['throughput']
+                                        formula = formula.replace("sizeof(outputs)", str(sizeof))
+                                        scheduling_table_dict[sched][sched_class]['pipelines'][pipeline]['throughput'] = eval(formula)
                             latency = int(scheduling_table_dict[sched][sched_class]['latency'])
                             reference = ""
                             reference += ""
@@ -10793,6 +11353,179 @@ def generate_scheduling_ref(path):
                             reference_old = row1 + "\n" + row2 + "\n"
                             test = ""
                             for instruction in scheduling_tests_struct[key]['data-dep']:
+                                for pipeline in scheduling_table_dict[sched][sched_class]['pipelines']:
+                                    if index % 2 == 0 or index == 0:
+                                        index = 0
+                                        index_list = list()
+                                        index_list.append(0)
+                                        index_list.append(index)
+                                        index_str = str(index_list).replace(" ", "")
+                                        index_str += "     "
+                                        timeline = "D"
+                                        for _ in range(latency - 1):
+                                            timeline += "e"
+                                        timeline += "E"
+                                        index_str += timeline + "   " + instruction
+                                        reference = ""
+                                        reference += ""
+                                        index = 0
+                                        if index == 0 or index % 2 == 0:
+                                            reference += "\n" + "// CHECK: " + len('-NEXT') * " " + index_str
+                                        test += reference + "\n"
+                                        timeline_ref = timeline
+                                    else:
+                                        index_list = list()
+                                        index_list.append(0)
+                                        index_list.append(index)
+                                        index_str = str(index_list).replace(" ", "")
+                                        index_str += "     "
+                                        timeline_string = ""
+                                        timeline_index = 0
+                                        timeline_counter = 0
+                                        timeline = ""
+                                        throughput = int(int(int(scheduling_table_dict[sched][sched_class]['pipelines'][pipeline]['throughput'])))
+                                        latency = int(int(int(scheduling_table_dict[sched][sched_class]['latency'])))
+                                        if throughput == latency:
+                                            throughput -= 1
+                                        while timeline_counter <= throughput:
+                                            if timeline_counter == 0:
+                                                timeline_string += "."
+                                                timeline_index += 1
+                                            elif timeline_index < 5:
+                                                timeline_string += " "
+                                                timeline_index += 1
+                                            elif timeline_index == 5:
+                                                timeline_string += "."
+                                                timeline_index = 1
+                                            else:
+                                                timeline_index += 1
+                                            timeline_counter += 1
+                                        if test != "":
+                                            timeline += timeline_string
+                                        timeline += "D"
+                                        for _ in range(latency - 1):
+                                            timeline += "e"
+                                        timeline += "E"
+                                        if int(sched_parameters[sched]['IssueWidth']) == 1:
+                                            index_str += timeline + "   " + instruction
+                                        elif int(sched_parameters[sched]['IssueWidth']) > 1:
+                                            if 'single_issue' in scheduling_table_dict[sched][sched_class].keys():
+                                                if scheduling_table_dict[sched][sched_class]['single_issue'] == 'true':
+                                                    index_str += timeline + "   " + instruction
+                                        timeline_string = ""
+                                        timeline_index = 0
+                                        timeline_counter = 0
+                                        while timeline_counter <= throughput:
+                                            if len(timeline_ref + timeline_string) % 5 == 0:
+                                                if len(timeline_ref + timeline_string) > len(timeline_ref):
+                                                    timeline_string += "."
+                                                    timeline_index = 1
+                                                else:
+                                                    timeline_string += " "
+                                                    timeline_index += 1
+                                            elif timeline_index < 5:
+                                                timeline_string += " "
+                                                timeline_index += 1
+                                            elif timeline_index == 5:
+                                                timeline_string += "."
+                                                timeline_index = 1
+                                            else:
+                                                timeline_index += 1
+                                            timeline_counter += 1
+                                        len_row1 = len(timeline)
+                                        if int(sched_parameters[sched]['IssueWidth']) > 1:
+                                            if 'single_issue' not in scheduling_table_dict[sched][sched_class].keys():
+                                                index_str += timeline_ref
+                                                if index == 0:
+                                                    index_str = "// CHECK: " + index_str
+                                                elif index > 0:
+                                                    index_str = "// CHECK-NEXT: " + index_str
+                                                if index_str not in test:
+                                                    test += index_str + "   " + instruction
+                                            else:
+                                                if timeline_string.endswith('.') is False:
+                                                    timeline_string = timeline_string[:-1] + "."
+                                                test = test.replace(timeline_ref, timeline_ref + timeline_string)
+                                                if index == 0:
+                                                    index_str = "// CHECK: " + index_str
+                                                elif index > 0:
+                                                    index_str = "// CHECK-NEXT: " + index_str
+                                                if index_str not in test:
+                                                    test += index_str
+                                        else:
+                                            if timeline_string.endswith('.') is False:
+                                                timeline_string = timeline_string[:-1] + "."
+                                            if len(timeline_ref) % 5 == 0:
+                                                timeline_string = "." + timeline_string[1:]
+                                            test = test.replace(timeline_ref, timeline_ref + timeline_string)
+                                            if index == 0:
+                                                index_str = "// CHECK: " + index_str
+                                            elif index > 0:
+                                                index_str = "// CHECK-NEXT: " + index_str
+                                            if index_str not in test:
+                                                test += index_str
+                                    index += 1
+                                    if index % 2 == 0:
+                                        indices = ""
+                                        row1 = ""
+                                        row2 = ""
+                                        row2_checked = False
+                                        row1_checked = False
+                                        for digit in range(len_row1):
+                                            indices += str(digit % 10)
+                                        if len(indices) <= 10:
+                                            if row2_checked is False:
+                                                row2 += indices
+                                                row2_checked = True
+                                        elif len(indices) > 10:
+                                            len_index = 10
+                                            length = len(indices)
+                                            last_limit = 0
+                                            while length >= 0:
+                                                if row2_checked is False:
+                                                    limit = length - last_limit
+                                                    if last_limit == 0:
+                                                        row2 += indices[:len_index]
+                                                        row1 += 10 * " "
+                                                    else:
+                                                        if limit > 10:
+                                                            row2 += indices[last_limit:last_limit+10]
+                                                            last_limit = last_limit + 10
+                                                            row1 += 10 * " "
+                                                        else:
+                                                            row2 += indices[last_limit:length]
+                                                            row1 += (length - last_limit) * " "
+                                                    row2_checked = True
+                                                    length -= len_index
+                                                    last_limit = len_index
+                                                elif row1_checked is False:
+                                                    if length >= last_limit:
+                                                        limit = length - last_limit
+                                                    else:
+                                                        last_limit = length
+                                                        limit = last_limit
+                                                    if limit > 10:
+                                                        row1 += indices[last_limit:last_limit+10]
+                                                        last_limit = last_limit + 10
+                                                        row2 += 10 * " "
+                                                    else:
+                                                        row1 += indices[-last_limit:]
+                                                        row2 += (last_limit) * " "
+                                                    length -= len_index
+                                                    row1_checked = True
+                                                if row1_checked is True and row2_checked is True:
+                                                    row2_checked = False
+                                                    row1_checked = False
+                                        if key.endswith(".s"):
+                                            file_name = path_dependency + "/" + "test_" + key.replace(".s", "_s") + "_" + key.replace(".s", "_s") + ".s" 
+                                        else:
+                                            file_name = path_dependency + "/" + "test_" + key + "_" + key + ".s" 
+                                        f = open(file_name, "a")
+                                        f.write(test + "\n")
+                                        f.write("\n\n")
+                                        f.close()
+                                        test = ""
+                            for instruction in scheduling_tests_struct[key]['no-dep']:
                                 if index % 2 == 0 or index == 0:
                                     index = 0
                                     index_list = list()
@@ -10822,11 +11555,7 @@ def generate_scheduling_ref(path):
                                     timeline_index = 0
                                     timeline_counter = 0
                                     timeline = ""
-                                    throughput = int(int(int(scheduling_table_dict[sched][sched_class]['throughput'])))
-                                    latency = int(int(int(scheduling_table_dict[sched][sched_class]['latency'])))
-                                    if throughput == latency:
-                                        throughput -= 1
-                                    while timeline_counter <= throughput:
+                                    while timeline_counter <= int(int(int(scheduling_table_dict[sched][sched_class]['pipelines'][pipeline]['throughput']))-1):
                                         if timeline_counter == 0:
                                             timeline_string += "."
                                             timeline_index += 1
@@ -10848,13 +11577,13 @@ def generate_scheduling_ref(path):
                                     if int(sched_parameters[sched]['IssueWidth']) == 1:
                                         index_str += timeline + "   " + instruction
                                     elif int(sched_parameters[sched]['IssueWidth']) > 1:
-                                        if 'blocking' in scheduling_table_dict[sched][sched_class].keys():
-                                            if scheduling_table_dict[sched][sched_class]['blocking'] == 'true':
+                                        if 'single_issue' in scheduling_table_dict[sched][sched_class].keys():
+                                            if scheduling_table_dict[sched][sched_class]['single_issue'] == 'true':
                                                 index_str += timeline + "   " + instruction
                                     timeline_string = ""
                                     timeline_index = 0
                                     timeline_counter = 0
-                                    while timeline_counter <= throughput:
+                                    while timeline_counter <= int(int(int(scheduling_table_dict[sched][sched_class]['pipelines'][pipeline]['throughput']))-1):
                                         if len(timeline_ref + timeline_string) % 5 == 0:
                                             if len(timeline_ref + timeline_string) > len(timeline_ref):
                                                 timeline_string += "."
@@ -10871,14 +11600,14 @@ def generate_scheduling_ref(path):
                                         else:
                                             timeline_index += 1
                                         timeline_counter += 1
-                                    len_row1 = len(timeline)
                                     if int(sched_parameters[sched]['IssueWidth']) > 1:
-                                        if 'blocking' not in scheduling_table_dict[sched][sched_class].keys():
-                                                index_str += timeline_ref
-                                                if index == 0:
-                                                    index_str = "// CHECK: " + index_str
-                                                elif index > 0:
-                                                    index_str = "// CHECK-NEXT: " + index_str
+                                        if 'single_issue' not in scheduling_table_dict[sched][sched_class].keys():
+                                            index_str += timeline_ref
+                                            if index == 0:
+                                                index_str = "// CHECK: " + index_str
+                                            elif index > 0:
+                                                index_str = "// CHECK-NEXT: " + index_str
+                                            if index_str not in test:
                                                 test += index_str + "   " + instruction
                                         else:
                                             if timeline_string.endswith('.') is False:
@@ -10888,8 +11617,8 @@ def generate_scheduling_ref(path):
                                                 index_str = "// CHECK: " + index_str
                                             elif index > 0:
                                                 index_str = "// CHECK-NEXT: " + index_str
-                                            test += index_str
-
+                                            if index_str not in test:
+                                                test += index_str
                                     else:
                                         if timeline_string.endswith('.') is False:
                                             timeline_string = timeline_string[:-1] + "."
@@ -10900,7 +11629,8 @@ def generate_scheduling_ref(path):
                                             index_str = "// CHECK: " + index_str
                                         elif index > 0:
                                             index_str = "// CHECK-NEXT: " + index_str
-                                        test += index_str
+                                        if index_str not in test:
+                                            test += index_str
                                 index += 1
                                 if index % 2 == 0:
                                     indices = ""
@@ -10954,190 +11684,32 @@ def generate_scheduling_ref(path):
                                                 row2_checked = False
                                                 row1_checked = False
                                     if key.endswith(".s"):
-                                        file_name = path_dependency + "/" + "test_" + key.replace(".s", "_s") + "_" + key.replace(".s", "_s") + ".s" 
+                                        file_name = path + "/" + "test_" +  key.replace(".s", "_s") + "_" + key.replace(".s", "_s") + ".s" 
                                     else:
-                                        file_name = path_dependency + "/" + "test_" + key + "_" + key + ".s" 
+                                        file_name = path + "/" + "test_" +  key + "_" + key + ".s" 
                                     f = open(file_name, "a")
                                     f.write(test + "\n")
                                     f.write("\n\n")
                                     f.close()
                                     test = ""
-                                    for instruction in scheduling_tests_struct[key]['no-dep']:
-                                        if index % 2 == 0 or index == 0:
-                                            index = 0
-                                            index_list = list()
-                                            index_list.append(0)
-                                            index_list.append(index)
-                                            index_str = str(index_list).replace(" ", "")
-                                            index_str += "     "
-                                            timeline = "D"
-                                            for _ in range(latency - 1):
-                                                timeline += "e"
-                                            timeline += "E"
-                                            index_str += timeline + "   " + instruction
-                                            reference = ""
-                                            reference += ""
-                                            index = 0
-                                            if index == 0 or index % 2 == 0:
-                                                reference += "\n" + "// CHECK: " + len('-NEXT') * " " + index_str
-                                            test += reference + "\n"
-                                            timeline_ref = timeline
-                                        else:
-                                            index_list = list()
-                                            index_list.append(0)
-                                            index_list.append(index)
-                                            index_str = str(index_list).replace(" ", "")
-                                            index_str += "     "
-                                            timeline_string = ""
-                                            timeline_index = 0
-                                            timeline_counter = 0
-                                            timeline = ""
-                                            while timeline_counter <= int(int(int(scheduling_table_dict[sched][sched_class]['throughput']))-1):
-                                                if timeline_counter == 0:
-                                                    timeline_string += "."
-                                                    timeline_index += 1
-                                                elif timeline_index < 5:
-                                                    timeline_string += " "
-                                                    timeline_index += 1
-                                                elif timeline_index == 5:
-                                                    timeline_string += "."
-                                                    timeline_index = 1
-                                                else:
-                                                    timeline_index += 1
-                                                timeline_counter += 1
-                                            if test != "":
-                                                timeline += timeline_string
-                                            timeline += "D"
-                                            for _ in range(latency - 1):
-                                                timeline += "e"
-                                            timeline += "E"
-                                            if int(sched_parameters[sched]['IssueWidth']) == 1:
-                                                index_str += timeline + "   " + instruction
-                                            elif int(sched_parameters[sched]['IssueWidth']) > 1:
-                                                if 'blocking' in scheduling_table_dict[sched][sched_class].keys():
-                                                    if scheduling_table_dict[sched][sched_class]['blocking'] == 'true':
-                                                        index_str += timeline + "   " + instruction
-                                            timeline_string = ""
-                                            timeline_index = 0
-                                            timeline_counter = 0
-                                            while timeline_counter <= int(int(int(scheduling_table_dict[sched][sched_class]['throughput']))-1):
-                                                if len(timeline_ref + timeline_string) % 5 == 0:
-                                                    if len(timeline_ref + timeline_string) > len(timeline_ref):
-                                                        timeline_string += "."
-                                                        timeline_index = 1
-                                                    else:
-                                                        timeline_string += " "
-                                                        timeline_index += 1
-                                                elif timeline_index < 5:
-                                                    timeline_string += " "
-                                                    timeline_index += 1
-                                                elif timeline_index == 5:
-                                                    timeline_string += "."
-                                                    timeline_index = 1
-                                                else:
-                                                    timeline_index += 1
-                                                timeline_counter += 1
-                                            if int(sched_parameters[sched]['IssueWidth']) > 1:
-                                                if 'blocking' not in scheduling_table_dict[sched][sched_class].keys():
-                                                    index_str += timeline_ref
-                                                    if index == 0:
-                                                        index_str = "// CHECK: " + index_str
-                                                    elif index > 0:
-                                                        index_str = "// CHECK-NEXT: " + index_str
-                                                    test += index_str + "   " + instruction
-                                                else:
-                                                    if timeline_string.endswith('.') is False:
-                                                        timeline_string = timeline_string[:-1] + "."
-                                                    test = test.replace(timeline_ref, timeline_ref + timeline_string)
-                                                    if index == 0:
-                                                        index_str = "// CHECK: " + index_str
-                                                    elif index > 0:
-                                                        index_str = "// CHECK-NEXT: " + index_str
-                                                    test += index_str
-                                            else:
-                                                if timeline_string.endswith('.') is False:
-                                                    timeline_string = timeline_string[:-1] + "."
-                                                if len(timeline_ref) % 5 == 0:
-                                                    timeline_string = "." + timeline_string[1:]
-                                                test = test.replace(timeline_ref, timeline_ref + timeline_string)
-                                                if index == 0:
-                                                    index_str = "// CHECK: " + index_str
-                                                elif index > 0:
-                                                    index_str = "// CHECK-NEXT: " + index_str
-                                                test += index_str
-                                        index += 1
-                                        if index % 2 == 0:
-                                            indices = ""
-                                            row1 = ""
-                                            row2 = ""
-                                            row2_checked = False
-                                            row1_checked = False
-                                            for digit in range(len_row1):
-                                                indices += str(digit % 10)
-                                            if len(indices) <= 10:
-                                                if row2_checked is False:
-                                                    row2 += indices
-                                                    row2_checked = True
-                                            elif len(indices) > 10:
-                                                len_index = 10
-                                                length = len(indices)
-                                                last_limit = 0
-                                                while length >= 0:
-                                                    if row2_checked is False:
-                                                        limit = length - last_limit
-                                                        if last_limit == 0:
-                                                            row2 += indices[:len_index]
-                                                            row1 += 10 * " "
-                                                        else:
-                                                            if limit > 10:
-                                                                row2 += indices[last_limit:last_limit+10]
-                                                                last_limit = last_limit + 10
-                                                                row1 += 10 * " "
-                                                            else:
-                                                                row2 += indices[last_limit:length]
-                                                                row1 += (length - last_limit) * " "
-                                                        row2_checked = True
-                                                        length -= len_index
-                                                        last_limit = len_index
-                                                    elif row1_checked is False:
-                                                        if length >= last_limit:
-                                                            limit = length - last_limit
-                                                        else:
-                                                            last_limit = length
-                                                            limit = last_limit
-                                                        if limit > 10:
-                                                            row1 += indices[last_limit:last_limit+10]
-                                                            last_limit = last_limit + 10
-                                                            row2 += 10 * " "
-                                                        else:
-                                                            row1 += indices[-last_limit:]
-                                                            row2 += (last_limit) * " "
-                                                        length -= len_index
-                                                        row1_checked = True
-                                                    if row1_checked is True and row2_checked is True:
-                                                        row2_checked = False
-                                                        row1_checked = False
-                                            if key.endswith(".s"):
-                                                file_name = path + "/" + "test_" +  key.replace(".s", "_s") + "_" + key.replace(".s", "_s") + ".s" 
-                                            else:
-                                                 file_name = path + "/" + "test_" +  key + "_" + key + ".s" 
-                                            f = open(file_name, "a")
-                                            f.write(test + "\n")
-                                            f.write("\n\n")
-                                            f.close()
-                                            test = ""
-
+## Function which generates sail description for instructions defined in the XML given as input
+#
+# @path string specifying the path to the folder in which the content will be written
+# @extension_list list specifying which extensions are enabled by the user
+# @return Sail description for the instructions supported
 def generate_sail_description(path, extensions_list):
     config_variables = config.config_environment(config_file, llvm_config)
     instructions = adl_parser.parse_instructions_from_adl(config_variables["ADLName"])[0]
     instrfields = adl_parser.get_instrfield_from_adl(config_variables["ADLName"])[1]
     instrfield_imm = adl_parser.get_instrfield_from_adl(config_variables["ADLName"])[0]
     register_parsed = adl_parser.parse_adl(config_variables["ADLName"])
+    extension_set = ""
+    xlen_set_arch = ""
     if len(extensions_list) > 0:
         for element in extensions_list:
             for instr in instructions.keys():
                 if element in instructions[instr]['attributes']:
-                    file_name = path.replace("ext", element.capitalize() + "ext")
+                    file_name = path.replace("ext", element.lower())
                     if os.path.exists(file_name):
                         os.remove(file_name)
     else:
@@ -11145,14 +11717,14 @@ def generate_sail_description(path, extensions_list):
             for instr in instructions.keys():
                 if element.startswith("LLVMExt"):
                     if element.replace("LLVMExt", "").lower() in instructions[instr]['attributes']:
-                        file_name = path.replace("ext", element.replace("LLVMExt", "").capitalize() + "ext")
+                        file_name = path.replace("ext", element.replace("LLVMExt", "").lower())
                         if os.path.exists(file_name):
                             os.remove(file_name)
     if len(extensions_list) > 0:
         for element in extensions_list:
             for instr in instructions.keys():
                 if element in instructions[instr]['attributes']:
-                    file_name = path.replace("ext", element.capitalize() + "ext")
+                    file_name = path.replace("ext", element.lower())
                     f = open(file_name, 'a')
                     legalDisclaimer.add_sail_license(file_name)
                     f.write("\n\n")
@@ -11163,14 +11735,96 @@ def generate_sail_description(path, extensions_list):
             for instr in instructions.keys():
                 if element.startswith("LLVMExt"):
                     if element.replace("LLVMExt", "").lower() in instructions[instr]['attributes']:
-                        file_name = path.replace("ext", element.replace("LLVMExt", "").capitalize() + "ext")
+                        file_name = path.replace("ext", element.replace("LLVMExt", "").lower())
                         f = open(file_name, 'a')
                         legalDisclaimer.add_sail_license(file_name)
                         f.write("\n\n")
                         f.close()
                         break
+    instruction_list_checked = list()
+    if len(extensions_list) > 0:
+        for element in extensions_list:
+            sys_reg_list = list()
+            for instr in instructions.keys():
+                if element in instructions[instr]['attributes']:
+                    for attribute in instructions[instr]['attributes']:
+                        if "LLVMExt" + attribute.capitalize() in config_variables.keys():
+                            if instr not in instruction_list_checked:
+                                if attribute not in sys_reg_list:
+                                    sys_reg_list.append(attribute)
+                                    instruction_list_checked.append(instr)
+                                else:
+                                    instruction_list_checked.append(instr)
+                                    for attribute in instructions[instr]['attributes']:
+                                        if "LLVMExt" + attribute.capitalize() in config_variables.keys():
+                                            if attribute not in sys_reg_list:
+                                                sys_reg_list.append(attribute)
+            if len(sys_reg_list) > 0:
+                file_name = path.replace("ext", element.lower())
+                f = open(file_name, 'a')
+                extension_set = element.replace("LLVMExt", "").capitalize()
+                main_extension = extension_set
+                instruction_extension_enum = "enum clause extension = " + "Ext_" + extension_set + "\n"
+                base_arch = [s for s in re.findall(r'\d+\d*', config_variables['BaseArchitecture'])]
+                instruction_extension_enum += "function clause extensionEnabled(" + "Ext_" + extension_set + ") = xlen == " + base_arch[0] + " & "
+                if base_arch[0] == '32' and extension_set.lower() != 'rv32i':
+                    instruction_extension_enum += "sys_enable_" + extension_set.lower() + "() & "
+                for reg in sys_reg_list:
+                    if reg == 'rv32c':
+                        reg = 'zca'
+                        instruction_extension_enum += "extensionEnabled(" + "Ext_" + reg.capitalize() + ") & "
+                    elif base_arch[0] == '32' and reg != 'rv32i':
+                        if reg != extension_set.lower():
+                            instruction_extension_enum += "extensionEnabled(" + "Ext_" +  reg.capitalize() + ") & "
+                instruction_extension_enum = instruction_extension_enum.rstrip(" & ")
+                f.write(instruction_extension_enum)
+                f.write("\n\n")
+                f.close()
+    else:
+        for element in config_variables.keys():
+            sys_reg_list = list()
+            if element.startswith("LLVMExt"):
+                for instr in instructions.keys():
+                    if element.replace("LLVMExt", "").lower() in instructions[instr]['attributes']:
+                        for attribute in instructions[instr]['attributes']:
+                            if "LLVMExt" + attribute.capitalize() in config_variables.keys():
+                                if instr not in instruction_list_checked:
+                                    if attribute not in sys_reg_list:
+                                        sys_reg_list.append(attribute)
+                                        instruction_list_checked.append(instr)
+                                    else:
+                                        instruction_list_checked.append(instr)
+                                        for attribute in instructions[instr]['attributes']:
+                                            if "LLVMExt" + attribute.capitalize() in config_variables.keys():
+                                                if attribute not in sys_reg_list:
+                                                    sys_reg_list.append(attribute)
+                if len(sys_reg_list) > 0:
+                    file_name = path.replace("ext", element.replace("LLVMExt", "").lower())
+                    f = open(file_name, 'a')
+                    extension_set = element.replace("LLVMExt", "").capitalize()
+                    instruction_extension_enum = "enum clause extension = " + "Ext_" + extension_set + "\n"
+                    base_arch = [s for s in re.findall(r'\d+\d*', config_variables['BaseArchitecture'])]
+                    instruction_extension_enum += "function clause extensionEnabled(" + "Ext_" + extension_set + ") = xlen == " + base_arch[0] + " & "
+                    for reg in sys_reg_list:
+                        if base_arch[0] == '32' and reg != 'rv32i':
+                            if reg == 'rv32c':
+                                reg = 'zca'
+                            instruction_extension_enum += "sys_enable_" + reg + "()" + " & "
+                    instruction_extension_enum = instruction_extension_enum.rstrip(" & ")
+                    f.write(instruction_extension_enum)
+                    f.write("\n\n")
+                    f.close()
+    instruction_parsed_and_printed = list()
     for instr in instructions.keys():
         if instr in instruction_encoding_dict.keys():
+            prefixed = False
+            prefix_attrib = ""
+            for extension in extensions_list:
+                if extension.capitalize() in config_variables['ExtensionPrefixed']:
+                    if extension in instructions[instr]['attributes']:
+                        prefixed = True
+                        prefix_attrib = extension
+                        break
             statement = "mapping clause encdec"
             reg_list = list()
             if_statement = "if "
@@ -11180,14 +11834,26 @@ def generate_sail_description(path, extensions_list):
                 statement += "_compressed"
             list_fields_instructions = list()
             if instr.lower().startswith("c."):
-                key = instr.lower().replace("c.", "c_")
+                if prefixed is True:
+                    key = instr.lower().replace("c.", "c_")
+                    key = prefix_attrib.upper() + "_" + key
+                else:
+                    key = instr.lower().replace("c.", "c_")
             else:
-                key = instr.lower()
+                if prefixed is True:
+                    key = instr.lower()
+                    key = prefix_attrib.upper() + "_" + key
+                else:
+                    key = instr.lower()
             statement += " = " + key.upper()
             attributes_list = instructions[instr]['attributes']
             for attribute in attributes_list:
                 if "LLVMExt" + attribute.capitalize() in config_variables.keys():
-                    if_statement += "have" + attribute.capitalize() + "()" + " & "
+                    if base_arch[0] == '32' and attribute != 'rv32i':
+                        if attribute == 'rv32c':
+                            attribute = 'zca'
+                        if_statement += "extensionEnabled(" + "Ext_" + attribute.capitalize() + ")" + " & "
+            if_statement += "xlen == " + base_arch[0]
             if if_statement.endswith(" & "):
                 if_statement = if_statement.rstrip(" & ")
             if if_statement != if_statement_copy:
@@ -11211,9 +11877,9 @@ def generate_sail_description(path, extensions_list):
                         content += immediate_binary + " @ "
                     else:
                         for imm in instrfield_imm.keys():
-                            if imm in value and imm in instructions[instr]['fields'][0].keys():
+                            if imm == value.split("{")[0] and imm in instructions[instr]['fields'][0].keys():
                                 if 'signed' not in instrfield_imm[imm].keys():
-                                    imm_type = "ui"
+                                    imm_type = "i"
                                     end = value.split("-")[0]
                                     start = value.split("-")[1]
                                     end = end.replace(imm, "").replace("{", "")
@@ -11256,7 +11922,7 @@ def generate_sail_description(path, extensions_list):
             for register in reg_list:
                 for field in instructions[instr]['fields'][0].keys():
                     if field in instrfields.keys() and field == register:
-                        if str(2 ** int(instrfields[field]['width'])) == config_variables['LLVMGPRBasicWidth']:
+                        if str(2 ** int(instrfields[field]['width'])) == config_variables['LLVMRegBasicWidth']:
                             content_assembly += "reg_name(" + field + ")"
                             reg_list_asm.append(field)
                         else:
@@ -11267,8 +11933,8 @@ def generate_sail_description(path, extensions_list):
                     if field in instrfield_imm.keys() and instructions[instr]['fields'][0][field] == 'imm':
                         content_assembly += "hex_bits_" + str(int(instrfield_imm[field]['width']) + int(instrfield_imm[field]['shift']))  + "("
                         if 'signed' not in instrfield_imm[field].keys():
-                            content_assembly += "uimm"
-                            reg_list_asm.insert(0, 'uimm')
+                            content_assembly += "imm"
+                            reg_list_asm.insert(0, 'imm')
                         else:
                             content_assembly += "imm"
                             reg_list_asm.insert(0, 'imm')
@@ -11305,7 +11971,7 @@ def generate_sail_description(path, extensions_list):
                         if 'signed' not in instrfield_imm[field].keys():
                             content_function += "\tlet " + "imm_val" + " : " + "xlenbits" \
                     + " = "
-                            content_function += 'zero_extend(' + 'uimm' +  '@ ' + "0b" + str('0' * int(instrfield_imm[field]['shift'])) + ");\n"
+                            content_function += 'zero_extend(' + 'imm' +  '@ ' + "0b" + str('0' * int(instrfield_imm[field]['shift'])) + ");\n"
                             function_list.append('imm')
                             ast_clause_list.append(field)
                             signed = False
@@ -11327,39 +11993,48 @@ def generate_sail_description(path, extensions_list):
                         else:
                             content_function += "\tlet " + "imm_val" \
                     + " = "
-                            content_function += "uimm;\n"
+                            content_function += "imm;\n"
                             function_list.append('imm')
                             ast_clause_list.append(field)
             compressed_reg = False
             for field in instructions[instr]['fields'][0].keys():
                 if field in instrfields.keys() and  str(instructions[instr]["fields"][0][field]) == "reg":
                     if 'load' in instructions[instr]['attributes'] or 'store' in instructions[instr]['attributes']:
-                        if str(2 ** int(instrfields[field]['width'])) != config_variables['LLVMGPRBasicWidth']:
+                        if str(2 ** int(instrfields[field]['width'])) != config_variables['LLVMRegBasicWidth']:
                             compressed_reg = True
                             content_function += "\tlet " + field + "_idx" + " = "
                             content_function += "creg2reg_idx(" + field + ");\n"
                             function_list.append(field)
                             ast_clause_list.append(field)
-                        elif str(2 ** int(instrfields[field]['width'])) == config_variables['LLVMGPRBasicWidth']:
+                        elif str(2 ** int(instrfields[field]['width'])) == config_variables['LLVMRegBasicWidth']:
                             content_function += "\tlet " + field + "_val" + " = "
                             if instrfields[field]['ref'] == 'GPR':
                                 content_function += "X(" + field + ");\n" 
                                 function_list.append(field)
                                 ast_clause_list.append(field)
                     else:
-                        if str(2 ** int(instrfields[field]['width'])) == config_variables['LLVMGPRBasicWidth']:
-                            content_function += "\tlet " + field + "_val" + " = "
+                        if str(2 ** int(instrfields[field]['width'])) == config_variables['LLVMRegBasicWidth']:
                             if instrfields[field]['ref'] == 'GPR':
-                                content_function += "X(" + field + ");\n" 
+                                if instrfields[field]['ref'] + "(" + field + ")" in instructions[instr]['inputs']:
+                                    content_function += "\tlet " + field + "_val" + " = "
+                                    content_function += "X(" + field + ");\n" 
+                                elif instrfields[field]['ref'] + "(" + field + ")?" in instructions[instr]['inputs']:
+                                    content_function += "\tlet " + field + "_val" + " = "
+                                    content_function += "X(" + field + ");\n" 
                                 function_list.append(field)
                                 ast_clause_list.append(field)
                         else:
                             content_function += "\tlet " + field + "_idx" + " = "
                             content_function += "creg2reg_idx(" + field + ");\n"
                             if instrfields[field]['ref'] == 'GPR':
-                                compressed_reg = True
-                                content_function += "\tlet " + field + "_val" + " = "
-                                content_function += "X(" + field + "_idx" + ");\n" 
+                                if instrfields[field]['ref'] + "(" + field + ")" in instructions[instr]['inputs']:
+                                    compressed_reg = True
+                                    content_function += "\tlet " + field + "_val" + " = "
+                                    content_function += "X(" + field + "_idx" + ");\n" 
+                                elif instrfields[field]['ref'] + "(" + field + ")?" in instructions[instr]['inputs']:
+                                    compressed_reg = True
+                                    content_function += "\tlet " + field + "_val" + " = "
+                                    content_function += "X(" + field + "_idx" + ");\n" 
                                 function_list.append(field)
                                 ast_clause_list.append(field)
             destination = ""
@@ -11419,13 +12094,28 @@ def generate_sail_description(path, extensions_list):
                 index_var = 0
                 destination_vars = dict()
                 content_list = content_function.split("\n")
+                line_index = 0
+                condition = ""
+                check_condition = True
+                condition_dict = dict()
+                condition_list = list()
                 for line in line_list:
+                    line_index += 1
                     source = ""
                     operator_sign = ""
+                    line_copy = line
                     line = line.replace(" ", "")
                     right_exp = ""
                     if "=" in line:
                         right_exp = line.split("=")[1]
+                    if line.startswith("if"):
+                        condition = line_copy.replace("{", "")
+                        while line_list[line_index].endswith("}") is False:
+                            condition_list.append(line_list[line_index].replace(" ", ""))
+                            line_index += 1
+                    if len(condition_list) > 0 and condition != "":
+                        condition_dict[condition.lstrip(" ")] = condition_list
+                        condition_list = list()
                     if line.startswith("var"):
                         left_exp = line.split("=")[0].replace("var", "")
                         if left_exp != "":
@@ -11514,15 +12204,15 @@ def generate_sail_description(path, extensions_list):
                                         if instrfield not in destination_list:
                                             new_line = "\tlet " + variable[0] + " = " + "X(" + instrfield + "_idx" + ") + offset;"
                                             content_list_copy.append(new_line)
-                    if source == "":
-                        instrfield = line.split("=")[0].replace("\tlet", "").strip(" ")
-                        if instrfield.replace("_val", "") in instrfields.keys():
-                            for field in instructions[instr]['fields'][0]:
-                                if field in instrfield_imm.keys():
-                                    new_line = line.replace(instrfield, variable[0]).replace(";", " + offset;")
-                                    if line in content_list_copy:
-                                        content_list_copy.remove(line)
-                                        content_list_copy.append(new_line)
+                        if source == "":
+                            instrfield = line.split("=")[0].replace("\tlet", "").strip(" ")
+                            if instrfield.replace("_val", "") in instrfields.keys():
+                                for field in instructions[instr]['fields'][0]:
+                                    if field in instrfield_imm.keys():
+                                        new_line = line.replace(instrfield, variable[0]).replace(";", " + offset;")
+                                        if line in content_list_copy:
+                                            content_list_copy.remove(line)
+                                            content_list_copy.append(new_line)
                 content_new = "\n".join(content_list_copy)
                 if "imm_val" in content_new:
                     content_new = content_new.replace("imm_val", "offset")
@@ -11530,9 +12220,12 @@ def generate_sail_description(path, extensions_list):
                     content_new += "\n"
                 p_address = ""
                 if len(variable) > 0:
-                    content_new += "\tmatch translateAddr(" + variable[index_var] + ", Read(Data)) {\n"
+                    content_new += "\tif check_misaligned(" + variable[index_var] + ", DOUBLE)\n"
+                    content_new += "\tthen {handle_mem_exception(" + variable[index_var] + ", E_Load_Addr_Align()); RETIRE_FAIL}\n"
+                    content_new += "\telse match translateAddr(" + variable[index_var] + ", Read(Data)) {\n"
                     content_new += "\tTR_Failure(e, _) => {handle_mem_exception(" + variable[index_var] + ", e); RETIRE_FAIL},\n"
                     p_address = variable[index_var].replace('v', 'p')
+                    virtual_address = variable[index_var]
                 content_new += "\tTR_Address(" + p_address + ", _) =>\n"
                 if  len(variable) > 0 and len(variable) - 1 > index_var:
                     index_var += 1
@@ -11559,11 +12252,43 @@ def generate_sail_description(path, extensions_list):
                     content_new += "\t\t\t\tmatch mem_read(Read(Data), " + p_shift_addr + ", " + mem_values[key_mem] + ", false, false, false) {\n"
                 if  len(variable) > 0:
                     content_new += "\t\t\t\tMemValue(" + variable[index_var] + ") => {\n"
+                condition_line = list()
                 for element in destination_list:
                     if element in instrfields.keys() and instrfields[element]['ref'] == 'GPR':
                         for key_var in destination_vars.keys():
                             if element == destination_vars[key_var]:
-                                if str(2 ** int(instrfields[element]['width'])) != config_variables['LLVMGPRBasicWidth']:
+                                if str(2 ** int(instrfields[element]['width'])) != config_variables['LLVMRegBasicWidth']:
+                                    condition_line.append(instrfields[element]['ref'] +"(" + element + ")=" + key_var + ";")
+                                    break
+                    else:
+                        if "+1" in element:
+                            if element.replace("+1", "") in instrfields.keys() and instrfields[element.replace("+1", "")]['ref'] == 'GPR':
+                                for key_var in destination_vars.keys():
+                                    if element == destination_vars[key_var]:
+                                        if str(2 ** int(instrfields[element.replace("+1", "")]['width'])) != config_variables['LLVMRegBasicWidth']:
+                                            condition_line.append(instrfields[element.replace("+1", "")]['ref'] +"(" + element + ")=" + key_var + ";")
+                                            break
+                for line in condition_line:
+                    if condition != "" and condition in condition_dict.keys():
+                        if line not in condition_dict[condition]:
+                            check_condition = False
+                if check_condition is True:
+                    pattern = re.findall(r"\w+\d*_\w+", condition)
+                    for instrfield in instrfields.keys():
+                        for element in pattern:
+                            if element == instrfield:
+                                if str(2 ** int(instrfields[element]['width'])) != config_variables['LLVMRegBasicWidth']:
+                                    condition = condition.replace(element, element + "_idx")
+                    pattern_digit = re.findall(r"\d+", condition)
+                    if len(pattern_digit) > 0:
+                        condition = condition.replace("(", "").replace(")","").replace(pattern_digit[0], num2words.num2words(pattern_digit[0]) + "s()")
+                    if condition != "":
+                        content_new += "\t\t\t\t" + condition + "then {\n"
+                for element in destination_list:
+                    if element in instrfields.keys() and instrfields[element]['ref'] == 'GPR':
+                        for key_var in destination_vars.keys():
+                            if element == destination_vars[key_var]:
+                                if str(2 ** int(instrfields[element]['width'])) != config_variables['LLVMRegBasicWidth']:
                                     content_new += "\t\t\t\t\tX(" + element + "_idx" + ") = " + "sign_extend(" + key_var + ");\n"
                                     break
                                 else:
@@ -11574,23 +12299,25 @@ def generate_sail_description(path, extensions_list):
                             if element.replace("+1", "") in instrfields.keys() and instrfields[element.replace("+1", "")]['ref'] == 'GPR':
                                 for key_var in destination_vars.keys():
                                     if element == destination_vars[key_var]:
-                                        if str(2 ** int(instrfields[element.replace("+1", "")]['width'])) != config_variables['LLVMGPRBasicWidth']:
-                                            element = element.replace("+1", "") + "_idx" + " + to_bits(" + str(math.log(int(config_variables['LLVMGPRBasicWidth']), 2)).replace(".0", "") + ", " + "1)"
+                                        if str(2 ** int(instrfields[element.replace("+1", "")]['width'])) != config_variables['LLVMRegBasicWidth']:
+                                            element = element.replace("+1", "") + "_idx" + " + to_bits(" + str(math.log(int(config_variables['LLVMRegBasicWidth']), 2)).replace(".0", "") + ", " + "1)"
                                             content_new += "\t\t\t\t\tX(" + element + ") = " + "sign_extend(" + key_var + ")" + ";\n"
                                             break
                                         else:
-                                            element = element.replace("+1", "") + " + to_bits(" + str(math.log(int(config_variables['LLVMGPRBasicWidth']), 2)).replace(".0", "") + ", " + "1)"
+                                            element = element.replace("+1", "") + " + to_bits(" + str(math.log(int(config_variables['LLVMRegBasicWidth']), 2)).replace(".0", "") + ", " + "1)"
                                             content_new += "\t\t\t\t\tX(" + element + ") = " + "sign_extend(" + key_var + ")" + ";\n"
                                             break
+                if condition != "":
+                  content_new += "\t\t\t\t\t};\n"   
                 content_new += "\t\t\t\t\tRETIRE_SUCCESS\n"
                 content_new += "\t\t\t\t},\n"
                 if  len(variable) > 0:
-                    content_new += "\t\t\t\tMemException(e) => {handle_mem_exception(" + variable[0] + ", e); RETIRE_FAIL},\n"
+                    content_new += "\t\t\t\tMemException(e) => {handle_mem_exception(" + virtual_address + ", e); RETIRE_FAIL},\n"
                 content_new += "\t\t\t}\n"
                 content_new += "\t\t}\n"
                 content_new += "\t},\n"
                 if  len(variable) > 0:
-                    content_new += "\tMemException(e) => {handle_mem_exception(" + variable[0] + ", e); RETIRE_FAIL},\n"
+                    content_new += "\tMemException(e) => {handle_mem_exception(" + virtual_address + ", e); RETIRE_FAIL},\n"
                 content_new += "\t},\n"
                 content_new += "}\n"
                 content_function = content_new
@@ -11605,17 +12332,40 @@ def generate_sail_description(path, extensions_list):
                 index_var = 0
                 destination_vars = dict()
                 content_list = content_function.split("\n")
+                condition_dict = dict()
+                condition_list = list()
+                line_index = 0
                 for line in line_list:
+                    line_index += 1
+                    line_index_copy = line_index
                     source = ""
                     operator_sign = ""
+                    line_copy = line
                     line = line.replace(" ", "")
                     right_exp = ""
                     if "=" in line:
                         right_exp = line.split("=")[1]
+                    if line.startswith("if"):
+                        condition = line_copy.replace("{", "")
+                        while line_list[line_index_copy].endswith("}") is False:
+                            condition_list.append(line_list[line_index_copy].replace(" ", ""))
+                            line_index_copy += 1
+                        if len(condition_list) > 0 and condition != "":
+                            condition_dict[condition.lstrip(" ")] = condition_list
+                            condition_list = list()
+                    line_index_copy = line_index
+                    if line.startswith("else"):
+                        condition = line_copy.replace("{", "")
+                        while line_list[line_index_copy].endswith("}") is False:
+                            condition_list.append(line_list[line_index_copy].replace(" ", ""))
+                            line_index_copy += 1
+                        if len(condition_list) > 0 and condition != "":
+                            condition_dict[condition.lstrip(" ")] = condition_list
+                            condition_list = list()
                     if line.startswith("var"):
                         left_exp = line.split("=")[0].replace("var", "")
                         if left_exp != "":
-                            variable.append(left_exp)
+                            variable.append(left_exp.replace(";", ""))
                     else:
                         left_exp = line.split("=")[0]
                     ref = ""
@@ -11709,24 +12459,27 @@ def generate_sail_description(path, extensions_list):
                                                 new_line = "\tlet " + variable[0] + " = " + "X(" + instrfield + "_idx" + ") + offset;"
                                                 content_list_copy.append(new_line)
                                                 variable_used.append(variable[0])
-                    if source == "":
-                        instrfield = line.split("=")[0].replace("\tlet", "").strip(" ")
-                        if instrfield.replace("_val", "") in instrfields.keys():
-                            for field in instructions[instr]['fields'][0]:
-                                if field in instrfield_imm.keys():
-                                    new_line = line.replace(instrfield, variable[0]).replace(";", " + offset;")
-                                    if line in content_list_copy:
-                                        content_list_copy.remove(line)
-                                        content_list_copy.append(new_line)
+                        if source == "":
+                            instrfield = line.split("=")[0].replace("\tlet", "").strip(" ")
+                            if instrfield.replace("_val", "") in instrfields.keys():
+                                for field in instructions[instr]['fields'][0]:
+                                    if field in instrfield_imm.keys():
+                                        new_line = line.replace(instrfield, variable[0]).replace(";", " + offset;")
+                                        if line in content_list_copy:
+                                            content_list_copy.remove(line)
+                                            content_list_copy.append(new_line)
                 content_new = "\n".join(content_list_copy)
                 if "imm_val" in content_new:
                     content_new = content_new.replace("imm_val", "offset")
                 if content_new.endswith("\n") is False:
                     content_new += "\n"
                 if len(variable) > 0:
-                    content_new += "\tmatch translateAddr(" + variable[index_var] + ", Read(Data)) {\n"
+                    content_new += "\tif check_misaligned(" + variable[index_var] + ", DOUBLE)\n"
+                    content_new += "\tthen {handle_mem_exception(" + variable[index_var] + ", E_SAMO_Addr_Align()); RETIRE_FAIL}\n"
+                    content_new += "\telse match translateAddr(" + variable[index_var] + ", Read(Data)) {\n"
                     content_new += "\tTR_Failure(e, _) => {handle_mem_exception(" + variable[index_var] + ", e); RETIRE_FAIL},\n"
                     p_address = variable[index_var].replace('v', 'p')
+                    virtual_address = variable[index_var]
                 content_new += "\tTR_Address(" + p_address + ", _) =>\n"
                 if  len(variable) > 0 and len(variable) - 1 > index_var:
                     index_var += 1
@@ -11741,7 +12494,8 @@ def generate_sail_description(path, extensions_list):
                     if index_var > 0:
                         for line_content in line_list:
                             if variable[index_var] in line_content:
-                                right_op = line_content.split("=")[1]
+                                if "="in line_content:
+                                    right_op = line_content.split("=")[1]
                                 for register in register_parsed.keys():
                                     if register in right_op:
                                         right_op = right_op.replace("(", "").replace(register, "").replace(")", "")
@@ -11753,7 +12507,7 @@ def generate_sail_description(path, extensions_list):
                                         right_op = right_op.replace(";", "").replace(" ", "")
                                         if register == 'GPR':
                                             if right_op in instrfields.keys() or right_op.replace("+1", "") in instrfields.keys():
-                                                if str(2 ** int(instrfields[right_op.replace("+1", "")]['width'])) != config_variables['LLVMGPRBasicWidth']:
+                                                if str(2 ** int(instrfields[right_op.replace("+1", "")]['width'])) != config_variables['LLVMRegBasicWidth']:
                                                     if '+1' in right_op:
                                                         element_reg = "X(" + right_op.replace("+1", "") + "_idx" + "+1)"
                                                     else:
@@ -11764,11 +12518,13 @@ def generate_sail_description(path, extensions_list):
                                                 if  len(variable) > 0 and len(variable) - 1 > index_var:
                                                     index_var += 1
                         index_var = 1
-                        content_new += "\t\t\tlet " + variable[index_var] + " : MemoryOpResult(bool) = mem_write_value(" + p_address + ", " + mem_values[key_mem] + ", " + element_reg_dict[variable[index_var]] + ", " + "false, false, false);\n"
+                        if variable[index_var] in element_reg_dict.keys():
+                            content_new += "\t\t\tlet " + variable[index_var] + " : MemoryOpResult(bool) = mem_write_value(" + p_address + ", " + mem_values[key_mem] + ", " + element_reg_dict[variable[index_var]] + ", " + "false, false, false) in\n"
                         content_new += "\t\t\tmatch result {\n"
                         content_new += "\t\t\t\tMemValue(true) =>{\n"
                 if  len(variable) > 0 and len(variable) - 1 > index_var:
                     index_var += 1
+                virtual_shift_address = ""
                 if len(list(mem_values.keys())) > 1:
                     index += 1
                     content_new += "\t\t\t\tmatch translateAddr(" + list(mem_values.keys())[index] + ", " + "Write(Data)) {\n"
@@ -11780,29 +12536,74 @@ def generate_sail_description(path, extensions_list):
                     while '' in list_regex:
                         list_regex.remove('')
                     p_shift_addr = str(list_regex[0]) + "_" + str(list_regex[1:]).replace("['", "").replace("']", "")
+                    virtual_shift_address = str(list_regex[0]).replace("p", "v") + "+" + str(list_regex[1:]).replace("['", "").replace("']", "")
                     content_new += "\t\t\t\tTR_Address("  + p_shift_addr + ", _) =>\n"
                     content_new += "\t\t\t\t\tmatch mem_write_ea(" + p_shift_addr + ", " + mem_values[key_mem] + ", false, false, false) {\n"
                     content_new += "\t\t\t\t\t\tMemValue(" + "_" + ") => {\n"
+                    value_condition_checked = False
+                    if len(condition_dict.keys()) > 0:
+                        for condition_key in condition_dict.keys():
+                            condition_line = condition_dict[condition_key][0]
+                            if 'if' in condition_key:
+                                condition_line = condition_line.replace(variable[index_var], "")
+                                pattern = re.findall(r"\d+", condition_line)
+                                pattern_instr = re.findall(r"\w+\d*\_*\w*", condition_key)
+                                for instrfield in instrfields.keys():
+                                    for key_pat in pattern_instr:
+                                        if instrfield == key_pat:
+                                            if key_pat in condition_key:
+                                                if str(2 ** int(instrfields[key_pat]['width'])) != config_variables['LLVMRegBasicWidth']:
+                                                    condition_key = condition_key.replace(key_pat, key_pat+"_idx")
+                                                    break
+                                            elif key + "+1" in condition_key:
+                                                if str(2 ** int(instrfields[key_pat]['width'])) != config_variables['LLVMRegBasicWidth']:
+                                                    condition_key = condition_key.replace(key_pat + "+1", key_pat + "+1" +"_idx")
+                                                    break 
+                                content_new += "\t\t\t\t\t\t\tlet value : xlenbits = " + condition_key.replace("(", "").replace(")", "").replace(pattern[0], num2words.num2words(pattern[0])).rstrip(" ") + "s()" + " then " + num2words.num2words(pattern[0]) + "s()" + " "
+                            if 'else'  in condition_key:
+                                for element in variable:
+                                    if element  + "=" in condition_line:
+                                        condition_line = condition_line.replace(element + "=", "")
+                                if 'GPR' in condition_line:
+                                    condition_line = condition_line.strip(";").replace('GPR', 'X')
+                                    for instrfield in instrfields.keys():
+                                        if "(" + instrfield + ")" in condition_line:
+                                            if str(2 ** int(instrfields[instrfield]['width'])) != config_variables['LLVMRegBasicWidth']:
+                                                condition_line = condition_line.replace(instrfield, instrfield +"_idx")
+                                        elif "(" + instrfield + "+1)" in condition_line:
+                                            if str(2 ** int(instrfields[instrfield]['width'])) != config_variables['LLVMRegBasicWidth']:
+                                                condition_line = condition_line.replace(instrfield + "+1", instrfield + "+1" +"_idx")
+                                content_new += condition_key + condition_line.strip(";") + " in" + "\n"
+                                value_condition_checked = True
                     index_var = 0
                     if  len(variable) > 0 and len(variable) - 1 > index_var:
                         if index_var > 1:
-                            content_new += "\t\t\t\t\t\t\tlet " + variable[index_var] + " : MemoryOpResult(bool) = mem_write_value(" + p_address + ", " + mem_values[key_mem] + ", " + element_reg_dict[variable[index_var]] + ", " + "false, false, false);\n"
-                            content_new += "\t\t\t\t\t\t\tmatch " + variable[index_var] + " {\n"
+                            if value_condition_checked is True:
+                                content_new += "\t\t\t\t\t\t\tlet " + variable[index_var] + " : MemoryOpResult(bool) = mem_write_value(" + p_shift_addr + ", " + mem_values[key_mem] + ", " "value, " + "false, false, false) in\n"
+                                content_new += "\t\t\t\t\t\t\tmatch " + variable[index_var] + " {\n"
+                            else:
+                                content_new += "\t\t\t\t\t\t\tlet " + variable[index_var] + " : MemoryOpResult(bool) = mem_write_value(" + p_shift_addr + ", " + mem_values[key_mem] + ", " + element_reg_dict[variable[index_var]] + ", " + "false, false, false) in\n"
+                                content_new += "\t\t\t\t\t\t\tmatch " + variable[index_var] + " {\n"
                         else:
                             while index_var <= 1:
                                 index_var += 1
                             if index_var > 1:
-                                content_new += "\t\t\t\t\t\t\tlet " + variable[index_var] + " : MemoryOpResult(bool) = mem_write_value(" + p_address + ", " + mem_values[key_mem] + ", " + element_reg_dict[variable[index_var]] + ", " + "false, false, false);\n"
-                                content_new += "\t\t\t\t\t\t\tmatch " + variable[index_var] + " {\n"
+                                if value_condition_checked is True:
+                                    content_new += "\t\t\t\t\t\t\tlet " + variable[index_var] + " : MemoryOpResult(bool) = mem_write_value(" + p_shift_addr + ", " + mem_values[key_mem] + ", " "value, " + "false, false, false) in\n"
+                                    content_new += "\t\t\t\t\t\t\tmatch " + variable[index_var] + " {\n"
+                                else:
+                                    content_new += "\t\t\t\t\t\t\tlet " + variable[index_var] + " : MemoryOpResult(bool) = mem_write_value(" + p_shift_addr + ", " + mem_values[key_mem] + ", " + element_reg_dict[variable[index_var]] + ", " + "false, false, false) in\n"
+                                    content_new += "\t\t\t\t\t\t\tmatch " + variable[index_var] + " {\n"
                 index = 0
                 if len(variable) > 0:
-                    content_new += "\t\t\t\t\t\t\t\tMemValue(true) => {RETIRE_SUCCESS},\n"
-                    content_new += "\t\t\t\t\t\t\t\tMemValue(false) => {internal_error(__FILE__, __LINE__, \"" + instr.lower() + " failed\")},\n"
-                    content_new += "\t\t\t\t\t\t\t\tMemException(e) => {handle_mem_exception(" + variable[index] + ", e); RETIRE_FAIL},\n"
-                    content_new += "\t\t\t\t\t\t\t}\n"
+                    if virtual_shift_address != "":
+                        content_new += "\t\t\t\t\t\t\t\tMemValue(true) => {RETIRE_SUCCESS},\n"
+                        content_new += "\t\t\t\t\t\t\t\tMemValue(false) => {internal_error(__FILE__, __LINE__, \"" + instr.lower() + " failed\")},\n"
+                        content_new += "\t\t\t\t\t\t\t\tMemException(e) => {handle_mem_exception(" + virtual_shift_address + ", e); RETIRE_FAIL},\n"
+                        content_new += "\t\t\t\t\t\t\t}\n"
                 content_new += "\t\t\t\t\t},\n"
                 if  len(variable) > 0:
-                    content_new += "\t\t\t\tMemException(e) => {handle_mem_exception(" + variable[index] + ", e); RETIRE_FAIL},\n"
+                    content_new += "\t\t\t\tMemException(e) => {handle_mem_exception(" + virtual_address + ", e); RETIRE_FAIL},\n"
                 content_new += "\t\t\t\t}\n"
                 content_new += "\t\t\t}\n"
                 content_new += "\t\t\t},\n"
@@ -11813,7 +12614,8 @@ def generate_sail_description(path, extensions_list):
                         content_new += "\t\t\tMemException(e) => {handle_mem_exception(" + list(mem_values.keys())[index] + ", e); RETIRE_FAIL},\n"
                 content_new += "\t\t\t}\n"
                 content_new += "\t\t},\n"
-                content_new += "\t\tMemException(e) => {handle_mem_exception(" + variable[0] + ", e); RETIRE_FAIL},\n"
+                if  len(variable) > 0:
+                    content_new += "\t\tMemException(e) => {handle_mem_exception(" + virtual_address + ", e); RETIRE_FAIL},\n"
                 content_new += "\t\t},\n"
                 content_new += "\t}\n"
                 content_function = content_new
@@ -11831,6 +12633,7 @@ def generate_sail_description(path, extensions_list):
                     ref = ""
                     op1 = ""
                     op2 = ""
+                    operator_sign = ""
                     for element in instructions[instr]['syntax']:
                         if element in instrfields.keys():
                             if 'ref' in instrfields[element].keys():
@@ -11879,7 +12682,7 @@ def generate_sail_description(path, extensions_list):
                         if index_values is not None:
                             index_values_first = index_values.replace("(", "").replace(")", "").split(",")[0]
                             index_values_last = index_values.replace("(", "").replace(")", "").split(",")[1]
-                    content_execute += "let result : xlenbits = "
+                    content_execute += "\tlet result : xlenbits = "
                     content_execute_action = False
                     function_call = False
                     if operator_sign.startswith("."):
@@ -11911,6 +12714,149 @@ def generate_sail_description(path, extensions_list):
                         if index_values_first != "" and index_values_last != "":
                             content_execute_action = True
                             content_execute += "[" + index_values_first + ".." + index_values_last + "]"
+                else:
+                    action_parsed = instructions[instr]['action']
+                    regex = re.compile(r'(\w*\(+\w*\_*\d*\)+)=(\w+\_*\(+)(\w+\(+)(\w+\_*)\,*(\w+\(*\d*\)*\)+)\,*(\d+\)*)([^a-zA-Z\d\s:])*(\w+)*')
+                    match = re.search(regex, action_parsed.replace(" ", ""))
+                    content_execute = ""
+                    content_execute_action = ""
+                    if match:
+                        operator_sign = ''
+                        right_operand = ''
+                        left = match.group(1)
+                        function1 = match.group(2)
+                        function2 = match.group(3)
+                        instrfield_used = match.group(4)
+                        if match.group(7) is not None:
+                            if match.group(7) != ";":
+                                operator_sign = match.group(7)
+                        if match.group(8) is not None:
+                            right_operand = match.group(8)
+                        for element in instructions[instr]['syntax']:
+                            if element in instrfields.keys():
+                                if 'ref' in instrfields[element].keys():
+                                    ref = instrfields[element]['ref']
+                                if ref in left:
+                                    left = left.replace(ref, "").replace("(", "").replace(")", "")
+                                    if left in instrfields.keys():
+                                        if str(instructions[instr]["fields"][0][left]) == "reg":
+                                            if destination == "":
+                                                destination = left
+                                content_list_aux = content_function.split("\n")
+                                content_list_aux.remove('')
+                                for line in content_list_aux:
+                                    right_line = line.split("=")[1]
+                                    if function1.lower().replace("(", "") == 'signextend':
+                                        if "sign_extend" in right_line:
+                                            if 'concat' == function2.replace("(", ""):
+                                                value = match.group(5)
+                                                value_index = value.split("(")[1].replace(")", "")
+                                                value_number = word2number.w2n.word_to_num(value.split("(")[0])
+                                                right_line_copy = right_line
+                                                value_index = int(int(value_index) / 4)
+                                                index = 0
+                                                buffer_shift = ''
+                                                for index in range(value_index):
+                                                    buffer_shift += '0'
+                                                    index += 1
+                                                right_line = right_line.replace('imm', 'imm' + " @ " + '0x' + buffer_shift) 
+                                                content_function = content_function.replace(right_line_copy, right_line)
+                                        else:
+                                            if 'concat' == function2.replace("(", ""):
+                                                value = match.group(5)
+                                                value_index = value.split("(")[1].replace(")", "")
+                                                value_number = word2number.w2n.word_to_num(value.split("(")[0])
+                                                right_line_copy = right_line
+                                                value_index = int(int(value_index) / 4)
+                                                index = 0
+                                                buffer_shift = ''
+                                                for index in range(value_index):
+                                                    buffer_shift += '0'
+                                                    index += 1
+                                                right_line = right_line.replace('imm', 'sign_extend(imm' + " @ " + '0x' + buffer_shift + ")") 
+                                                content_function = content_function.replace(right_line_copy, right_line)
+                        content_execute += "\tlet result : xlenbits = "
+                        if instrfield_used in instrfield_imm.keys():
+                            content_execute_action = True
+                            if operator_sign != '':
+                                if right_operand != '':
+                                    if right_operand == 'PC':
+                                        right_operand = 'get_arch_pc()'
+                                    content_execute += 'imm_val' + " " + operator_sign +  " " + right_operand + "\n" 
+                                else:
+                                    content_execute += 'imm_val' + "\n"
+                            else:
+                                content_execute += 'imm_val' + "\n"
+                    else:
+                        action_parsed = action_parsed.replace(" ", "")
+                        action_parsed = action_parsed.split("\n")
+                        action_parsed.remove('{'.strip(" "))
+                        action_parsed.remove('}'.strip(" "))
+                        condition = ""
+                        result = ""
+                        for line in action_parsed:
+                            if line.startswith('if'):
+                                condition += '\tif '
+                                line = line.replace("if(", "")
+                                line = line.strip(" ").replace("){", "")
+                                for instrfield in instrfields.keys():
+                                    if '(' + instrfield + ')' in line:
+                                        if instrfields[instrfield]['ref'] in line:
+                                            if instrfields[instrfield]['ref'] == 'GPR':
+                                                line = line.replace(instrfields[instrfield]['ref'], "", 1).replace(instrfield, instrfield+"_val", 1).replace("(", "", 1).replace(")", "", 1)
+                                copy_line = line
+                                for instrfield in instrfields.keys():
+                                    if instrfield + "_val" in copy_line:
+                                        copy_line = copy_line.replace(instrfield + "_val", "")
+                                if copy_line.startswith("if"):
+                                    copy_line = copy_line.replace("if", "")
+                                operand = copy_line.strip(" ")
+                                operand_check = False
+                                for instrfield in instrfields.keys():
+                                    if 'signed' in operand:
+                                        if operand == ".signedLT()":
+                                            if ".signedLT(" + instrfield + "_val" + ")" in line:
+                                                line = line.replace(".signedLT(" + instrfield + "_val" + ")", " <_s " + instrfield + "_val")
+                                                operand_check = True
+                                                break
+                                        elif operand == ".signedGE()":
+                                            if ".signedGE(" + instrfield + "_val" + ")" in line:
+                                                line = line.replace(".signedGE(" + instrfield + "_val" + ")", " >=_s " + instrfield + "_val")
+                                                operand_check = True
+                                                break
+                                    else:
+                                        if ">=" + instrfield + "_val" in line:
+                                            line = line.replace(">" + instrfield + "_val", " >=" + "_u " + instrfield + "_val")
+                                            operand_check = True
+                                            break
+                                        elif "<" + instrfield + "_val" in line:
+                                            line = line.replace("<" + instrfield + "_val", " <" + "_u " + instrfield + "_val")
+                                            operand_check = True
+                                            break
+                                if operand_check is False:
+                                    line = line.replace(operand, " " + operand + " ")
+                                pattern = re.findall(r'\s*\d+$', line.strip(" "))
+                                if len(pattern) > 0:
+                                    line = line.replace(pattern[0], " " + num2words.num2words(pattern[0]) + "s()")
+                                condition += line
+                            elif line.startswith('NIA'):
+                                if "=" in line:
+                                    result = line.split("NIA=")[1]
+                            for instrfield in instrfield_imm.keys():
+                                if "(" + instrfield + ")" in result:
+                                    result = result.replace("(" + instrfield + ")", "imm_val")
+                                    if 'sign_extend' in result:
+                                        result = result.replace("sign_extend", "")
+                                    break
+                                else:
+                                    if instrfield == result.strip(" ").strip(";"):
+                                        result = result.replace(instrfield, "imm_val")
+                                        break
+                        content_execute += condition.rstrip(" ") + " then " + "{\n"
+                        content_execute += "\t\tlet t : xlenbits = " + result + "\n"
+                        if 'PC' in result:
+                            content_execute += "\t\tset_next_pc(t);\n"
+                        content_execute += "\t};\n"
                 if content_execute_action is True and content_execute != "":
                     content_execute = content_execute.rstrip("\n")
                     content_execute = content_execute + " in" + "\n"
@@ -11919,13 +12865,13 @@ def generate_sail_description(path, extensions_list):
                         ref = instrfields[destination]['ref']
                         if ref == 'GPR':
                             if compressed_reg is True:
-                                content_execute += "X(" + destination + "_idx" + ") = result;\n"
+                                content_execute += "\tX(" + destination + "_idx" + ") = result;\n"
                             else:
-                                content_execute += "X(" + destination + ") = result;\n"
+                                content_execute += "\tX(" + destination + ") = result;\n"
                     else:
-                        content_execute += "X(" + destination + ") = result;\n"
+                        content_execute += "\tX(" + destination + ") = result;\n"
                 content_function += content_execute
-                content_function += "RETIRE_SUCCESS\n"
+                content_function += "\tRETIRE_SUCCESS\n"
             content_function += "}"
             ast_clause = "union clause ast = " + key.upper() + " : " + "("
             for element in ast_clause_list:
@@ -11934,7 +12880,7 @@ def generate_sail_description(path, extensions_list):
                     ast_clause += ", "
                 elif element in instrfields.keys():
                     if 'width' in instrfields[element].keys():
-                        if str(2 ** int(instrfields[element]['width'])) != config_variables['LLVMGPRBasicWidth']:
+                        if str(2 ** int(instrfields[element]['width'])) != config_variables['LLVMRegBasicWidth']:
                             ast_clause += "cregidx" + ", "
                         else:
                             ast_clause += "regidx" + ", "
@@ -11944,22 +12890,9 @@ def generate_sail_description(path, extensions_list):
             if len(extensions_list) > 0:
                 for element in extensions_list:
                     if element in instructions[instr]['attributes']:
-                        file_name = path.replace("ext", element.capitalize() + "ext")
-                        f = open(file_name, 'a')
-                        f.write(ast_clause)
-                        f.write("\n\n")
-                        f.write(statement + "\n" + "\t" + if_statement + "\n" + content + "\n" + "\t" + if_statement)
-                        f.write("\n\n")
-                        f.write(function_clause + content_function + "\n")
-                        f.write("\n")
-                        f.write(statement_assembly + "\n" + "\t" + if_statement + "\n" + content_assembly + "\n" + "\t" + if_statement)
-                        f.write("\n\n")
-                        f.close()
-            else:
-                for element in config_variables.keys():
-                    if element.startswith("LLVMExt"):
-                        if element.replace("LLVMExt", "").lower() in instructions[instr]['attributes']:
-                            file_name = path.replace("ext", element.replace("LLVMExt", "").capitalize() + "ext")
+                        if instr not in instruction_parsed_and_printed:
+                            instruction_parsed_and_printed.append(instr)
+                            file_name = path.replace("ext", element.lower())
                             f = open(file_name, 'a')
                             f.write(ast_clause)
                             f.write("\n\n")
@@ -11970,13 +12903,20 @@ def generate_sail_description(path, extensions_list):
                             f.write(statement_assembly + "\n" + "\t" + if_statement + "\n" + content_assembly + "\n" + "\t" + if_statement)
                             f.write("\n\n")
                             f.close()
-
-
-
-
-
-
-
-
-        
-
+            else:
+                for element in config_variables.keys():
+                    if element.startswith("LLVMExt"):
+                        if element.replace("LLVMExt", "").lower() in instructions[instr]['attributes']:
+                            if instr not in instruction_parsed_and_printed:
+                                instruction_parsed_and_printed.append(instr)
+                                file_name = path.replace("ext", element.replace("LLVMExt", "").lower())
+                                f = open(file_name, 'a')
+                                f.write(ast_clause)
+                                f.write("\n\n")
+                                f.write(statement + "\n" + "\t" + if_statement + "\n" + content + "\n" + "\t" + if_statement)
+                                f.write("\n\n")
+                                f.write(function_clause + content_function + "\n")
+                                f.write("\n")
+                                f.write(statement_assembly + "\n" + "\t" + if_statement + "\n" + content_assembly + "\n" + "\t" + if_statement)
+                                f.write("\n\n")
+                                f.close()
