@@ -4,7 +4,9 @@
 ## Description
 
 ADL-Tools is a suite of utilities designed to automatically generate target description files and encoding tests from an XML file. Specifically, ADL-Tools processes an XML file containing an ADL model for one or more RISC-V extensions and produces the target description files needed for LLVM compiler to support these new extensions. Instruction encoding, instruction scheduling, relocation tests are generated from the same model.
+
 This work was developed as part of Tristan European project, CHIPSJU Contract no: 101095947.
+
 This work was supported by a grant of the Ministry of Research, Innovation and Digitization, CNCS/CCCDI - USFISCDI project number PN-IV-P8-8.1-PME-2024-0016 within PNCDI IV.
 
 
