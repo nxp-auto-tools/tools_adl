@@ -1,4 +1,4 @@
-# Copyright 2024 NXP 
+# Copyright 2023-2025 NXP 
 # SPDX-License-Identifier: BSD-2-Clause
 
 ## @package generate_reference
@@ -16,12 +16,16 @@ import utils
 def generate_reference(adl_file):
 
     # Get the command line arguments
-    adl_file_path, adl_file_name, cmd_extensions, output_dir = utils.cmd_args()
+    adl_file_path, adl_file_name, cmd_extensions, output_dir, display_extensions = utils.cmd_args()
 
     # Define the paths to the "tests" and "references" directories
-    tests_directory = os.path.join(output_dir, 'results_' + adl_file_name, "tests_" + '_'.join(cmd_extensions))
-    references_directory = os.path.join(output_dir, 'results_' + adl_file_name, "refs_" + '_'.join(cmd_extensions))
-
+    if cmd_extensions is not None:
+        tests_directory = os.path.join(output_dir, 'results_' + adl_file_name, "tests_" + '_'.join(cmd_extensions))
+        references_directory = os.path.join(output_dir, 'results_' + adl_file_name, "refs_" + '_'.join(cmd_extensions))
+    else:
+        tests_directory = os.path.join(output_dir, 'results_' + adl_file_name, "tests_all")
+        references_directory = os.path.join(output_dir, 'results_' + adl_file_name, "refs_all")
+      
     # Define a regular expression syntax_pattern to match the desired line
     syntax_pattern = r'# @brief\s+Encode\s+(.+)$'
 
@@ -104,13 +108,13 @@ def generate_reference(adl_file):
                                 mask_high = default_mask << (int(range[0]) + 1)
                                 mask = (mask_low ^ mask_high) & 0xffffffff
                                 if instrfield_value in operand_values_dict:
+                                    # Registers
                                     if instrfield_value in instrfield_values_dict:
                                         for syntax_value, option_name in instrfield_values_dict[instrfield_value]:
                                             if operand_values_dict[instrfield_value] == syntax_value:
-                                                # Registers
                                                 result = mask & (int(option_name) << range[1])
+                                    # Immediates
                                     else:
-                                        # Immediates
                                         shift = instrfield_shift_dict[instrfield]
                                         range_diff = int(range[0]) - int(range[1])
                                         if (i == 0):

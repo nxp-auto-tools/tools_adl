@@ -1,4 +1,4 @@
-# Copyright 2024 NXP 
+# Copyright 2023-2025 NXP 
 # SPDX-License-Identifier: BSD-2-Clause
 
 ## @package parse
@@ -8,7 +8,6 @@ import xml.etree.ElementTree as ET
 import re
 import sys
 import os
-import importlib
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "./../../"))
 import config

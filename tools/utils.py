@@ -1,4 +1,4 @@
-# Copyright 2024 NXP
+# Copyright 2023-2025 NXP
 # SPDX-License-Identifier: BSD-2-Clause
 ## @package utils
 #
@@ -15,9 +15,8 @@ llvm_config = "llvm_config.txt"
 list_dir = list()
 for fname in os.listdir("."):
     list_dir.append(fname)
-if "tools" in list_dir:
-    config_file = "./tools/config.txt"
-    llvm_config = "./tools/llvm_config.txt"
+config_file = os.path.dirname(__file__).replace("\\", "/") + "/" + "config.txt"
+llvm_config = os.path.dirname(__file__).replace("\\", "/") + "/" + "llvm_config.txt"
 
 
 ## Remove all registers that are marked as 'ignored' based on the attributes

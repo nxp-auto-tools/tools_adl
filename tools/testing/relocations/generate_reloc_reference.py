@@ -1,26 +1,39 @@
+# Copyright 2023-2025 NXP 
+# SPDX-License-Identifier: BSD-2-Clause
+
 import os
 import re
-import utils
 import utils_reloc
 import parse_reloc
-import generate_reloc_tests
+import shutil
 from datetime import datetime
 
 
 def generate_reloc_reference():
     
     # Get the command line arguments
-    adl_file_path, adl_file_name, symbol_max_value, output_dir = utils_reloc.cmd_args()
+    adl_file_path, adl_file_name, symbol_max_value, extension_list, output_dir, display_extensions = utils_reloc.cmd_args()
 
-    # Define the paths to the "tests" and "references" directories
-    tests_directory = os.path.join(output_dir, 'reloc_results_' + adl_file_name, 'tests')
-    references_directory = os.path.join(output_dir, 'reloc_results_' + adl_file_name, 'refs')
+    # Refresh output directory and define the paths to the "tests" and "references" directories
+    if extension_list is not None:
+        tests_directory = os.path.join(output_dir, 'reloc_results_' + adl_file_name, 'tests_' + '_'.join(extension_list))
+        references_directory = os.path.join(output_dir, 'reloc_results_' + adl_file_name, 'refs_' + '_'.join(extension_list))
+        if os.path.exists(references_directory):
+            shutil.rmtree(references_directory)
+        os.makedirs(os.path.join(output_dir, 'reloc_results_' + adl_file_name, 'refs_' + '_'.join(extension_list)), exist_ok=True)
+
+    else:
+        tests_directory = os.path.join(output_dir, 'reloc_results_' + adl_file_name, 'tests_all')
+        references_directory = os.path.join(output_dir, 'reloc_results_' + adl_file_name, 'refs_all')
+        if os.path.exists(references_directory):
+            shutil.rmtree(references_directory)
+        os.makedirs(os.path.join(output_dir, 'reloc_results_' + adl_file_name, 'refs_all'), exist_ok=True)
 
     # Dictionaries containing information for generating references
     instruction_width_dict = parse_reloc.instructions_widths(adl_file_path)
     instruction_syntaxName_dict = parse_reloc.instructions_syntaxNames(adl_file_path)
     instruction_alias_dict = parse_reloc.instructions_aliases(adl_file_path)
-    relocation_instructions_dict = generate_reloc_tests.filter_relocations_instructions_dict()
+    relocation_instructions_dict = parse_reloc.relocations_instructions(adl_file_path, parse_reloc.operands_instructions(parse_reloc.instructions_operands(adl_file_path)))
     relocation_value_dict = parse_reloc.relocations_values(adl_file_path)
     relocation_dependencies_dict = parse_reloc.relocations_dependencies(adl_file_path, relocation_instructions_dict)
     relocation_label_dict = parse_reloc.relocations_labels(adl_file_path)
@@ -53,7 +66,6 @@ def generate_reloc_reference():
 
                 # Write the information to the corresponding reference file
                 with open(ref_asm_file_path, 'w') as ref_asm_file:
-                    # Check instruction width
                     now = datetime.now()
                     ref_asm_file.write(f"# Copyright (c) {now.strftime('%Y')} NXP\n")
                     ref_asm_file.write("# SPDX-License-Identifier: BSD-2-Clause\n\n")

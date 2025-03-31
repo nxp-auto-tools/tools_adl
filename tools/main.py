@@ -1,4 +1,4 @@
-# Copyright 2024 NXP
+# Copyright 2023-2025 NXP
 # SPDX-License-Identifier: BSD-2-Clause
 ## @package main
 #
@@ -24,9 +24,8 @@ def main():
     list_dir = list()
     for fname in os.listdir("."):
         list_dir.append(fname)
-    if "tools" in list_dir:
-        config_file = "./tools/config.txt"
-        llvm_config = "./tools/llvm_config.txt"
+    config_file = os.path.dirname(__file__).replace("\\", "/") + "/" + "config.txt"
+    llvm_config = os.path.dirname(__file__).replace("\\", "/") + "/" + "llvm_config.txt"
     config_variables = config.config_environment(config_file, llvm_config)
     f = open(config_file, "r")
     lines = f.readlines()
@@ -57,49 +56,51 @@ def main():
             f.write(line)
     f.close()
     config_variables = config.config_environment(config_file, llvm_config)
-    instructions = adl_parser.parse_instructions_from_adl(config_variables["ADLName"])
-    regclass = adl_parser.parse_adl(config_variables["ADLName"])
+    regclass = adl_parser.parse_registers_from_adl(config_variables["ADLName"])
     alias_regs = adl_parser.get_alias_for_regs(config_variables["ADLName"])
     instrfield = adl_parser.get_instrfield_offset(config_variables["ADLName"])
     instrfield_offset = instrfield[0]
     instrfield_ref = instrfield[1]
-    adl_parser.parse_instructions_from_adl(config_variables["ADLName"])
-    if path.endswith("tools"):
-        config_variables["RegisterInfoFile"] = (
-            "." + config_variables["RegisterInfoFile"]
-        )
-        config_variables["InstructionInfoFile"] = (
-            "." + config_variables["InstructionInfoFile"]
-        )
-        config_variables["InstructionFormatFile"] = (
-            "." + config_variables["InstructionFormatFile"]
-        )
-        config_variables["InstructionFormatFile16"] = (
-            "." + config_variables["InstructionFormatFile16"]
-        )
-        config_variables["InstructionAliases"] = (
-            "." + config_variables["InstructionAliases"]
-        )
-        config_variables["OperandsFile"] = "." + config_variables["OperandsFile"]
-        config_variables["OperandsFile16"] = "." + config_variables["OperandsFile16"]
-        config_variables["CallingConventionFile"] = (
-            "." + config_variables["CallingConventionFile"]
-        )
-        config_variables["RelocationFile"] = "." + config_variables["RelocationFile"]
-    extensions_list = []
+    config_variables["RegisterInfoFile"] = (
+        os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', config_variables["RegisterInfoFile"])
+    )
+    config_variables["InstructionInfoFile"] = (
+        os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', config_variables["InstructionInfoFile"])
+    )
+    config_variables["InstructionFormatFile"] = (
+        os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', config_variables["InstructionFormatFile"])
+    )
+    config_variables["InstructionFormatFile16"] = (
+        os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', config_variables["InstructionFormatFile16"])
+    )
+    config_variables["InstructionAliases"] = (
+        os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', config_variables["InstructionAliases"])
+    )
+    config_variables["OperandsFile"] = os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', config_variables["OperandsFile"])
+    config_variables["OperandsFile16"] = os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', config_variables["OperandsFile16"])
+    config_variables["CallingConventionFile"] = (
+        os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', config_variables["CallingConventionFile"])
+    )
+    config_variables["RelocationFile"] = os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', config_variables["RelocationFile"])
+    extensions_list = list()
     output_dir = ""
+    no_sail = False
     parser = argparse.ArgumentParser()
     parser.add_argument("file", type=str)
     parser.add_argument("--extension", "-e", dest="extension", type=str)  # Elimină "="
     parser.add_argument("--output", "-o", dest='output', type=str)
+    parser.add_argument("--no_sail", dest="no_sail", type=str)
     args = parser.parse_args()
     if args.extension is None:
-        extensions_list = []
+        extensions_list = list()
     else:
         extensions = args.extension
         extensions = extensions.replace("'", "").replace("[", "").replace("]", "")
         extensions_list = extensions.split(",")
     output_dir = args.output
+    no_sail = args.no_sail
+    if no_sail is None:
+        no_sail = False
     output_dir_refresh = False
     if output_dir != "" and output_dir is not None:
         file_name = os.path.basename(config_variables["RegisterInfoFile"])
@@ -117,7 +118,6 @@ def main():
             output_dir_refresh = True
         config_variables['RegisterInfoFile'] = output_dir + file_name
         legalDisclaimer.get_copyright(config_variables["RegisterInfoFile"])
-        legalDisclaimer.get_generated_file(config_variables["RegisterInfoFile"])
         files.generate_file(
             regclass,
             config_variables["RegisterInfoFile"],
@@ -136,7 +136,6 @@ def main():
         if os.path.exists(config_variables["RegisterInfoFile"]):
             os.remove(config_variables["RegisterInfoFile"])
         legalDisclaimer.get_copyright(config_variables["RegisterInfoFile"])
-        legalDisclaimer.get_generated_file(config_variables["RegisterInfoFile"])
         files.generate_file(
             regclass,
             config_variables["RegisterInfoFile"],
@@ -151,6 +150,8 @@ def main():
             config_variables["RegisterClass"],
             config_variables["Namespace"],
         )
+    files.generate_sched_tests(config_variables["TestScheduling"], extensions_list)
+    files.generate_scheduling_ref(config_variables["TestScheduling"], extensions_list)
     if output_dir != "" and output_dir is not None:
         file_name = os.path.basename(config_variables["ScheduleFileTable"])
         scheduling_table_dict = adl_parser.parse_sched_table_from_adl(config_variables["ADLName"])
@@ -185,7 +186,6 @@ def main():
             output_dir_refresh = True
         config_variables['InstructionInfoFile'] = output_dir + file_name
         legalDisclaimer.get_copyright(config_variables["InstructionInfoFile"])
-        legalDisclaimer.get_generated_file(config_variables["InstructionInfoFile"])
         files.generate_file_instructions(
             config_variables["InstructionInfoFile"], extensions_list
         )
@@ -193,10 +193,26 @@ def main():
         if os.path.exists(config_variables["InstructionInfoFile"]):
             os.remove(config_variables["InstructionInfoFile"])
         legalDisclaimer.get_copyright(config_variables["InstructionInfoFile"])
-        legalDisclaimer.get_generated_file(config_variables["InstructionInfoFile"])
         files.generate_file_instructions(
             config_variables["InstructionInfoFile"], extensions_list
         )
+    if output_dir != "" and output_dir is not None:
+        file_name = os.path.basename(config_variables["RegisterInfoFile"])
+        output_dir = os.path.abspath(output_dir).replace("\\","/")
+        if output_dir.endswith("/") is False:
+            output_dir += "/"
+        if os.path.exists(output_dir):
+            if output_dir_refresh is False:
+                shutil.rmtree(output_dir, ignore_errors=True)    
+                output_dir_refresh = True
+                os.mkdir(output_dir)
+        else:
+            os.mkdir(output_dir)
+            output_dir_refresh = True
+        config_variables['RegisterInfoFile'] = output_dir + file_name
+        files.generate_register_pairs(config_variables["RegisterInfoFile"])
+    else:
+        files.generate_register_pairs(config_variables["RegisterInfoFile"])
     if output_dir != "" and output_dir is not None:
         file_name = os.path.basename(config_variables["InstructionFormatFile"])
         output_dir = os.path.abspath(output_dir).replace("\\","/")
@@ -212,13 +228,11 @@ def main():
             output_dir_refresh = True
         config_variables['InstructionFormatFile'] = output_dir + file_name
         legalDisclaimer.get_copyright(config_variables["InstructionFormatFile"])
-        legalDisclaimer.get_generated_file(config_variables["InstructionFormatFile"])
         files.generate_instruction_format(config_variables["InstructionFormatFile"], config_variables["InstructionFormatFile"].replace(file_name, ""))
     else:
         if os.path.exists(config_variables["InstructionFormatFile"]):
             os.remove(config_variables["InstructionFormatFile"])
         legalDisclaimer.get_copyright(config_variables["InstructionFormatFile"])
-        legalDisclaimer.get_generated_file(config_variables["InstructionFormatFile"])
         files.generate_instruction_format(config_variables["InstructionFormatFile"], config_variables["InstructionFormatFile"])
     if output_dir != "" and output_dir is not None:
         file_name = os.path.basename(config_variables["OperandsFile"])
@@ -237,9 +251,7 @@ def main():
         config_variables['OperandsFile'] = output_dir + file_name
         config_variables['OperandsFile16'] = output_dir + file_name_c
         legalDisclaimer.get_copyright(config_variables["OperandsFile"])
-        legalDisclaimer.get_generated_file(config_variables["OperandsFile"])
         legalDisclaimer.get_copyright(config_variables["OperandsFile16"])
-        legalDisclaimer.get_generated_file(config_variables["OperandsFile16"])
         files.write_imms_classes(
             config_variables["OperandsFile"],
             config_variables["OperandsFile16"],
@@ -250,11 +262,9 @@ def main():
         if os.path.exists(config_variables["OperandsFile"]):
             os.remove(config_variables["OperandsFile"])
         legalDisclaimer.get_copyright(config_variables["OperandsFile"])
-        legalDisclaimer.get_generated_file(config_variables["OperandsFile"])
         if os.path.exists(config_variables["OperandsFile16"]):
             os.remove(config_variables["OperandsFile16"])
         legalDisclaimer.get_copyright(config_variables["OperandsFile16"])
-        legalDisclaimer.get_generated_file(config_variables["OperandsFile16"])
         files.write_imms_classes(
             config_variables["OperandsFile"],
             config_variables["OperandsFile16"],
@@ -300,16 +310,14 @@ def main():
             output_dir_refresh = True
         config_variables['CallingConventionFile'] = output_dir + file_name
         legalDisclaimer.get_copyright(config_variables["CallingConventionFile"])
-        legalDisclaimer.get_generated_file(config_variables["CallingConventionFile"])
         files.write_calling_convention(config_variables["CallingConventionFile"])
     else:
+        config_variables["CallingConventionFile"] = os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', config_variables["CallingConventionFile"])
         if os.path.exists(config_variables["CallingConventionFile"]):
             os.remove(config_variables["CallingConventionFile"])
             legalDisclaimer.get_copyright(config_variables["CallingConventionFile"])
-            legalDisclaimer.get_generated_file(config_variables["CallingConventionFile"])
         else:
             legalDisclaimer.get_copyright(config_variables["CallingConventionFile"])
-            legalDisclaimer.get_generated_file(config_variables["CallingConventionFile"])
         files.write_calling_convention(config_variables["CallingConventionFile"])
     adl_parser.parse_relocations(config_variables["ADLName"])
     if output_dir != "" and output_dir is not None:
@@ -327,16 +335,13 @@ def main():
             output_dir_refresh = True
         config_variables['RelocationFile'] = output_dir + file_name
         legalDisclaimer.get_copyright(config_variables["RelocationFile"])
-        legalDisclaimer.get_generated_file(config_variables["RelocationFile"])
-        files.write_calling_convention(config_variables["RelocationFile"])
+        files.generate_relocation_define(config_variables["RelocationFile"])
     else:
         if os.path.exists(config_variables["RelocationFile"]):
             os.remove(config_variables["RelocationFile"])
             legalDisclaimer.get_copyright(config_variables["RelocationFile"])
-            legalDisclaimer.get_generated_file(config_variables["RelocationFile"])
         else:
             legalDisclaimer.get_copyright(config_variables["RelocationFile"])
-            legalDisclaimer.get_generated_file(config_variables["RelocationFile"])
         files.generate_relocation_define(config_variables["RelocationFile"])
     if output_dir != "" and output_dir is not None:
         file_name = os.path.basename(config_variables["IntrinsicsFile"])
@@ -365,6 +370,9 @@ def main():
     else:
         if os.path.exists(config_variables["IntrinsicsFile"]):
             os.remove(config_variables["IntrinsicsFile"])
+        config_variables["IntrinsicsFile"] = os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', config_variables["IntrinsicsFile"])
+        config_variables["BuiltinHeader"] = os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', config_variables["BuiltinHeader"])
+        config_variables["BuiltinFile"] = os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', config_variables["BuiltinFile"])
         files.generate_intrinsics(config_variables["IntrinsicsFile"], extensions_list)
         files.generate_builtin(
             config_variables["BuiltinFile"],
@@ -387,51 +395,34 @@ def main():
         config_variables['MemoryOperand'] = output_dir + file_name
         files.generate_operand_mem_wrapper_class(config_variables["MemoryOperand"])
     else:
+        config_variables["MemoryOperand"] = os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', config_variables["MemoryOperand"])
         files.generate_operand_mem_wrapper_class(config_variables["MemoryOperand"])
-    if output_dir != "" and output_dir is not None:
-        file_name = os.path.basename(config_variables["RegisterInfoFile"])
-        output_dir = os.path.abspath(output_dir).replace("\\","/")
-        if output_dir.endswith("/") is False:
-            output_dir += "/"
-        if os.path.exists(output_dir):
-            if output_dir_refresh is False:
-                shutil.rmtree(output_dir, ignore_errors=True)    
-                output_dir_refresh = True
-                os.mkdir(output_dir)
-        else:
-            os.mkdir(output_dir)
-            output_dir_refresh = True
-        config_variables['RegisterInfoFile'] = output_dir + file_name
-        files.generate_register_pairs(config_variables["RegisterInfoFile"])
-    else:
-        files.generate_register_pairs(config_variables["RegisterInfoFile"])
     if output_dir != "" and output_dir is not None:
         include_path = os.path.abspath(output_dir).replace("\\","/")
         files.generate_intrinsic_tests(config_variables['TestIntrinsics'], include_path)
     else:
         include_path = os.path.abspath(os.path.dirname(config_variables['BuiltinHeader'])).replace("\\","/")
+        include_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', os.path.dirname(config_variables['BuiltinHeader'])).replace("\\","/")
         files.generate_intrinsic_tests(config_variables['TestIntrinsics'], include_path)
-    files.generate_sched_tests(config_variables["TestScheduling"])
-    files.generate_scheduling_ref(config_variables["TestScheduling"])
-    if output_dir != "" and output_dir is not None:
-        file_name = os.path.basename(config_variables["SailDescription"])
-        output_dir = os.path.abspath(output_dir).replace("\\","/")
-        if output_dir.endswith("/") is False:
-            output_dir += "/"
-        if os.path.exists(output_dir):
-            if output_dir_refresh is False:
-                shutil.rmtree(output_dir, ignore_errors=True)    
-                output_dir_refresh = True
+    if no_sail is False:
+        if output_dir != "" and output_dir is not None:
+            file_name = os.path.basename(config_variables["SailDescription"])
+            output_dir = os.path.abspath(output_dir).replace("\\","/")
+            if output_dir.endswith("/") is False:
+                output_dir += "/"
+            if os.path.exists(output_dir):
+                if output_dir_refresh is False:
+                    shutil.rmtree(output_dir, ignore_errors=True)    
+                    output_dir_refresh = True
+                    os.mkdir(output_dir)
+            else:
                 os.mkdir(output_dir)
+                output_dir_refresh = True
+            config_variables['SailDescription'] = output_dir + file_name
+            files.generate_sail_description(config_variables["SailDescription"], extensions_list)
         else:
-            os.mkdir(output_dir)
-            output_dir_refresh = True
-        config_variables['SailDescription'] = output_dir + file_name
-        files.generate_sail_description(config_variables["SailDescription"], extensions_list)
-    else:
-        files.generate_sail_description(config_variables["SailDescription"], extensions_list)
+            config_variables["SailDescription"] = os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', config_variables["SailDescription"])
+            files.generate_sail_description(config_variables["SailDescription"], extensions_list)
     del config_variables
 
-
-if __name__ == "__main__":
-    main()
+main()

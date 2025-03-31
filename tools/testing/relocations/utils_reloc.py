@@ -1,4 +1,4 @@
-# Copyright 2024 NXP 
+# Copyright 2023-2025 NXP 
 # SPDX-License-Identifier: BSD-2-Clause
 
 ## @package utils
@@ -9,6 +9,7 @@ import os
 import sys
 import argparse
 import re
+import parse_reloc
 sys.path.append(os.path.join(os.path.dirname(__file__), "../encoding/"))
 import utils
 
@@ -16,23 +17,33 @@ import utils
 # @return @b adl_file_path The path to the adl xml file
 # @return @b adl_file_name The name of the adl xml file without extensions
 # @return @b symbol_max_value The integer value for symbol table
+# @return @b extension Comma-separated list of extensions
 # @return @b output_dir The output directory for relocations tests
 def cmd_args():
 
     script_directory = os.path.dirname(os.path.abspath(__file__))
 
-    parser = argparse.ArgumentParser(description="Generate relocations tests based on ADL file and previously generated encoding tests", usage="python make_reloc.py adl_file symbol_max_value [-o, --output <output_directory>]")
+    parser = argparse.ArgumentParser(description="Generate relocations tests based on ADL file and previously generated encoding tests", usage="python make_reloc.py adl_file symbol_max_value [--extension <comma-separated_list_of_extensions>] [-o, --output <output_directory>]")
     parser.add_argument("adl_file", type=str, help="path to the adl xml file")
     parser.add_argument("symbol_max_value", type=int, help="integer value for symbol table")
+    parser.add_argument("--extension", type=parse_extensions, help="comma-separated list of extensions")
     parser.add_argument("-o", "--output", type=str, default=script_directory, help="create an output directory for relocations tests")
+    parser.add_argument("--list", action="store_true", help="Display the list of available extensions")
 
     args = parser.parse_args()
     adl_file_path = args.adl_file
     adl_file_name = utils.remove_all_extensions(adl_file_path)
     symbol_max_value = args.symbol_max_value
+    extension_list = args.extension
     output_dir = args.output
+    display_extensions = args.list
 
-    return adl_file_path, adl_file_name, symbol_max_value, output_dir
+    return adl_file_path, adl_file_name, symbol_max_value, extension_list, output_dir, display_extensions
+
+
+## Split command line extensions
+def parse_extensions(extensions_list):
+    return extensions_list.split(',')
 
 
 ## Searches for the next character after instruction name inside the name of the test file

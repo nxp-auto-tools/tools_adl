@@ -1,9 +1,8 @@
-// Copyright 2024 NXP
+// Copyright 2023-2025 NXP
 // SPDX-License-Identifier: BSD-2-Clause
 Configuration file for ADL parser & .td files generator
 
-ADLName = ./models/adl/zilsd/rv32ic_zilsd_zclsd_release.adl.xml
-IgnoredAttrib = {nia, cia}
+ADLName = ./models/adl/release/rv32ic_zilsd_zclsd_release.adl.xml
+IgnoredAttrib = {nia, cia, model_only, ignored}
 legalDisclaimer = legalDisclaimer.py
-InstructionIgnoredAttrib = model_only
 IgnoredInstructions = {}

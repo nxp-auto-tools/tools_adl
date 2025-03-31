@@ -1,10 +1,11 @@
-# Copyright 2024 NXP
+# Copyright 2023-2025 NXP
 # SPDX-License-Identifier: BSD-2-Clause
 ## @package config
 #
 # The configuration module which parses the config.txt file
 import re
-
+import ast
+import os
 
 ## A function that parses each line from config.txt using regular expressions
 #
@@ -21,19 +22,16 @@ def config_environment(config_file, llvm_file):
     for line in Lines[1:]:
         newline = line.strip()
         x = re.findall(
-            r'\.*[\#"a-z_A-Z0-9]*\/*\:*[\#"a-z_A-Z0-9]*\/*\.*[\#"a-z_A-Z0-9]*\/*\.*[\#"a-zA-z0-9\.]*',
+            r'\.*[\#\"a-zA-Z0-9_\-\ \\]*\/*\.*(?:\.\.\/*)*[\#\"a-zA-Z0-9_\-\ ]*\/*\.*[\#\"a-zA-Z0-9_\-\ \\]*\/*\.*[\#\"a-zA-Z0-9_\-\.\ \\]*',
             newline,
         )
         args = [elem.strip(" ") for elem in x if elem != ""]
         if args[0] == "ADLName":
-            if len(args) > 2:
-                args[1] = args[1] + str(args[2:][0])
-        if args[0] == "IgnoredAttrib":
+            if len(args) >= 2:
+                config_vars[args[0]] = "".join(args[1:])
+        elif args[0] == "IgnoredAttrib":
             ignored_attrib = list(args[1:])
             config_vars[args[0]] = ignored_attrib
-        elif args[0] == "ApprovedImm":
-            approved_imm = list(args[1:])
-            config_vars[args[0]] = approved_imm
         elif args[0] == "IgnoredInstructions":
             ignored_inst = list(args[1:])
             config_vars[args[0]] = ignored_inst
@@ -82,6 +80,9 @@ def config_environment(config_file, llvm_file):
             vt_attrib = list(args[1:])
             config_vars[args[0]] = vt_attrib
         elif args[0] == "LLVMOtherVTReloc":
+            vt_attrib = list(args[1:])
+            config_vars[args[0]] = vt_attrib
+        elif args[0] == "RegisterClassDisabledABI":
             vt_attrib = list(args[1:])
             config_vars[args[0]] = vt_attrib
         elif args[0] == "LLVMOperandTypeAttrib":
@@ -205,13 +206,14 @@ def config_environment(config_file, llvm_file):
             llvmvflags = list(args[1:])
             config_vars[args[0]] = llvmvflags
         elif args[0] == "RegisterAllocationOrder":
-            calling_convention = list()
-            matches = re.findall(r"(\w+):\s*\[((?:\w+(?:,\s*)?)+)\](?:,\s*)?", newline)
-            for key, values in matches:
-                calling_convention.append(
-                    {key: [value.strip() for value in re.findall(r"\w+", values)]}
-                )
-            config_vars[args[0]] = calling_convention
+            pattern = r'(\w+)\s*:\s*\[(.+?)\](?=,|\})'
+            matches = re.findall(pattern, newline)
+            result_dict = {}
+            for key, raw_values in matches:
+                    safe_values = re.sub(r'(\b\w+\b)', r'"\1"', raw_values)
+                    parsed_values = ast.literal_eval(f"[{safe_values}]")
+                    result_dict[key] = parsed_values
+            config_vars[args[0]] = result_dict
         elif args[0] == "CallingConventionAllocationOrder":
             calling_convention = list()
             matches = re.findall(r"(\w+):\s*\[((?:\w+(?:,\s*)?)+)\](?:,\s*)?", newline)
@@ -228,7 +230,7 @@ def config_environment(config_file, llvm_file):
                     {key: [value.strip() for value in re.findall(r"\w+", values)]}
                 )
             config_vars[args[0]] = calling_convention
-        elif args[0] == "XLenVTValueType" or args[0] == "XLenRIRegInfo":
+        elif args[0] == "XLenVTValueType" or args[0] == "XLenRIRegInfo" or args[0] == 'RegInfosPair':
             lines = line.strip().split("\n")
             for line in lines:
                 match = re.match(r"(\w+)\s*=\s*(.+)", line)
@@ -244,29 +246,35 @@ def config_environment(config_file, llvm_file):
                     key = match.group(1)
                     value = match.group(2)
                     config_vars[key] = value.strip()
+        elif args[0] == "SubReg_GPR_Even_HW" or args[0] == "SubReg_GPR_Odd_HW":
+            lines = line.strip().split("\n")
+            for line in lines:
+                match = re.match(r"(\w+)\s*=\s*(.+)", line)
+                if match:
+                    key = match.group(1)
+                    value = match.group(2)
+                    config_vars[key] = value.strip()
+        elif args[0] == 'RegisterClassChild':
+            pattern = r"(\w+(?:\{\d+(?:-\d+)?\})?)=('[^']*'|!?\w+\([^)]*\)|\w+)"
+            matches = re.findall(pattern, line)
+            result = {match[0] :match[1] for match in matches}
+            config_vars[args[0]] = result
+        elif args[0] == 'RegisterClass':
+            pattern = r"(\w+(?:\{\d+(?:-\d+)?\})?)=('[^']*'|!?\w+\([^)]*\)|\w+)"
+            matches = re.findall(pattern, line)
+            result = {match[0] :match[1] for match in matches}
+            config_vars[args[0]] = result
+        elif args[0] == "RegisterClassWrapper":
+            pattern = r"(\w+(?:\{\d+(?:-\d+)?\})?)=('[^']*'|!?\w+\([^)]*\)|\w+)"
+            matches = re.findall(pattern, line)
+            result = {match[0] :match[1] for match in matches}
+            config_vars[args[0]] = result
         elif args[0] == "DecoderNamespace":
             decoder_namespace = dict()
-            regex = re.compile(r'(\w+)=\s*(?:"([^"]*)"|(\S+))')
-            line = line.split("=", 1)[1].replace("{", "").replace("}", "").strip(" ")
-            match = re.findall(regex, line)
-            match = (
-                str(match)
-                .replace("[", "")
-                .replace("]", "")
-                .replace("(", "")
-                .replace(")", "")
-                .replace("'", "")
-                .split(",")
-            )
-            match_copy = match
-            for element in match_copy:
-                if element.isalpha() is False:
-                    match.remove(element)
-            index = 0
-            while index < len(match) - 1:
-                decoder_namespace[match[index].strip()] = match[index + 1].strip()
-                index += 2
-            config_vars[args[0]] = decoder_namespace
+            regex = re.compile(r'(\w+)=([\w\d_]+)')
+            line = line.replace(args[0] + " = ", "")
+            dictionary = dict(re.findall(regex, line))
+            config_vars[args[0]] = dictionary
         else:
             if args[0] not in config_vars.keys():
                 config_vars[args[0]] = args[1]

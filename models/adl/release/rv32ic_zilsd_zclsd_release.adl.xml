@@ -1,10 +1,12 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-
+<!--Copyright 2023-2025 NXP
+SPDX-License-Identifier: BSD-2-Clause 
+-->
 <data>
 <cores>
 <core name="ZILSD">
 <licenseText>
-<str> Copyright 2024 NXP
+<str> Copyright 2023-2025 NXP
 SPDX-License-Identifier: BSD-2-Clause </str>
 </licenseText>
 <doc>
@@ -271,6 +273,13 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 <directive>
 <str>.reloc</str>
 </directive>
+<action>
+<str><![CDATA[
+{
+    R = S + A ;
+}
+]]></str>
+</action>
 </reloc>
 <reloc name="R_RISCV_64">
 <abbrev>
@@ -294,6 +303,112 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 <directive>
 <str>.reloc</str>
 </directive>
+<action>
+<str><![CDATA[
+{
+    R = S + A ;
+}
+]]></str>
+</action>
+</reloc>
+<reloc name="R_RISCV_BRANCH">
+<abbrev>
+<str></str>
+</abbrev>
+<field_width>
+<int>12</int>
+</field_width>
+<pcrel>
+<str>true</str>
+</pcrel>
+<value>
+<int>16</int>
+</value>
+<right_shift>
+<int>1</int>
+</right_shift>
+<action>
+<str><![CDATA[
+{
+    R = S + A - P ;
+}
+]]></str>
+</action>
+</reloc>
+<reloc name="R_RISCV_JAL">
+<abbrev>
+<str></str>
+</abbrev>
+<field_width>
+<int>20</int>
+</field_width>
+<pcrel>
+<str>true</str>
+</pcrel>
+<value>
+<int>17</int>
+</value>
+<right_shift>
+<int>1</int>
+</right_shift>
+<action>
+<str><![CDATA[
+{
+    R = S + A - P ;
+}
+]]></str>
+</action>
+</reloc>
+<reloc name="R_RISCV_CALL">
+<abbrev>
+<str>call</str>
+</abbrev>
+<field_width>
+<int>32</int>
+</field_width>
+<pcrel>
+<str>true</str>
+</pcrel>
+<value>
+<int>18</int>
+</value>
+<right_shift>
+<int>0</int>
+</right_shift>
+<action>
+<str><![CDATA[
+{
+    R = S + A - P ;
+}
+]]></str>
+</action>
+</reloc>
+<reloc name="R_RISCV_CALL_PLT">
+<abbrev>
+<str></str>
+</abbrev>
+<suffix>
+<str>@plt</str>
+</suffix>
+<field_width>
+<int>32</int>
+</field_width>
+<pcrel>
+<str>true</str>
+</pcrel>
+<value>
+<int>19</int>
+</value>
+<right_shift>
+<int>0</int>
+</right_shift>
+<action>
+<str><![CDATA[
+{
+    R = S + A - P ;
+}
+]]></str>
+</action>
 </reloc>
 <reloc name="R_RISCV_GOT_HI20">
 <abbrev>
@@ -311,6 +426,13 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 <right_shift>
 <int>0</int>
 </right_shift>
+<action>
+<str><![CDATA[
+{
+    R = G + GOT + A - P ;
+}
+]]></str>
+</action>
 </reloc>
 <reloc name="R_RISCV_TLS_GOT_HI20">
 <abbrev>
@@ -362,6 +484,13 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 <right_shift>
 <int>0</int>
 </right_shift>
+<action>
+<str><![CDATA[
+{
+    R = S + A - P ;
+}
+]]></str>
+</action>
 </reloc>
 <reloc name="R_RISCV_PCREL_LO12_I">
 <abbrev>
@@ -371,7 +500,7 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 <int>12</int>
 </field_width>
 <pcrel>
-<str>false</str>
+<str>true</str>
 </pcrel>
 <value>
 <int>24</int>
@@ -382,6 +511,13 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 <dependency>
 <str>R_RISCV_PCREL_HI20</str>
 </dependency>
+<action>
+<str><![CDATA[
+{
+    R = S - P ;
+}
+]]></str>
+</action>
 </reloc>
 <reloc name="R_RISCV_PCREL_LO12_S">
 <abbrev>
@@ -391,7 +527,7 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 <int>12</int>
 </field_width>
 <pcrel>
-<str>false</str>
+<str>true</str>
 </pcrel>
 <value>
 <int>25</int>
@@ -402,6 +538,13 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 <dependency>
 <str>R_RISCV_PCREL_HI20</str>
 </dependency>
+<action>
+<str><![CDATA[
+{
+    R = S - P ;
+}
+]]></str>
+</action>
 </reloc>
 <reloc name="R_RISCV_HI20">
 <abbrev>
@@ -419,6 +562,13 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 <right_shift>
 <int>0</int>
 </right_shift>
+<action>
+<str><![CDATA[
+{
+    R = S + A ;
+}
+]]></str>
+</action>
 </reloc>
 <reloc name="R_RISCV_LO12_I">
 <abbrev>
@@ -439,6 +589,13 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 <dependency>
 <str>R_RISCV_HI20</str>
 </dependency>
+<action>
+<str><![CDATA[
+{
+    R = S + A ;
+}
+]]></str>
+</action>
 </reloc>
 <reloc name="R_RISCV_LO12_S">
 <abbrev>
@@ -459,6 +616,13 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 <dependency>
 <str>R_RISCV_HI20</str>
 </dependency>
+<action>
+<str><![CDATA[
+{
+    R = S + A ;
+}
+]]></str>
+</action>
 </reloc>
 <reloc name="R_RISCV_TPREL_HI20">
 <abbrev>
@@ -558,6 +722,13 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 <directive>
 <str>.reloc</str>
 </directive>
+<action>
+<str><![CDATA[
+{
+    R = V + S + A ;
+}
+]]></str>
+</action>
 </reloc>
 <reloc name="R_RISCV_ADD16">
 <abbrev>
@@ -581,6 +752,13 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 <directive>
 <str>.reloc</str>
 </directive>
+<action>
+<str><![CDATA[
+{
+    R = V + S + A ;
+}
+]]></str>
+</action>
 </reloc>
 <reloc name="R_RISCV_ADD32">
 <abbrev>
@@ -604,6 +782,13 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 <directive>
 <str>.reloc</str>
 </directive>
+<action>
+<str><![CDATA[
+{
+    R = V + S + A ;
+}
+]]></str>
+</action>
 </reloc>
 <reloc name="R_RISCV_ADD64">
 <abbrev>
@@ -627,6 +812,13 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 <directive>
 <str>.reloc</str>
 </directive>
+<action>
+<str><![CDATA[
+{
+    R = V + S + A ;
+}
+]]></str>
+</action>
 </reloc>
 <reloc name="R_RISCV_SUB8">
 <abbrev>
@@ -650,6 +842,13 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 <directive>
 <str>.reloc</str>
 </directive>
+<action>
+<str><![CDATA[
+{
+    R = V - S - A ;
+}
+]]></str>
+</action>
 </reloc>
 <reloc name="R_RISCV_SUB16">
 <abbrev>
@@ -673,6 +872,13 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 <directive>
 <str>.reloc</str>
 </directive>
+<action>
+<str><![CDATA[
+{
+    R = V - S - A ;
+}
+]]></str>
+</action>
 </reloc>
 <reloc name="R_RISCV_SUB32">
 <abbrev>
@@ -696,6 +902,13 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 <directive>
 <str>.reloc</str>
 </directive>
+<action>
+<str><![CDATA[
+{
+    R = V - S - A ;
+}
+]]></str>
+</action>
 </reloc>
 <reloc name="R_RISCV_SUB64">
 <abbrev>
@@ -742,6 +955,13 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 <directive>
 <str>.reloc</str>
 </directive>
+<action>
+<str><![CDATA[
+{
+    R = S + A ;
+}
+]]></str>
+</action>
 </reloc>
 <reloc name="R_RISCV_SET16">
 <abbrev>
@@ -765,6 +985,13 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 <directive>
 <str>.reloc</str>
 </directive>
+<action>
+<str><![CDATA[
+{
+    R = S + A ;
+}
+]]></str>
+</action>
 </reloc>
 <reloc name="R_RISCV_SET32">
 <abbrev>
@@ -788,6 +1015,13 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 <directive>
 <str>.reloc</str>
 </directive>
+<action>
+<str><![CDATA[
+{
+    R = S + A ;
+}
+]]></str>
+</action>
 </reloc>
 </relocations>
 <instrfields>
@@ -1103,6 +1337,48 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 <str>R_RISCV_HI20</str>
 <str>R_RISCV_TPREL_HI20</str>
 </reloc>
+</instrfield>
+<instrfield name="imm_ci">
+<doc>
+<str><![CDATA[
+    Immediate for sign-extended constant loads.
+    
+]]></str>
+</doc>
+<bits>
+<range>
+<int>12</int>
+<int>12</int>
+</range>
+<range>
+<int>6</int>
+<int>2</int>
+</range>
+</bits>
+<width>
+<int>6</int>
+</width>
+<size>
+<int>6</int>
+</size>
+<shift>
+<int>0</int>
+</shift>
+<offset>
+<int>0</int>
+</offset>
+<mask>
+<str>0x000000000000107c</str>
+</mask>
+<display>
+<str>dec</str>
+</display>
+<type>
+<str>imm</str>
+</type>
+<signed>
+<str>true</str>
+</signed>
 </instrfield>
 <instrfield name="imm_u_pc">
 <doc>
@@ -1915,6 +2191,9 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 </option>
 <option name="8">
 <str>x8</str>
+</option>
+<option name="8">
+<str>fp</str>
 </option>
 <option name="9">
 <str>s1</str>
@@ -3651,13 +3930,132 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 ]]></str>
 </action>
 <disassemble>
-<str>true </str>
+<str>true</str>
 </disassemble>
 <inputs>
 <str>PC</str>
+<str>RV32E_ENABLE</str>
 </inputs>
 <outputs>
 <str>GPR(rd)</str>
+</outputs>
+</instruction>
+<instruction name="c.addi">
+<width>
+<int>16</int>
+</width>
+<doc>
+<str><![CDATA[
+    Add-immediate.
+    
+]]></str>
+</doc>
+<syntax>
+<str>c.addi rd,imm_ci</str>
+</syntax>
+<dsyntax>
+<str>c.addi ${rd},${imm_ci}</str>
+</dsyntax>
+<attributes>
+<attribute name="rv32c">
+<str></str>
+</attribute>
+</attributes>
+<fields>
+<field name="funct3_c">
+<int>0</int>
+</field>
+<field name="imm_ci">
+<str></str>
+</field>
+<field name="rd">
+<str></str>
+</field>
+<field name="op_c">
+<int>1</int>
+</field>
+</fields>
+<action>
+<str><![CDATA[
+{
+    GPR ( rd ) = GPR ( rd ) + imm_ci ;
+}
+]]></str>
+</action>
+<disassemble>
+<str>true</str>
+</disassemble>
+<inputs>
+<str>GPR(rd)</str>
+<str>RV32E_ENABLE</str>
+</inputs>
+<outputs>
+<str>GPR(rd)</str>
+</outputs>
+</instruction>
+<instruction name="c.nop">
+<width>
+<int>16</int>
+</width>
+<doc>
+<str><![CDATA[
+    No-op.
+    
+]]></str>
+</doc>
+<syntax>
+<str>c.nop</str>
+</syntax>
+<dsyntax>
+<str>c.nop</str>
+</dsyntax>
+<attributes>
+<attribute name="rv32c">
+<str></str>
+</attribute>
+</attributes>
+<aliases>
+<alias name="c.addi">
+<sources>
+</sources>
+<destinations>
+</destinations>
+<miscs>
+<misc>
+<field>
+<str>imm_ci</str>
+</field>
+<value>
+<int>0</int>
+</value>
+</misc>
+<misc>
+<field>
+<str>rd</str>
+</field>
+<value>
+<int>0</int>
+</value>
+</misc>
+</miscs>
+<parent_action>
+<str><![CDATA[
+{
+    GPR ( 0 ) = GPR ( 0 ) + 0 ;
+}
+]]></str>
+</parent_action>
+</alias>
+</aliases>
+<disassemble>
+<str>true</str>
+</disassemble>
+<inputs>
+<str>GPR(0)</str>
+<str>RV32E_ENABLE</str>
+</inputs>
+<outputs>
+<str>GPR(0)</str>
 </outputs>
 </instruction>
 <instruction name="c.ld">
@@ -3723,6 +4121,7 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 </disassemble>
 <inputs>
 <str>GPR(rs1c_p)</str>
+<str>RV32E_ENABLE</str>
 </inputs>
 <outputs>
 <str>GPR(rdc_p)</str>
@@ -3781,7 +4180,7 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 <action>
 <str><![CDATA[
 {
-     var vaddr = GPR ( 2 ) + imm_i ;
+    var vaddr = GPR ( 2 ) + imm_i ;
     var result = Mem (vaddr, 4) ;
     var result1 = Mem (vaddr + 4, 4) ;
     GPR ( rx ) = result ;
@@ -3794,6 +4193,7 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 </disassemble>
 <inputs>
 <str>GPR(2)</str>
+<str>RV32E_ENABLE</str>
 </inputs>
 <outputs>
 <str>GPR(rx)</str>
@@ -3869,6 +4269,7 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 <str>GPR(rs1c_p)</str>
 <str>GPR(rs2c_p)</str>
 <str>GPR(rs2c_p + 1)</str>
+<str>RV32E_ENABLE</str>
 </inputs>
 <output_mems>
 <str>Mem</str>
@@ -3923,7 +4324,7 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 <action>
 <str><![CDATA[
 {
-     var vaddr = GPR ( 2 ) + immd_css ;
+    var vaddr = GPR ( 2 ) + immd_css ;
     var result = GPR ( rs2c ) ; 
     var result1 ;
     if ( rs2c == 0) {
@@ -3944,6 +4345,7 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 <str>GPR(2)</str>
 <str>GPR(rs2c)</str>
 <str>GPR(rs2c + 1)</str>
+<str>RV32E_ENABLE</str>
 </inputs>
 <output_mems>
 <str>Mem</str>
@@ -4011,6 +4413,7 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 </disassemble>
 <inputs>
 <str>GPR(rs1)</str>
+<str>RV32E_ENABLE</str>
 </inputs>
 <outputs>
 <str>GPR(rd)</str>
@@ -4060,8 +4463,11 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 ]]></str>
 </action>
 <disassemble>
-<str>true </str>
+<str>true</str>
 </disassemble>
+<inputs>
+<str>RV32E_ENABLE</str>
+</inputs>
 <outputs>
 <str>GPR(rd)</str>
 </outputs>
@@ -4134,6 +4540,7 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 <str>GPR(rs1)</str>
 <str>GPR(rs2)</str>
 <str>GPR(rs2 + 1)</str>
+<str>RV32E_ENABLE</str>
 </inputs>
 <output_mems>
 <str>Mem</str>
@@ -4164,7 +4571,7 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 </proc_resources>
 </functional-unit>
 </FunctionalUnits>
-<instruction-sched name="ST">
+<instruction-sched name="STPair">
 <instruction_list>
 <str>c.sd,c.sdsp,sd</str>
 </instruction_list>
@@ -4186,7 +4593,7 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 </read_resource>
 </forwarding>
 </instruction-sched>
-<instruction-sched name="LD">
+<instruction-sched name="LDPair">
 <instruction_list>
 <str>c.ld,c.ldsp,ld</str>
 </instruction_list>
@@ -4210,6 +4617,11 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 </resource_list>
 </read_resource>
 </forwarding>
+</instruction-sched>
+<instruction-sched name="IALU">
+<instruction_list>
+<str>auipc,lui,add</str>
+</instruction_list>
 </instruction-sched>
 </sched-table>
 </sched-tables>

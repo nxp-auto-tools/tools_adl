@@ -1,69 +1,62 @@
-# Copyright 2024 NXP 
+# Copyright 2023-2025 NXP 
 # SPDX-License-Identifier: BSD-2-Clause
 
 ## @package generate_reloc_tests
 # Relocations tests generation module
 #
 # Generates relocations tests for all instructions
-import importlib
 import os
 import glob
 from datetime import datetime
 import re
 import sys
+import shutil
 import parse_reloc
 import utils_reloc
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "../encoding/"))
 sys.path.append(os.path.join(os.path.dirname(__file__), "../../"))
 import config
-import parse
-module_info = "info"
-try:
-    info = importlib.import_module(module_info)
-except ImportError:
-    print('Please run make_test.py first to generate the info module.')
-
-
-# Function that filters relocations instructions dictionary based on the instructions that are generated for encoding tests
-# @return @b filtered_relocations_instructions-> Dictionary containing relocations and their corresponding instructions matching the ones from the encoding tests
-def filter_relocations_instructions_dict():
-
-    # Get the command line arguments
-    adl_file_path, adl_file_name, symbol_max_value, output_dir = utils_reloc.cmd_args()
-    
-    relocations_instructions_dict = parse_reloc.relocations_instructions(adl_file_path, parse_reloc.operands_instructions(parse_reloc.instructions_operands(adl_file_path)))
-    instruction_operands_dict = info.instructions
-
-    filtered_relocations_instructions = {
-    reloc: [instruction for instruction in instructions if instruction in instruction_operands_dict]
-    for reloc, instructions in relocations_instructions_dict.items()
-    if any(instruction in instruction_operands_dict for instruction in instructions)
-    }
-
-    return filtered_relocations_instructions           
+import parse       # type: ignore
 
 
 ## Function that creates the folder structure used to store relocations tests
 def generate_file_structure():
     
     # Get the command line arguments
-    adl_file_path, adl_file_name, symbol_max_value, output_dir = utils_reloc.cmd_args()
+    adl_file_path, adl_file_name, symbol_max_value, extension_list, output_dir, display_extensions = utils_reloc.cmd_args()
 
-    relocations_instructions_dict = filter_relocations_instructions_dict()
+    relocation_instructions_dict = parse_reloc.relocations_instructions(adl_file_path, parse_reloc.operands_instructions(parse_reloc.instructions_operands(adl_file_path)))
+    relocation_attributes_dict = parse_reloc.relocations_attributes(adl_file_path)
+    instruction_attribute_dict, instruction_attribute_stripped_dict = parse.instruction_attribute(adl_file_path)
+
+    # check if the output directory exists and refresh it
+    if extension_list is not None:
+        if os.path.exists(os.path.join(output_dir, 'reloc_results_' + adl_file_name, 'tests_' + '_'.join(extension_list))):
+            shutil.rmtree(os.path.join(output_dir, 'reloc_results_' + adl_file_name, 'tests_' + '_'.join(extension_list)))
+    else:
+        if os.path.exists(os.path.join(output_dir, 'reloc_results_' + adl_file_name, 'tests_all')):
+            shutil.rmtree(os.path.join(output_dir, 'reloc_results_' + adl_file_name, 'tests_all'))
 
     # create a folder for each relocation
-    for i, (relocation, instructions) in enumerate(relocations_instructions_dict.items()):
-        # create a folder for each instruction
-        folder_name = os.path.join(output_dir, 'reloc_results_' + adl_file_name, 'tests', f"{relocation}")
-        os.makedirs(folder_name)
+    for i, (relocation, instructions) in enumerate(relocation_instructions_dict.items()):
+        # generate tests for specific extensions
+        if extension_list is None or all(extension in extension_list for extension in relocation_attributes_dict[relocation]):
+            # create a folder for each instruction
+            if extension_list is not None:
+                folder_name = os.path.join(output_dir, 'reloc_results_' + adl_file_name, 'tests_' + '_'.join(extension_list), f"{relocation}")
+            else:
+                folder_name = os.path.join(output_dir, 'reloc_results_' + adl_file_name, 'tests_all', f"{relocation}")               
+            os.makedirs(folder_name)
 
-        # create a file for each instruction
-        for instruction in instructions:
-            # check if the relocation applies only to a subset of instructions          
-            file_name = os.path.join(folder_name, f"{relocation}_{instruction}.s")
-            with open(file_name, "w") as f:
-                f.close()
+            # create a file for each instruction
+            for instruction in instructions:
+                # generate tests for specific extensions
+                if extension_list is None or all(extension in extension_list for extension in instruction_attribute_dict[instruction]):
+                    # check if the relocation applies only to a subset of instructions          
+                    file_name = os.path.join(folder_name, f"{relocation}_{instruction}.s")
+                    with open(file_name, "w") as f:
+                        f.close()
     return
 
 
@@ -71,19 +64,32 @@ def generate_file_structure():
 def generate_symbols():
 
     # Get the command line arguments
-    adl_file_path, adl_file_name, symbol_max_value, output_dir = utils_reloc.cmd_args()
+    adl_file_path, adl_file_name, symbol_max_value, extension_list, output_dir, display_extensions = utils_reloc.cmd_args()
 
-    # Get all the directories containing the relocations tests
-    dir_paths = glob.glob(output_dir + '/reloc_results_' + adl_file_name + '/tests/*/', recursive=True)
-    
-    file_list = os.listdir(output_dir + '/reloc_results_' + adl_file_name)
-    
-    # Check in file_list if there are any old symbol files and remove them
-    for item in file_list:
-        if item.startswith("sym") and item.endswith(".inc"):
-            os.remove(os.path.join(output_dir, 'reloc_results_' + adl_file_name, item))
+    if extension_list is not None:
+        # Get all the directories containing the relocations tests
+        dir_paths = glob.glob(output_dir + '/reloc_results_' + adl_file_name + '/tests_' + '_'.join(extension_list) + '/*/', recursive=True)
+        
+        file_list = os.listdir(output_dir + '/reloc_results_' + adl_file_name + '/tests_' + '_'.join(extension_list))
 
-    file_name = os.path.join(output_dir, 'reloc_results_' + adl_file_name, 'tests', f"sym{symbol_max_value}.inc")
+        # Check in file_list if there are any old symbol files and remove them
+        for item in file_list:
+            if item.startswith("sym") and item.endswith(".inc"):
+                os.remove(os.path.join(output_dir, 'reloc_results_' + adl_file_name, 'tests_' + '_'.join(extension_list), item))
+
+        file_name = os.path.join(output_dir, 'reloc_results_' + adl_file_name, 'tests_' + '_'.join(extension_list), f"sym{symbol_max_value}.inc")
+    else:
+        # Get all the directories containing the relocations tests
+        dir_paths = glob.glob(output_dir + '/reloc_results_' + adl_file_name + '/tests_all' + '/*/', recursive=True)
+        
+        file_list = os.listdir(output_dir + '/reloc_results_' + adl_file_name + '/tests_all')
+
+        # Check in file_list if there are any old symbol files and remove them
+        for item in file_list:
+            if item.startswith("sym") and item.endswith(".inc"):
+                os.remove(os.path.join(output_dir, 'reloc_results_' + adl_file_name, 'tests_all', item))
+
+        file_name = os.path.join(output_dir, 'reloc_results_' + adl_file_name, 'tests_all', f"sym{symbol_max_value}.inc")
 
     # Create a file with the symbols in the tests folder
     with open(file_name, "w") as f:
@@ -106,13 +112,16 @@ def generate_symbols():
 def generate_labels():
 
     # Get the command line arguments
-    adl_file_path, adl_file_name, symbol_max_value, output_dir = utils_reloc.cmd_args()
-    
+    adl_file_path, adl_file_name, symbol_max_value, extension_list, output_dir, display_extensions = utils_reloc.cmd_args()
+
     # Get all the directories containing the relocations tests
-    dir_paths = glob.glob(output_dir + '/reloc_results_' + adl_file_name + '/tests/*/', recursive=True)
+    if extension_list is not None:
+        dir_paths = glob.glob(output_dir + '/reloc_results_' + adl_file_name + '/tests_' + '_'.join(extension_list) + '/*/', recursive=True)
+    else:
+        dir_paths = glob.glob(output_dir + '/reloc_results_' + adl_file_name + '/tests_all' + '/*/', recursive=True)
 
     # Get all the information needed for generating labels
-    relocation_instructions_dict = filter_relocations_instructions_dict()
+    relocation_instructions_dict = parse_reloc.relocations_instructions(adl_file_path, parse_reloc.operands_instructions(parse_reloc.instructions_operands(adl_file_path)))
     relocation_instrfield_dict = parse_reloc.relocations_instrfields(adl_file_path, relocation_instructions_dict)
     instrfield_width_dict = parse_reloc.instrfields_widths(adl_file_path, relocation_instrfield_dict)
     instrfield_shift_dict = parse_reloc.instrfields_shifts(adl_file_path, relocation_instrfield_dict)
@@ -142,7 +151,7 @@ def generate_labels():
 def write_header():
 
     # Get the command line arguments
-    adl_file_path, adl_file_name, symbol_max_value, output_dir = utils_reloc.cmd_args()
+    adl_file_path, adl_file_name, symbol_max_value, extension_list, output_dir, display_extensions = utils_reloc.cmd_args()
 
     # Get the path of the script
     script_directory = os.path.dirname(os.path.abspath(__file__))
@@ -172,9 +181,12 @@ def write_header():
             extension_versions_dict[match.group(1)] = match.group(2)
 
     # Get all the directories containing the relocations tests
-    file_paths = glob.glob(output_dir + '/reloc_results_' + adl_file_name + '/tests/**/*.s', recursive=True)
-
-    relocation_instructions_dict = filter_relocations_instructions_dict()
+    if extension_list is not None:
+        file_paths = glob.glob(output_dir + '/reloc_results_' + adl_file_name + '/tests_' + '_'.join(extension_list) + '/**/*.s', recursive=True)
+    else:
+        file_paths = glob.glob(output_dir + '/reloc_results_' + adl_file_name + '/tests_all' + '/**/*.s', recursive=True)
+    
+    relocation_instructions_dict = parse_reloc.relocations_instructions(adl_file_path, parse_reloc.operands_instructions(parse_reloc.instructions_operands(adl_file_path)))
     relocation_dependency_dict = parse_reloc.relocations_dependencies(adl_file_path, relocation_instructions_dict)
     
     for relocation, instructions in relocation_instructions_dict.items():
@@ -210,8 +222,13 @@ def write_header():
                             f.write('# @requirements   \"%s\" syntax and encoding from %s' % (instruction, adl_file_name) + '\n')
                             f.write('# @execution_type Automated\n')
                             f.write('\n')
-                            f.write(f'// RUN: %asm -I/{os.path.abspath(output_dir)}/reloc_results_{adl_file_name}/tests/{relocation} -arch={architecture} -mattr="{mattrib}" %s -o %s.o -filetype=obj\n')
-                            f.write(f'// RUN: %readelf -r %s.o | %filecheck {os.path.abspath(output_dir)}/reloc_results_{adl_file_name}/refs/{os.path.basename(file_path)}\n\n')
+                            if extension_list is not None:
+                                extension_str = '_'.join(extension_list)
+                                f.write(f'// RUN: %asm -I/{os.path.abspath(output_dir)}/reloc_results_{adl_file_name}/tests_{extension_str}/{relocation} -arch={architecture} -mattr={mattrib} %s -o %s.o -filetype=obj\n')
+                                f.write(f'// RUN: %readelf -r %s.o | %filecheck {os.path.abspath(output_dir)}/reloc_results_{adl_file_name}/refs_{extension_str}/{os.path.basename(file_path)}\n\n')
+                            else:
+                                f.write(f'// RUN: %asm -I/{os.path.abspath(output_dir)}/reloc_results_{adl_file_name}/tests_all/{relocation} -arch={architecture} -mattr="{mattrib}" %s -o %s.o -filetype=obj\n')
+                                f.write(f'// RUN: %readelf -r %s.o | %filecheck {os.path.abspath(output_dir)}/reloc_results_{adl_file_name}/refs_all/{os.path.basename(file_path)}\n\n')
                             if relocation not in relocation_dependency_dict.keys():
                                 f.write(f'\t.include "sym{symbol_max_value}.inc"\n')
                             file_list = os.listdir(os.path.dirname(file_path))
@@ -236,17 +253,23 @@ def write_header():
 def generate_relocations():
 
     # Get the command line arguments
-    adl_file_path, adl_file_name, symbol_max_value, output_dir = utils_reloc.cmd_args()
+    adl_file_path, adl_file_name, symbol_max_value, extension_list, output_dir, display_extensions = utils_reloc.cmd_args()
     
     # Set all the needed variables
-    test_file_paths = glob.glob(output_dir + '/reloc_results_' + adl_file_name + '/tests/**/*.s', recursive=True)
-    label_file_paths = glob.glob(output_dir + '/reloc_results_' + adl_file_name + '/tests/**/labels*.asm', recursive=True)
-    sym_file_path = glob.glob(output_dir + '/reloc_results_' + adl_file_name + '/tests/*.inc', recursive=True)
-    instruction_operands_dict = info.instructions
-    operand_values_dict = info.operands
+    if extension_list is not None:
+        test_file_paths = glob.glob(output_dir + '/reloc_results_' + adl_file_name + '/tests_' + '_'.join(extension_list) + '/**/*.s', recursive=True)
+        label_file_paths = glob.glob(output_dir + '/reloc_results_' + adl_file_name + '/tests_' + '_'.join(extension_list) + '/**/labels*.asm', recursive=True)
+        sym_file_path = glob.glob(output_dir + '/reloc_results_' + adl_file_name + '/tests_' + '_'.join(extension_list) + '/*.inc', recursive=True)
+    else:
+        test_file_paths = glob.glob(output_dir + '/reloc_results_' + adl_file_name + '/tests_all' + '/**/*.s', recursive=True)
+        label_file_paths = glob.glob(output_dir + '/reloc_results_' + adl_file_name + '/tests_all' + '/**/labels*.asm', recursive=True)
+        sym_file_path = glob.glob(output_dir + '/reloc_results_' + adl_file_name + '/tests_all' + '/*.inc', recursive=True)
+
+    instruction_operands_dict, instr_name_syntaxName_dict, imm_width_dict, imm_shift_dict, imm_signed_dict, instr_field_value_dict = parse.instructions_operands(adl_file_path)
+    operand_values_dict, widths_dict, op_signExt_dict = parse.operands_values(adl_file_path)
     instruction_register_pair_dict, instrfield_optionName_dict = parse.register_pairs(adl_file_path)
     instruction_syntaxName_dict = parse_reloc.instructions_syntaxNames(adl_file_path)
-    relocation_instructions_dict = filter_relocations_instructions_dict()
+    relocation_instructions_dict = parse_reloc.relocations_instructions(adl_file_path, parse_reloc.operands_instructions(parse_reloc.instructions_operands(adl_file_path)))
     relocation_instrfield_dict = parse_reloc.relocations_instrfields(adl_file_path, relocation_instructions_dict)
     relocation_abbrev_dict = parse_reloc.relocations_abbrevs(adl_file_path, relocation_instructions_dict)
     relocation_suffix_dict = parse_reloc.relocations_suffixes(adl_file_path, relocation_instructions_dict)
@@ -255,11 +278,11 @@ def generate_relocations():
     instrfield_shift_dict = parse_reloc.instrfields_shifts(adl_file_path, relocation_instrfield_dict)
     instrfield_signed_dict = parse_reloc.instrfields_signed(adl_file_path, relocation_instrfield_dict)
     final_width_dict = {key: int(instrfield_width_dict[key] + instrfield_shift_dict[key] + instrfield_signed_dict[key]) for key in instrfield_width_dict}
+    relocation_pcrel_dict = parse_reloc.relocations_pcrel(adl_file_path)
 
     with open (sym_file_path[0], 'r') as f:
         sym_content = f.read()
         syms = re.findall(re.compile(r'\.global\s+(\w+)'), sym_content)
-
     # Collect all the info needed:
     for test_file in test_file_paths:
         for label_file in label_file_paths:
@@ -396,7 +419,12 @@ def generate_relocations():
                                         return 'var' + str(2**i - 1)
                                 else:
                                     return op
-                                    
+
+                            # Check if relocation is pcrel or not in order to define labels as weak
+                            if relocation_pcrel_dict[relocation] == "true":
+                                for label in labels:
+                                    f.write(f'.weak {label}\n')
+                                f.write('\n')       
                             # Add dependencies for specific relocations 
                             if relocation in relocation_dependency_dict:
                                 f.write("#Add relocation dependencies\n") 
@@ -523,7 +551,7 @@ def generate_relocations():
 def generate_data_relocations():
 
     # Get the command line arguments
-    adl_file_path, adl_file_name, symbol_max_value, output_dir = utils_reloc.cmd_args()
+    adl_file_path, adl_file_name, symbol_max_value, extension_list, output_dir, display_extensions = utils_reloc.cmd_args()
 
     # Get the path of the script
     script_directory = os.path.dirname(os.path.abspath(__file__))
@@ -555,7 +583,10 @@ def generate_data_relocations():
 
     for relocation in relocation_label_dict.keys():
         # create a folder for each instruction
-        folder_name = os.path.join(output_dir, 'reloc_results_' + adl_file_name, 'tests', f"{relocation}")
+        if extension_list is not None:
+            folder_name = os.path.join(output_dir, 'reloc_results_' + adl_file_name, 'tests_' + '_'.join(extension_list), f"{relocation}")
+        else:
+            folder_name = os.path.join(output_dir, 'reloc_results_' + adl_file_name, 'tests_all', f"{relocation}")
         os.makedirs(folder_name)
 
         # create a file for each directive
@@ -590,8 +621,13 @@ def generate_data_relocations():
                             f.write('# @requirements   \"%s\" syntax and encoding from %s' % (directive, adl_file_name) + '\n')
                             f.write('# @execution_type Automated\n')
                             f.write('\n')
-                            f.write(f'// RUN: %asm -I/{os.path.abspath(output_dir)}/reloc_results_{adl_file_name}/tests/{relocation} -arch={architecture} -mattr="{mattrib}" %s -o %s.o -filetype=obj\n')
-                            f.write(f'// RUN: %readelf -r %s.o | %filecheck {os.path.abspath(output_dir)}/reloc_results_{adl_file_name}/refs/{os.path.basename(file_name)}\n\n')
+                            if extension_list is not None:
+                                extension_str = '_'.join(extension_list)
+                                f.write(f'// RUN: %asm -I/{os.path.abspath(output_dir)}/reloc_results_{adl_file_name}/tests_{extension_str}/{relocation} -arch={architecture} -mattr="{mattrib}" %s -o %s.o -filetype=obj\n')
+                                f.write(f'// RUN: %readelf -r %s.o | %filecheck {os.path.abspath(output_dir)}/reloc_results_{adl_file_name}/refs_{extension_str}/{os.path.basename(file_name)}\n\n')
+                            else:
+                                f.write(f'// RUN: %asm -I/{os.path.abspath(output_dir)}/reloc_results_{adl_file_name}/tests_all/{relocation} -arch={architecture} -mattr="{mattrib}" %s -o %s.o -filetype=obj\n')
+                                f.write(f'// RUN: %readelf -r %s.o | %filecheck {os.path.abspath(output_dir)}/reloc_results_{adl_file_name}/refs_all/{os.path.basename(file_name)}\n\n')
                             f.write(f'\t.include "sym{symbol_max_value}.inc"\n')
                             f.write('\t.text\n')
                             f.write('\t.attribute	4, 16\n\n')

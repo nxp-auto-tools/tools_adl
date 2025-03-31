@@ -1,0 +1,35 @@
+{
+  "SPDXID": "SPDXRef-DOCUMENT",
+  "spdxVersion": "SPDX-2.3",
+  "creationInfo": {
+    "created": "2025-03-27T14:16:28Z",
+    "creators": [
+      "Organization: NXP"
+    ],
+    "licenseListVersion": "3.20"
+  },
+  "name": "tools_adl-0.3",
+  "dataLicense": "CC0-1.0",
+  "documentNamespace": "https://nxp.com/spdx/2e364c30-b43a-404f-bfe7-61a3d8e6e890",
+  "packages": [
+    {
+      "SPDXID": "SPDXRef-package-2e364c30-b43a-404f-bfe7-61a3d8e6e890",
+      "name": "tools_adl",
+      "versionInfo": "0.3",
+      "licenseConcluded": "(BSD-2-Clause-FreeBSD)",
+      "licenseDeclared": "(BSD-2-Clause-FreeBSD)",
+      "downloadLocation": "https://github.com/nxp-auto-tools/tools_adl",
+      "supplier": "NOASSERTION",
+      "externalRefs": [],
+      "filesAnalyzed": false,
+      "originator": "Organization: NXP"
+    }
+  ],
+  "relationships": [
+    {
+      "spdxElementId": "SPDXRef-DOCUMENT",
+      "relationshipType": "DESCRIBES",
+      "relatedSpdxElement": "SPDXRef-package-2e364c30-b43a-404f-bfe7-61a3d8e6e890"
+    }
+  ]
+}

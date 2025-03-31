@@ -15,9 +15,19 @@ Version 0.2
 == Intro
 
 This project is part of European project Tristan.
-Copyright 2024 NXP
+Copyright 2023-2025 NXP
 SPDX-License-Identifier: BSD-2-Clause
 
+=== Revision History
+
+[cols="1,2,5", options="header"]
+|===
+| Revision number | Date       | Substantive changes       
+
+| 0.1     | 01-03-2024 | Updated Release Notes for WP4_M15 release
+| 0.2     | 15-11-2024 | Updated Release Notes for WP4_M24 release
+| 0.3     | 28-03-2025 | Updated Release Notes for WP4_M28 release     
+|===
 
 
 == Overview
@@ -46,7 +56,7 @@ ADL-Tools is a tool suite designed for automatically generating target descripti
 	
 NOTE: No installation is required; simply cloning the repository is sufficient.
 
-NOTE: These modules were used and tested with *LLVM 18.x* version.
+NOTE: The files generated were included in *LLVM 19.x* project, also tested and validated on the same *LLVM* version.
 
 == How to Run the Tools?
 
@@ -71,10 +81,14 @@ extensions, the user can specify, using the command line arguments,
 which extensions should be generated. Beside specifying *the extensions enabled*,
 it is also possible to specify *the directory* in which the content is generated.
 
+The user is also able to enable or not the generation for SAIL description. The flag --no_sail
+enables or not this feature. If *--no_sail* is set as True (e.g. --no_sail=True) then the tool will
+not generate the SAIL description. Otherwise, when the flag is not specified, then the SAIL description 
+will be generated as usual.
+
 NOTE: If *no extension is specified*, then the tools generates content
 for *all the extensions declared* in the XML file, without exception.
 
-NOTE: The user *must* be in *the root folder (tools_adl)* when running the script.
 
 An example of selecting certain extensions and a specified directory for content generation is similar to:
 
@@ -97,35 +111,29 @@ Moreover, it should consider the fact that the directory specified is *overwritt
 
 ==== Encoding tests
 
-The Python script make_test.py is a tool for generating RISC-V instruction encoding tests based on an XML file containing extension information. It requires two mandatory arguments:
+The Python script *make_test.py* is a tool for generating RISC-V instruction encoding tests based on an XML file containing extension information. It requires one mandatory argument:
 
 1. Path to XML file (<path_to_xml_file>): The location of the XML file that defines the RISC-V extensions.
-2. Extensions (<extensions>): A comma-separated list of extensions (e.g., rv32i).
 
-Additionally, an optional argument -o (or --output) can be used to specify the output directory where the tests are generated.
+Additionally, optional arguments such as --extension (followed by a comma-separated list of extensions) and -o (or --output) can be used to generate tests for specific extensions or to specify the output directory where the tests are generated.
 
 
 *Usage*
 
 To run the script (tools_adl/tools/testing/encoding/make_test.py) use the following format:
 
-	python <rel_or_abs_path>/make_test.py <path_to_xml_file> <extensions> -o <output_path>
+	python <path_to_make_test>/make_test.py <path_to_xml_file> --extension <comma-separated list> -o <output_path>
 
 Example:
 
-	python make_test.py riscv_extensions.xml rv32i,rv32m -o encoding_tests
+	python make_test.py riscv_extensions.xml --extension rv32i,zilsd -o encoding_tests
 
 NOTE: Run "python make_test.py -h" for detailed usage instructions.
 
 
 *Output Structure*
 
-Upon successful execution, the script generates two main outputs:
-
-1. info.py: A Python file that contains information about instructions and operands.
-
-
-2. Output directory: A folder named after the provided XML file (e.g., adl.xml) is created, containing the following subfolders:
+Upon successful execution, the script generates an output folder named after the provided XML file (e.g., adl.xml) is created, containing the following subfolders:
 
 	a) tests_<extensions>: Contains instruction encoding tests for the specified extensions. These tests validate the correct encoding of each instruction.
 
@@ -134,11 +142,11 @@ Upon successful execution, the script generates two main outputs:
 
 *Testing Environment Setup*
 
-After generating the tests, you can enstablish a testing environment using the lit_references_tester.sh script. The path to lit.cfg file is *tools_adl/tools/testing/encoding/*.
+After generating the tests, you can enstablish a testing environment using the llvm_lit_tester.sh script. The path to lit.cfg file is *tools_adl/tools/testing/encoding/*.
 
 To set up the environment, run the following command:
 
-	source lit_references_tester.sh <path_to_llvm_asm> <path_to_llvm_readelf> <path_to_tests_folder> <path_to_refs_folder> <path_to_lit_cfg>
+	source llvm_lit_tester.sh <path_to_llvm_asm> <path_to_llvm_readelf> <path_to_tests_folder> <path_to_refs_folder> <path_to_lit_cfg>
 
 
 *Running Tests*
@@ -150,50 +158,55 @@ Once the environment is set up, use llvm-lit to validate the generated instructi
 This command executes the tests and compares the generated instructions against the reference encodings, ensuring correct instruction behavior.
 
 
-==== Relocation tests
-
-NOTE: The user *must* run *make_test.py* script before running the relocations script in order to generate the *info.py* file.
+==== Relocation and fixup tests
 
 The Python script make_reloc.py is a tool for generating RISC-V relocation tests based on an XML file containing extension information. It requires two mandatory arguments:
 
 1. Path to XML file (<path_to_xml_file>): The location of the XML file that defines the RISC-V extensions.
 2. Symbol table max value (<symbol_max_value>): Integer value for symbol table.
 
-Additionally, an optional argument -o (or --output) can be used to specify the output directory where the tests are generated.
+Additionally, optional arguments such as --extension (followed by a comma-separated list of extensions) and -o (or --output) can be used to generate tests for specific extensions or to specify the output directory where the tests are generated.
 
 
 *Usage*
 
 To run the script (tools_adl/tools/testing/relocations/make_reloc.py) use the following format:
 
-	python <rel_or_abs_path>/make_reloc.py <path_to_xml_file> <symbol_max_value> -o <output_path>
+	python <path_to_make_reloc>/make_reloc.py <path_to_xml_file> <symbol_max_value> --extension <comma-separated list> -o <output_path>
 
 Example:
 
-	python make_reloc.py riscv_extensions.xml 10 -o relocation_tests
+	python make_reloc.py riscv_extensions.xml 10 --extension rv32i,zilsd -o relocation_tests
 
 NOTE: Run "python make_reloc.py -h" for detailed usage instructions.
 
 
 *Output Structure*
 
-Upon successful execution, the script generates an output directory named after the provided XML file (e.g., adl.xml), containing the following subfolders:
+Upon successful execution, the script generates two output directories (relocations and fixups) named after the provided XML file (e.g., adl.xml), containing the following subfolders:
 
-	a) tests: Contains relocation tests for the previously ran instruction tests using *make_test.py* module. These tests validate the correct generation of each relocation.
+	a) tests: Contains relocation/fixup tests for the specified extensions.
 
-	b) refs: Contains reference details for each relocation, which serve as a reliable source for comparison during the testing process.
+	b) refs: Contains reference details for each relocation/fixup, which serve as a reliable source for comparison during the testing process.
 
 
 *Running Tests*
 
-You can enstablish a testing environment by copying the lit.cfg file from tools_adl/tools/testing/relocations inside the output folder (e.g. relocation_tests from the example above).
-
-Once the environment is set up, use llvm-lit to validate the generated relocations. The command format is as follows:
+- For *relocation tests* you can directly use llvm-lit to validate the output. The command format is as follows:
 
 	<path_to_llvm_lit>/llvm-lit --param app_asm=<path_to_llvm_asm> --param app_readelf=<path_to_llvm_readelf> --param app_filecheck=<path_to_filecheck> <path_to_reloc_tests_folder>
 
 This command executes the tests and compares the generated relocations against the reference outputs, ensuring correct relocation behavior.
 
+- For *fixup tests* the user has to firstly set up the environment by running the following command:
+
+	source fixup_llvm_lit_tester.sh <path_to_llvm_asm> <path_to_llvm_readelf> <path_to_fixup_tests_folder> <path_to_fixup_refs_folder> <path_to_lit_cfg>
+
+Once the environment is set up, use llvm-lit to validate the generated instructions. The command format is as follows:
+
+	<path_to_llvm_lit>/llvm-lit --param app_asm=<path_to_llvm_asm> --param app_readelf=<path_to_llvm_readelf> --param app_filecheck=<path_to_filecheck> <path_to_fixup_tests_folder>
+
+This command executes the tests and compares the generated instructions against the reference encodings, ensuring correct instruction behavior.
 
 ** Generated relocations table:
 
@@ -298,11 +311,19 @@ left value should not be edited, while the right value may be changed.
 
 ** The user can define a certain register class.
 
-	RegisterClass = RISCVReg
+	RegisterClass = {GPR=RISCVReg}
 
 ** The user can enable subregister generation if necessary.
 
 	RegisterClassSubRegs_GPR = RISCVRegWithSubRegs
+
+** This is used for generating a new RISCVRegisterClass based on the LLVM 19 specification.
+
+	RegisterClassChild = {RegisterClassName=RISCVRegisterClass, RegisterBaseClass=RegisterClass, Namespace=RISCV, IsVRegClass=0, VLMul=1, NF=1, Size='!if(IsVRegClass,!mul(VLMul,NF,64),0)', TSFlags{0}=IsVRegClass, TSFlags{3-1}='!logtwo(VLMul)', TSFlags{6-4}='!sub(NF,1)'}
+
+** This tag specifies for which register classes have to inherit from parent
+
+	RegisterClassWrapper = {RISCVRegisterClass=GPR}
 
 ** The user can define instruction classes and formats.
 
@@ -315,6 +336,8 @@ left value should not be edited, while the right value may be changed.
 ** The user can define ABI information.
 
 	RegAltNameIndex = ABIRegAltName
+
+	FallbackRegAltNameIndex = NoRegAltName
 
 ** The user can set register and instruction width.
 
@@ -448,67 +471,79 @@ information required by LLVM layout.
 
 	TSFlagsLast = 0
 	
-	LLVMVFlags = {VLMul, HasDummyMask, ForceTailAgnostic, HasMergeOp, HasSEWOp, HasVLOp, HasVecPolicyOp, IsRVVWideningReduction, UsesMaskPolicy, IsSignExtendingOpW}
+	LLVMVFlags = {VLMul, ForceTailAgnostic, IsTiedPseudo, HasSEWOp, HasVLOp, HasVecPolicyOp, IsRVVWideningReduction, UsesMaskPolicy, IsSignExtendingOpW, HasRoundModeOp, UsesVXRM, TargetOverlapConstraintType}
 	
 	VLMul = 0
 
 	VLMulTSFlagsStart = 10
-	
+
 	VLMulTSFlagsEnd = 8
-
-	HasDummyMask = 0
-
-	HasDummyMaskTSFlagsStart = 11
-
-	HasDummyMaskTSFlagsEnd = 11
 
 	ForceTailAgnostic = false
 
-	ForceTailAgnosticTSFlagsStart = 12
+	ForceTailAgnosticTSFlagsStart = 11
 
-	ForceTailAgnosticTSFlagsEnd = 12
+	ForceTailAgnosticTSFlagsEnd = 11
 
-	HasMergeOp = 0
+	IsTiedPseudo = 0
 
-	HasMergeOpTSFlagsStart = 13
+	IsTiedPseudoTSFlagsStart = 12
 
-	HasMergeOpTSFlagsEnd = 13
+	IsTiedPseudoTSFlagsEnd = 12
 
 	HasSEWOp = 0
 
-	HasSEWOpTSFlagsStart = 14
+	HasSEWOpTSFlagsStart = 13
 
-	HasSEWOpTSFlagsEnd = 14
+	HasSEWOpTSFlagsEnd = 13
 
 	HasVLOp = 0
 
-	HasVLOpTSFlagsStart = 15
+	HasVLOpTSFlagsStart = 14
 
-	HasVLOpTSFlagsEnd = 15
+	HasVLOpTSFlagsEnd = 14
 
 	HasVecPolicyOp = 0
 
-	HasVecPolicyOpTSFlagsStart = 16
+	HasVecPolicyOpTSFlagsStart = 15
 
-	HasVecPolicyOpTSFlagsEnd = 16
+	HasVecPolicyOpTSFlagsEnd = 15
 
 	IsRVVWideningReduction = 0
 
-	IsRVVWideningReductionTSFlagsStart = 17
+	IsRVVWideningReductionTSFlagsStart = 16
 
-	IsRVVWideningReductionTSFlagsEnd = 17
-
+	IsRVVWideningReductionTSFlagsEnd = 16
+	
 	UsesMaskPolicy = 0
 
-	UsesMaskPolicyTSFlagsStart = 18
+	UsesMaskPolicyTSFlagsStart = 17
 
-	UsesMaskPolicyTSFlagsEnd = 18
+	UsesMaskPolicyTSFlagsEnd = 17
 
 	IsSignExtendingOpW = 0
 
-	IsSignExtendingOpWTSFlagsStart = 19
+	IsSignExtendingOpWTSFlagsStart = 18
 
-	IsSignExtendingOpWTSFlagsEnd = 19
+	IsSignExtendingOpWTSFlagsEnd = 18
+
+	HasRoundModeOp = 0
+
+	HasRoundModeOpTSFlagsStart = 19
+
+	HasRoundModeOpTSFlagsEnd = 19
+
+	UsesVXRM = 0
+
+	UsesVXRMTSFlagsStart = 20
+
+	UsesVXRMTSFlagsEnd = 20
+
+	TargetOverlapConstraintType = 0
+
+	TargetOverlapConstraintTypeTSFlagsStart = 22
+
+	TargetOverlapConstraintTypeTSFlagsEnd = 21
 
 * *Calling Convention*
 ** This sections contains calling convention information. It specifies
@@ -534,6 +569,18 @@ entries from this sections specifies additional information.
 	XLenRIRegInfo = RegInfoByHwMode<[RV32, RV64], [RegInfo<32,32,32>, RegInfo<64,64,64>]>
 	
 	XLenVTValueType = ValueTypeByHwMode<[RV32, RV64], [i32,  i64]>
+
+** Also, more information for register pairs are now required
+
+	RegInfosPair = RegInfoByHwMode<[RV32], [RegInfo<64, 64, 64>]>
+
+	SubReg_GPR_Even = SubRegIndex<32>
+
+	SubReg_GPR_Even_HW = SubRegRangeByHwMode<[RV32, RV64], [SubRegRange<32>, SubRegRange<64>]>
+
+	SubReg_GPR_Odd = SubRegIndex<32, 32>
+
+	SubReg_GPR_Odd_HW = SubRegRangeByHwMode<[RV32, RV64], [SubRegRange<32, 32>, SubRegRange<64, 64>]>
 
 * *Extensions Declaration*
 ** This section declares the extensions that are generated if they
@@ -626,6 +673,26 @@ Moreover, the user should fill *<excluded_values>* field with information for sp
 	<sign_extension>
 		<int>20</int>
 	</sign_extension>
+
+* *Config.txt* module is more a developer dedicated file in which the user should not change something unless it is pretty sure about
+the updates. It contains information about the XML model used, about instructions ignored, attributes ignored, but also specifies the 
+file containing legal information and licenses.
+
+* *ADLName* is automatically assigned and it specifies the name of the XML file used
+
+	ADLName = .\models\adl\zilsd\rv32ic_zilsd_zclsd_release.adl.xml\
+
+* *IgnoredAttrib* is a list in which the user could add the attributes which have to be ignored. As a result, any instruction or register class having this attribute will not be generated.
+
+	IgnoredAttrib = {nia, cia, model_only}
+
+* *legalDisclaimer* specifies the file containing legal information and licenses
+
+	legalDisclaimer = legalDisclaimer.py
+	
+* *IgnoredInstructions* is a list in which the user could specify the instructions that have to be ignored and not generated.
+
+	IgnoredInstructions = {}
 
 == ADL XML – Architectural Description
 
@@ -1153,14 +1220,14 @@ which specifies all the register pairs available, based on the calling conventio
 and also based on the register class *width* and *shift* values.
 
 	// Register Class GPRP : Register Pair
-	def GPRP : RegisterClass<"RISCV", [XLenVT], 64, (
+	let RegInfos = RegInfoByHwMode<[RV32], [RegInfo<64, 64, 64>]>,
+		DecoderMethod ="DecodeGPRPRegisterClass" in 
+	def GPRP : RISCVRegisterClass<[i64, v2i32], 64, (
 		add X10_X11, X12_X13, X14_X15, X16_X17, 
 		X6_X7, X28_X29, X30_X31, X8_X9, 
 		X18_X19, X20_X21, X22_X23, X24_X25, 
 		X26_X27, X0_X0, X2_X3, X4_X5
-		)> {
-		let RegInfos = XLenRI;
-	}
+		)>;
 
 If the calling convention specifies a special case for *X0 register pair*, the tools check
 if *X0* is considered *Hard wired zero*, meaning that X0 pair should have a *different definition*.
@@ -1168,16 +1235,20 @@ In this case, *DUMMY_REG_PAIR_WITH_X0* will be generated as a special register p
 added to the register class X0 belongs to.
 
 	def DUMMY_REG_PAIR_WITH_X0 : RISCVReg<0, "0">;
-	def GPRAll : RegisterClass<"RISCV", [XLenVT], 32, (
+	def GPRAll : GPRRegisterClass<(
 		add GPR, DUMMY_REG_PAIR_WITH_X0
-		)> {
-		let RegInfos = XLenRI;
-	}
+		)>;
 
 Once register pair generation is based on even-odd structure, these have to be specified.
 
-	def sub_gpr_even : SubRegIndex<32>;
-	def sub_gpr_odd : SubRegIndex<32, 32>;
+	def sub_gpr_even : SubRegIndex<32> {
+		let SubRegRanges = SubRegRangeByHwMode<[RV32, RV64], [SubRegRange<32>, SubRegRange<64>]>;
+	}
+
+	def sub_gpr_odd : SubRegIndex<32, 32> {
+		let SubRegRanges = SubRegRangeByHwMode<[RV32, RV64], [SubRegRange<32, 32>, SubRegRange<64, 64>]>;
+	}
+
 
 The keys and values used in this definitions could be changed or updated in *llvm_config.txt* file.
 
@@ -1201,7 +1272,7 @@ This tag specifies the identifier used for pattern generation. The tools
 takes this identifier and used it in a pattern definition associated
 with instruction for which the <intrinsic> tag is defined.
 
-	def : Pat<(i32 (*int_riscv_add* GPR:$rs1, GPR:$rs2)), (ADD $rs1, $rs2)>;
+	def : Pat<(i32 (int_riscv_add GPR:$rs1, GPR:$rs2)), (ADD  GPR:$rs1, GPR:$rs2)>;
 
 
 *<intrinsic_args> (str)*
@@ -1231,8 +1302,8 @@ intrinsic in a separate file.
 		</instrfield_intrinsic>
 	</intrinsic_type>
 
-	def int_riscv_add : Intrinsic<[llvm_i32_ty], [llvm_i32_ty,
-	llvm_i32_ty], [IntrNoMem]>, ClangBuiltin<"__builtin_riscv_add">;
+	def int_riscv_add : Intrinsic<[llvm_i32_ty], [llvm_i32_ty, llvm_i32_ty], 
+		[IntrNoMem]>, ClangBuiltin<"__builtin_riscv_add">;
 
 
 *<generate_builtin> (str)*
@@ -1252,7 +1323,7 @@ This identifier is then used in several generated files as it follows:
 
 *BuiltinRISCVRv32i.def*
 
-	TARGET_BUILTIN(__builtin_riscv_add*, *"UiUiUi*", "nc", "rv32i")
+	def add : RISCVBuiltin<"unsigned int(unsigned int, unsigned int)", "rv32i">;
 
 The files generated which contain all the details about intrinsic and
 builtin definitions are:
@@ -1313,6 +1384,8 @@ example:
 
 == How to generate Sail description?
 **Sail** is a language for describing the instruction-set architecture (ISA) semantics of processors: the architectural specification of the behaviour of machine instructions. 
+
+NOTE: The commit id for the current version of Sail-riscv: 65715a220eb372a3316b38747eafd6099e85c9d5
 
 NOTE: For more information about **Sail**: https://github.com/riscv/sail-riscv
 

@@ -1,4 +1,4 @@
-# Copyright 2024 NXP
+# Copyright 2023-2025 NXP
 # SPDX-License-Identifier: BSD-2-Clause
 ## @package registerInfo
 #
@@ -148,6 +148,7 @@ class RegisterGeneric(Register):
         calling_convention,
         pseudo,
         alignment,
+        alias_reg,
     ):
         super().__init__(
             register_class, doc_info, width, attributes, size, shared, read, write
@@ -176,3 +177,6 @@ class RegisterGeneric(Register):
         ## @var alignment
         # The alignment in memory
         self.alignment = alignment
+        ## @var alias_reg
+        # Alias_reg contain the list of register aliases for a certain register
+        self.alias_reg = alias_reg

@@ -1,4 +1,4 @@
-# Copyright 2024 NXP 
+# Copyright 2023-2025 NXP 
 # SPDX-License-Identifier: BSD-2-Clause
 
 ## @package utils
@@ -30,15 +30,22 @@ def cmd_args():
 
     script_directory = os.path.dirname(os.path.abspath(__file__))
 
-    parser = argparse.ArgumentParser(description="Generate encoding tests based on ADL file and extensions", usage="python make_test.py adl_file extensions [-o, --output <output_directory>]")
+    parser = argparse.ArgumentParser(description="Generate encoding tests based on ADL file and extensions", usage="python make_test.py adl_file [--extension <comma-separated_list_of_extensions>] [-o, --output <output_directory>]")
     parser.add_argument("adl_file", type=str, help="path to the adl xml file")
-    parser.add_argument("extensions", type=str, help="extensions separated by comma")
+    parser.add_argument("--extension", type=parse_extensions, help="comma-separated list of extensions")
     parser.add_argument("-o", "--output", type=str, default=script_directory, help="create an output directory for specific extensions")
+    parser.add_argument("--list", action="store_true", help="Display the list of available extensions")
 
     args = parser.parse_args()
     adl_file_path = args.adl_file
     adl_file_name = remove_all_extensions(adl_file_path)
-    cmd_extensions = args.extensions.split(",")
+    cmd_extensions = args.extension
     output_dir = args.output
+    display_extensions = args.list
 
-    return adl_file_path, adl_file_name, cmd_extensions, output_dir
+    return adl_file_path, adl_file_name, cmd_extensions, output_dir, display_extensions
+
+
+## Split command line extensions
+def parse_extensions(extensions_list):
+    return extensions_list.split(',')

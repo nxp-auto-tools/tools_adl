@@ -1,14 +1,16 @@
-# Copyright 2024 NXP 
+# Copyright 2023-2025 NXP 
 # SPDX-License-Identifier: BSD-2-Clause
 
 ## @package parse_reloc
 # The module for parsing and extracting information about relocations from adl
 
 import sys
+import os
 import re
 import xml.etree.ElementTree as ET
 from collections import defaultdict
-
+sys.path.append(os.path.join(os.path.dirname(__file__), "../encoding/"))
+import parse # type: ignore
 
 ## A function that generates a dictionary with all the instructions as keys and a list of their operands as values
 # @param adl_file Name of the adl file
@@ -346,3 +348,74 @@ def relocations_directives(adl_file):
                 relocation_directives_dict[reloc.get("name")] = directives_list
 
     return relocation_directives_dict
+
+
+## A function that generates a dictionary with all the relocations and if they are pcrel or not
+# @param adl_file Name of the adl file
+# @return A dictionary with all the relocations as keys and a bool value for pcrel
+def relocations_pcrel(adl_file):
+    tree = ET.parse(adl_file)
+    root = tree.getroot()
+
+    relocation_pcrel_dict = dict()
+    for relocations in root.iter("relocations"):
+        for reloc in relocations.iter("reloc"):
+            if reloc.find("pcrel").find("str").text == "true":
+                relocation_pcrel_dict[reloc.get("name")] = "true"
+            else:
+                relocation_pcrel_dict[reloc.get("name")] = "false"
+
+    return relocation_pcrel_dict
+
+
+## A function that generates a dictionary with relocations as keys and a list of extensions as values
+# @param adl_file Name of the adl file
+# @return A dictionary with relocations as keys and a list of extensions as values
+def relocations_attributes(adl_file):
+
+    instruction_attributes_dict, new_instruction_attributes_dict = parse.instruction_attribute(adl_file)
+    relocation_instructions_dict = relocations_instructions(adl_file, operands_instructions(instructions_operands(adl_file)))
+    
+    relocation_attributes_dict = {}
+
+    for relocation, instruction_list in relocation_instructions_dict.items():
+        attributes = set() # Use a set to avoid duplicates
+        for instruction in instruction_list:
+            if instruction in instruction_attributes_dict.keys():
+                attributes.update(instruction_attributes_dict[instruction])
+        relocation_attributes_dict[relocation] = list(attributes) # Convert back to list
+
+    return relocation_attributes_dict
+
+
+## A function that generates a dictionary with relocations as keys and action info as value
+# @param adl_file Name of the adl file
+# @return A dictionary with relocations as keys and  action info as value
+def relocations_action(adl_file):
+    tree = ET.parse(adl_file)
+    root = tree.getroot()
+
+    relocation_action_dict = dict()
+    for relocations in root.iter("relocations"):
+        for reloc in relocations.iter("reloc"):
+            if reloc.find("action"):
+                relocation_action_dict[reloc.get("name")] = reloc.find("action").find("str").text
+
+    # Strip relocation calculus
+    for key in relocation_action_dict.keys():
+        relocation_action_dict[key] = relocation_action_dict[key].split('R =')[1].split(';')[0].strip()
+
+    return relocation_action_dict
+
+
+def relocations_field_widths(adl_file):
+    tree = ET.parse(adl_file)
+    root = tree.getroot()
+
+    relocation_field_width_dict = dict()
+    for relocations in root.iter("relocations"):
+        for reloc in relocations.iter("reloc"):
+            if reloc.find("field_width"):
+                relocation_field_width_dict[reloc.get("name")] = reloc.find("field_width").find("int").text
+
+    return relocation_field_width_dict

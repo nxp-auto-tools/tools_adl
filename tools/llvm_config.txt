@@ -1,4 +1,4 @@
-// Copyright 2024 NXP
+// Copyright 2023-2025 NXP
 // SPDX-License-Identifier: BSD-2-Clause
 Configuration file for ADL parser & .td files generator based on LLVM requirements
 
@@ -13,31 +13,32 @@ OperandsFile16 = ./examples/TD/RISCVOperands16_gen.td
 CallingConventionFile = ./examples/TD/RISCVCallingConv_gen.td
 RelocationFile = ./examples/TD/RISCVReloc.def
 IntrinsicsFile = ./examples/TD/RISCVIntrinsics_gen.td
-BuiltinFile = ./examples/TD/BuiltinRISCV.def
+BuiltinFile = ./examples/TD/BuiltinsRISCV.td
 BuiltinHeader = ./examples/TD/riscv_builtin.h
 MemoryOperand = ./examples/TD/RISCVMemoryOperand_gen.td
-TestIntrinsics = ./tools/testing/intrinsics/
+TestIntrinsics = ./testing/intrinsics/
 ScheduleFile = ./examples/TD/RISCVSchedule_gen.td
 SchedulePath = ./examples/TD/
 ScheduleFileTable = ./examples/TD/RISCVScheduleTable_gen.td
-TestScheduling = ./tools/testing/scheduling/zilsd/
+TestScheduling = ./testing/scheduling/zilsd_zclsd/
 SailDescription = ./examples/sail/riscv_insts_ext.sail
+Features = ./examples/TD/RISCVFeatures.td
 
 // ---- Environment variables and setup -----------------------------------------------------------------------
 Namespace = RISCV
 BaseArchitecture = rv32
-RegisterClass = RISCVReg
+RegisterClass = {GPR=RISCVReg}
+RegisterClassChild = {RegisterClassName=RISCVRegisterClass, RegisterBaseClass=RegisterClass, Namespace=RISCV, IsVRegClass=0, VLMul=1, NF=1, Size='!if(IsVRegClass,!mul(VLMul,NF,64),0)', TSFlags{0}=IsVRegClass, TSFlags{3-1}='!logtwo(VLMul)', TSFlags{6-4}='!sub(NF,1)'}
+RegisterClassWrapper = {RISCVRegisterClass=GPR}
 RegisterClassSubRegs_GPR = RISCVRegWithSubRegs
-RegisterClassSubRegs_CSR = RISCVCSRRegWithSubRegs
-RegisterClassSubRegs_CSR_enabled = True
 InstructionClass = RVInst
 InstructionClassC = RVInst16
 InstructionFormat = InstFormat
 RegAltNameIndex = ABIRegAltName
+FallbackRegAltNameIndex = NoRegAltName
 LLVMRegBasicWidth = 32
 LLVMStandardInstructionWidth = 32
 AsmString = opcodestr # "\t" # argstr
-DwarfCSR = 4096
 LLVMConstraintClassWidth = 3
 LLVMConstraintRiscVPrefix = RV
 LLVMConstraintName = VConstraint
@@ -48,9 +49,12 @@ TSFlagsLastConstraint = 5
 sideEffectAttribute = ""
 sideEffectAttributeSpecific = sideEffect
 memorySynchronizationInstruction = sync
-sideEffectInstrfield = csr
 XLenVT = i32
 XLenVT_key = XLenVT
+XLenFVT = i32
+XLenFVT_key = XLenFVT
+XLenFVTPair = i64
+XLenFVTPair_key = XLenPairFVT
 XLenRI = RegInfo<32,32,32>
 XLenRI_key = XLenRI
 DefineSP = True
@@ -124,16 +128,18 @@ TargetOverlapConstraintType = 0
 TargetOverlapConstraintTypeTSFlagsStart = 22
 TargetOverlapConstraintTypeTSFlagsEnd = 21
 
+
 // ---- Calling Convention -----------------------------------------------------------------------------------
-RegisterAllocationOrder = {GPR: [Function_arguments, Temporary, Saved_register, Hard_wired_zero, Return_address, Stack_pointer, Global_pointer, Thread_pointer]}
-CallingConventionAllocationOrder = {CSR_ILP32_LP64: [Return_address, Global_pointer, Thread_pointer, Saved_register]}
-CallingConventionAllocationExcluded = {CSR_Interrupt: [Hard_wired_zero, Stack_pointer]}
-CSR_ILP32_LP64_Ref = GPR
-CSR_Interrupt_Ref = GPR
+RegisterAllocationOrder = {GPR: [(Function_arguments, [0,1]), (Temporary, [0,1]), (Saved_register, [0,1]), Hard_wired_zero, (Return_address, [0,1]), (Stack_pointer, [0,1]), (Global_pointer, [0,1]), (Thread_pointer, [0,1])]}
+CallingConventionAllocationOrder = {}
+CallingConventionAllocationExcluded = {}
 XLenRIRegInfo = RegInfoByHwMode<[RV32, RV64], [RegInfo<32,32,32>, RegInfo<64,64,64>]>
 XLenVTValueType = ValueTypeByHwMode<[RV32, RV64], [i32, i64]>
+RegInfosPair = RegInfoByHwMode<[RV32], [RegInfo<64, 64, 64>]>
 SubReg_GPR_Even = SubRegIndex<32>
+SubReg_GPR_Even_HW = SubRegRangeByHwMode<[RV32, RV64], [SubRegRange<32>, SubRegRange<64>]>
 SubReg_GPR_Odd = SubRegIndex<32, 32>
+SubReg_GPR_Odd_HW = SubRegRangeByHwMode<[RV32, RV64], [SubRegRange<32, 32>, SubRegRange<64, 64>]>
 
 // ----Extensions Declaration-----------------------------------------------------------------------------------
 LLVMExtRv32i = IsRV32
@@ -149,10 +155,9 @@ HasStdRv32cExtension = Rv32c
 // ----Immediate Operands---------------------------------------------------------------------------------------------------------
 ImmediateOperands = {GenericOperand, imm_u_pc, imm_u, imm_sb}
 GenericOperand = {EncoderMethod=getImmOpValue}
-shamt_c = {AliasImmClass=uimmlog2xlennonzero}
 imm_u_pc = {disableImmLeaf=True, AliasImmClass=uimm20_auipc, ParserMatchClass=UImmAsmOperand<20, "AUIPC">}
 imm_u = {disableImmLeaf=True, AliasImmClass=uimm20_lui, ParserMatchClass=UImmAsmOperand<20, "LUI">}
-imm_sb = {disableImmLeaf=True, EncoderMethod=getImmOpValue, DecoderMethod=decodeSImmOperandAndLsl1<13>}
+imm_sb = {disableImmLeaf=True, EncoderMethod=getImmOpValueAsr1, DecoderMethod=decodeSImmOperandAndLsl1<13>}
 
 // ----Additional Extension Info------------------------------------------------------------------------------------------------------------
 ExtensionPrefixed = {Zclsd, Zilsd}

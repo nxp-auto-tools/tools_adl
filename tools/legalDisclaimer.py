@@ -1,4 +1,4 @@
-# Copyright 2024 NXP
+# Copyright 2023-2025 NXP
 # SPDX-License-Identifier: BSD-2-Clause
 ## @package legalDisclaimer
 #
@@ -24,20 +24,12 @@ def get_copyright(filename):
     list_dir = list()
     for fname in os.listdir("."):
         list_dir.append(fname)
-    if "tools" not in list_dir:
-        if filename.startswith("./"):
-            filename = "." + filename
-            f = open(filename, "w")
-            f.write(string)
-            f.close()
-        else:
-            f = open(filename, "w")
-            f.write(string)
-            f.close()
-    else:
-        f = open(filename, "w")
-        f.write(string)
+    if os.path.exists(filename) is False:
+        f = open(filename, "x")
         f.close()
+    f = open(filename, "w")
+    f.write(string)
+    f.close()
 
 ## A function that will return the string for determining its length
 #

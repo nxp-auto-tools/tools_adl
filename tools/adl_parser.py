@@ -1,4 +1,4 @@
-# Copyright 2024 NXP
+# Copyright 2023-2025 NXP
 # SPDX-License-Identifier: BSD-2-Clause
 ## @package adl_parser
 #
@@ -12,6 +12,8 @@ import utils
 import config
 import re
 import os
+import sys
+import argparse
 
 ## A dictionary that contains the environment variables listed inside config.txt
 config_file = "config.txt"
@@ -19,9 +21,8 @@ llvm_config = "llvm_config.txt"
 list_dir = list()
 for fname in os.listdir("."):
     list_dir.append(fname)
-if "tools" in list_dir:
-    config_file = "./tools/config.txt"
-    llvm_config = "./tools/llvm_config.txt"
+config_file = os.path.dirname(__file__).replace("\\", "/") + "/" + "config.txt"
+llvm_config = os.path.dirname(__file__).replace("\\", "/") + "/" + "llvm_config.txt"
 config_variables = config.config_environment(config_file, llvm_config)
 
 
@@ -29,134 +30,67 @@ config_variables = config.config_environment(config_file, llvm_config)
 #
 # @param adl_name The name of the adl.xml file (configured inside config.txt)
 # @return The register file dictionary (key = name of the regfile, value = ?)
-def parse_adl(adl_name):
+def parse_registers_from_adl(adl_name):
     # Passing the path of the
     # xml document to enable the
     # parsing process
-    tree = ET.parse(adl_name)
-
-    # getting the parent tag of
-    # the xml document
-    root = tree.getroot()
-    registers = dict()
-
-    for core in root.iter("cores"):
-        for regclass in core.iter("regfile"):
-            attributes = list()
-            parameters = dict()
-            entries = list()
-            syntax = list()
-            debug_info = dict()
-            enumerated_dict = dict()
-            register_class = regclass.attrib["name"]
-            for regfile in regclass:
-                for regclassinfo in regfile:
-                    parameters[regfile.tag] = regclassinfo.text
-                    for attribute in regclassinfo.iter("attribute"):
-                        if attribute[0].text is not None:
-                            debug_info[regclassinfo.attrib["name"]] = attribute[0].text
-                        attributes.append(attribute.attrib["name"])
-                    if regfile.tag == "calling_convention":
-                        enumerated_list = [
-                            option[0].text for option in regclassinfo.iter("option")
-                        ]
-                        if regclassinfo.attrib != {}:
-                            if (
-                                regclassinfo.attrib["name"]
-                                not in enumerated_dict.keys()
-                            ):
-                                enumerated_dict[
+    try:
+        tree = ET.parse(adl_name)
+        # getting the parent tag of
+        # the xml document
+        root = tree.getroot()
+        registers = dict()
+        for core in root.iter("cores"):
+            for regclass in core.iter("regfile"):
+                attributes = list()
+                parameters = dict()
+                alias_reg_dict = dict()
+                entries = list()
+                syntax = list()
+                debug_info = dict()
+                enumerated_dict = dict()
+                register_class = regclass.attrib["name"]
+                for regfile in regclass:
+                    for regclassinfo in regfile:
+                        parameters[regfile.tag] = regclassinfo.text
+                        for attribute in regclassinfo.iter("attribute"):
+                            if attribute[0].text is not None:
+                                debug_info[regclassinfo.attrib["name"]] = attribute[0].text
+                            attributes.append(attribute.attrib["name"])
+                        if regfile.tag == "calling_convention":
+                            enumerated_list = [
+                                option[0].text for option in regclassinfo.iter("option")
+                            ]
+                            if regclassinfo.attrib != {}:
+                                if (
                                     regclassinfo.attrib["name"]
-                                ] = enumerated_list
-                            else:
-                                enumerated_dict[
-                                    regclassinfo.attrib["name"]
-                                ] += enumerated_list
-                    if regfile.tag == "read":
-                        for attribute in regclassinfo.iter("alias"):
-                            for register in attribute[0].iter(attribute[0].tag):
-                                parameters['pseudo'] = register[0].text
-                    for attribute in regclassinfo.iter("entry"):
-                        entries.append(attribute.attrib["name"])
-                    for syntaxelem in regclassinfo.iter("syntax"):
-                        syntax.append(syntaxelem[0].text)
-                    parameters["calling_convention"] = enumerated_dict
-                    parameters["attributes"] = attributes
-                    parameters["entries"] = entries
-                    parameters["syntax"] = syntax
-
-            if register_class == "CSR":
-                prefix = ""
-                attributes = set(attributes)
-                alignment = ""
-                pseudo = ""
-                debug = ""
-                if "alignment" in parameters.keys():
-                    alignment = parameters["alignment"]
-                if "pseudo" in parameters.keys():
-                    pseudo = parameters["pseudo"]
-                if "debug" in parameters.keys():
-                    debug = parameters["debug"].strip()
-                calling_convention = parameters["calling_convention"]
-                doc_info = parameters["doc"].strip()
-                width = parameters["width"].strip()
-                size = parameters["size"].strip()
-                entries = entries
-                syntax = syntax
-                shared = parameters["shared"].strip()
-                reginfo = registerInfo.RegisterCSR(
-                    register_class,
-                    doc_info,
-                    width,
-                    attributes,
-                    size,
-                    entries,
-                    syntax,
-                    prefix,
-                    shared,
-                    None,
-                    None,
-                    calling_convention,
-                    pseudo,
-                    debug,
-                    alignment,
-                )
-                registers[register_class] = reginfo
-            elif register_class == "GPR":
-                attributes = set(attributes)
-                pseudo = ""
-                alignment = ""
-                if "calling_convention" in parameters.keys():
-                    calling_convention = parameters["calling_convention"]
-                if "pseudo" in parameters.keys():
-                    pseudo = parameters["pseudo"]
-                if "alignment" in parameters.keys():
-                    alignment = parameters["alignment"]
-                doc_info = parameters["doc"].strip()
-                width = parameters["width"].strip()
-                size = parameters["size"].strip()
-                prefix = parameters["prefix"].strip()
-                shared = parameters["shared"].strip()
-                for _, value in enumerate(debug_info.values()):
-                    debug = str(value)
-                reginfo = registerInfo.RegisterGPR(
-                    register_class,
-                    doc_info,
-                    width,
-                    attributes,
-                    debug,
-                    size,
-                    prefix,
-                    shared,
-                    None,
-                    None,
-                    calling_convention,
-                    pseudo,
-                    alignment,
-                )
-                registers[register_class] = reginfo
-
-            else:
+                                    not in enumerated_dict.keys()
+                                ):
+                                    enumerated_dict[
+                                        regclassinfo.attrib["name"]
+                                    ] = enumerated_list
+                                else:
+                                    enumerated_dict[
+                                        regclassinfo.attrib["name"]
+                                    ] += enumerated_list
+                        if regfile.tag == "read":
+                            for attribute in regclassinfo.iter("alias"):
+                                for register in attribute[0].iter(attribute[0].tag):
+                                    parameters['pseudo'] = register[0].text
+                        for attribute in regclassinfo.iter("entry"):
+                            entries.append(attribute.attrib["name"])
+                        for syntaxelem in regclassinfo.iter("syntax"):
+                            syntax.append(syntaxelem[0].text)
+                        for alias_reg in regclassinfo.iter("alias_reg"):
+                            for attribute in regclassinfo.iter("entry"):
+                                if attribute.attrib["name"] not in alias_reg_dict.keys():
+                                    alias_reg_dict[attribute.attrib["name"]] = alias_reg[0].text
+                                    break
+                        parameters["calling_convention"] = enumerated_dict
+                        parameters["attributes"] = attributes
+                        parameters["entries"] = entries
+                        parameters["syntax"] = syntax
+                        parameters["alias_reg"] = alias_reg_dict
                 attributes = set(attributes)
                 debug = ""
                 prefix = ""
@@ -190,6 +124,7 @@ def parse_adl(adl_name):
                         reserved_mask = parameters[key].strip()
                     entries = entries
                     syntax = syntax
+                    alias_reg_dict = alias_reg_dict
                 if debug == "":
                     for _, value in enumerate(debug_info.values()):
                         debug = str(value)
@@ -210,78 +145,87 @@ def parse_adl(adl_name):
                     calling_convention,
                     pseudo,
                     alignment,
+                    alias_reg_dict
                 )
                 registers[register_class] = reginfo
-
-        for regclass in core.iter("regs"):
-            for regs in regclass:
-                parameters = dict()
-                attributes = list()
-                debug_info = dict()
-                entries = list()
-                syntax = list()
-                register_name = regs.attrib["name"]
-                for reg_info in regs:
-                    for sub_reg_info in reg_info:
-                        for attribute in sub_reg_info.iter("attribute"):
-                            if "name" in sub_reg_info.attrib["name"]:
-                                debug_info[sub_reg_info.attrib["name"]] = str(
-                                    attribute[0].text
-                                )
-                            attributes.append(attribute.attrib["name"])
-                    parameters[reg_info.tag] = sub_reg_info.text
-                    parameters["attributes"] = attributes
-                    registers[register_name] = parameters
-                if bool(attributes):
-                    attributes = set(attributes)
-                if "calling_convention" in parameters.keys():
-                    calling_convention = parameters["calling_convention"]
-                if "pseudo" in parameters.keys():
-                    pseudo = parameters["pseudo"]
-                debug = ""
-                prefix = ""
-                reserved_mask = ""
-                doc_info = ""
-                size = ""
-                shared = ""
-                pseudo = ""
-                for key in parameters.keys():
-                    if key == "doc":
-                        doc_info = parameters[key].strip()
-                    elif key == "width":
-                        width = parameters[key].strip()
-                    elif key == "size":
-                        size = parameters[key].strip()
-                    elif key == "prefix":
-                        prefix = parameters[key].strip()
-                    elif key == "shared":
-                        shared = parameters[key].strip()
-                    elif key == "reserved_mask":
-                        reserved_mask = parameters[key].strip()
-                if bool(debug_info) is not False:
-                    for _, value in enumerate(debug_info.values()):
-                        debug = str(value)
-                reginfo2 = registerInfo.RegisterGeneric(
-                    register_name,
-                    doc_info,
-                    width,
-                    attributes,
-                    size,
-                    entries,
-                    syntax,
-                    debug,
-                    prefix,
-                    shared,
-                    reserved_mask,
-                    None,
-                    None,
-                    calling_convention,
-                    pseudo,
-                    alignment,
-                )
-                registers[register_name] = reginfo2
-    utils.remove_ignored_attrib_regs(registers)
-    return registers
+                    
+            for regclass in core.iter("regs"):
+                for regs in regclass:
+                    parameters = dict()
+                    attributes = list()
+                    debug_info = dict()
+                    entries = list()
+                    syntax = list()
+                    register_name = regs.attrib["name"]
+                    for reg_info in regs:
+                        for sub_reg_info in reg_info:
+                            for attribute in sub_reg_info.iter("attribute"):
+                                if "name" in sub_reg_info.attrib["name"]:
+                                    debug_info[sub_reg_info.attrib["name"]] = str(
+                                        attribute[0].text
+                                    )
+                                attributes.append(attribute.attrib["name"])
+                        parameters[reg_info.tag] = sub_reg_info.text
+                        parameters["attributes"] = attributes
+                        registers[register_name] = parameters
+                    if bool(attributes):
+                        attributes = set(attributes)
+                    if "pseudo" in parameters.keys():
+                        pseudo = parameters["pseudo"]
+                    debug = ""
+                    prefix = ""
+                    reserved_mask = ""
+                    doc_info = ""
+                    size = ""
+                    shared = ""
+                    pseudo = ""
+                    for key in parameters.keys():
+                        if key == "doc":
+                            doc_info = parameters[key].strip()
+                        elif key == "width":
+                            width = parameters[key].strip()
+                        elif key == "size":
+                            size = parameters[key].strip()
+                        elif key == "prefix":
+                            prefix = parameters[key].strip()
+                        elif key == "shared":
+                            shared = parameters[key].strip()
+                        elif key == "reserved_mask":
+                            reserved_mask = parameters[key].strip()
+                    if bool(debug_info) is not False:
+                        for _, value in enumerate(debug_info.values()):
+                            debug = str(value)
+                    reginfo2 = registerInfo.RegisterGeneric(
+                        register_name,
+                        doc_info,
+                        width,
+                        attributes,
+                        size,
+                        entries,
+                        syntax,
+                        debug,
+                        prefix,
+                        shared,
+                        reserved_mask,
+                        None,
+                        None,
+                        None,
+                        pseudo,
+                        alignment,
+                        None
+                    )
+                    registers[register_name] = reginfo2
+        utils.remove_ignored_attrib_regs(registers)
+        return registers
+    except:
+        print("Error detected when running : " + parse_registers_from_adl.__name__)
+        print("No XML model is provided in the command line! Please run make_td.py with a proper XML file as first argument!")
+        parser = argparse.ArgumentParser()
+        parser.add_argument("file", type=str)
+        parser.add_argument("--extension", "-e", dest="extension", type=str)  # Elimină "="
+        parser.add_argument("--output", "-o", dest='output', type=str)
+        parser.print_help(sys.stderr)
+        sys.exit(1)
 
 
 ## A function that parses and classifies aliases from instruction fields based on 'ref' tag
@@ -289,47 +233,57 @@ def parse_adl(adl_name):
 # @param adl_name The name of the adl.xml file (configured inside config.txt)
 # @return The alias dictionary (key = name of regfile, value = another dictionary where (key = register name; value = alias name))
 def get_alias_for_regs(adl_name):
-    tree = ET.parse(adl_name)
-    root = tree.getroot()
-    alias_dict = dict()
-    instrfield_dict = dict()
-    instrfield_data = dict()
-    for core in root.iter("cores"):
-        for instr_field in core.iter("instrfield"):
-            instruction_field = instr_field.attrib["name"]
-            parameters = dict()
-            enumerated_dict = dict()
-            list_range = list()
-            range_tuples = list()
-            for instr in instr_field:
-                for elem in instr:
-                    parameters[instr.tag] = elem.text
-                    if instr.tag == "bits":
-                        for instr_bits in instr.iter("range"):
-                            for index in range(len(instr_bits)):
-                                list_range.append(instr_bits[index].text)
-                                if len(list_range) >= 2:
-                                    range_tuple = (list_range[0], list_range[1])
-                                    if range_tuple not in range_tuples:
-                                        range_tuples.append(range_tuple)
-                                        list_range.clear()
-                    enumerated_list = [option[0].text for option in elem.iter("option")]
-                    if elem.attrib != {}:
-                        if elem.attrib["name"] not in enumerated_dict.keys():
-                            enumerated_dict[elem.attrib["name"]] = enumerated_list
-                        else:
-                            enumerated_dict[elem.attrib["name"]] += enumerated_list
-                parameters["aliases"] = enumerated_dict
-                list_tuples_range = list()
-                for elem in range_tuples:
-                    elem = list(elem)
-                    list_tuples_range.append(elem)
-                parameters["range"] = list_tuples_range
-            instrfield_data[instruction_field] = parameters
-            if "ref" in parameters.keys():
-                alias_dict[parameters["ref"]] = parameters["aliases"]
-                instrfield_dict[instruction_field] = parameters["aliases"]
-    return alias_dict
+    try:
+        tree = ET.parse(adl_name)
+        root = tree.getroot()
+        alias_dict = dict()
+        instrfield_dict = dict()
+        instrfield_data = dict()
+        for core in root.iter("cores"):
+            for instr_field in core.iter("instrfield"):
+                instruction_field = instr_field.attrib["name"]
+                parameters = dict()
+                enumerated_dict = dict()
+                list_range = list()
+                range_tuples = list()
+                for instr in instr_field:
+                    for elem in instr:
+                        parameters[instr.tag] = elem.text
+                        if instr.tag == "bits":
+                            for instr_bits in instr.iter("range"):
+                                for index in range(len(instr_bits)):
+                                    list_range.append(instr_bits[index].text)
+                                    if len(list_range) >= 2:
+                                        range_tuple = (list_range[0], list_range[1])
+                                        if range_tuple not in range_tuples:
+                                            range_tuples.append(range_tuple)
+                                            list_range.clear()
+                        enumerated_list = [option[0].text for option in elem.iter("option")]
+                        if elem.attrib != {}:
+                            if elem.attrib["name"] not in enumerated_dict.keys():
+                                enumerated_dict[elem.attrib["name"]] = enumerated_list
+                            else:
+                                enumerated_dict[elem.attrib["name"]] += enumerated_list
+                    parameters["aliases"] = enumerated_dict
+                    list_tuples_range = list()
+                    for elem in range_tuples:
+                        elem = list(elem)
+                        list_tuples_range.append(elem)
+                    parameters["range"] = list_tuples_range
+                instrfield_data[instruction_field] = parameters
+                if "ref" in parameters.keys():
+                    alias_dict[parameters["ref"]] = parameters["aliases"]
+                    instrfield_dict[instruction_field] = parameters["aliases"]
+        return alias_dict
+    except:
+        print("Error detected when running : " + get_alias_for_regs.__name__)
+        print("No XML model is provided in the command line! Please run make_td.py with a proper XML file as first argument!")
+        parser = argparse.ArgumentParser()
+        parser.add_argument("file", type=str)
+        parser.add_argument("--extension", "-e", dest="extension", type=str)  # Elimină "="
+        parser.add_argument("--output", "-o", dest='output', type=str)
+        parser.print_help(sys.stderr)
+        sys.exit(1)
 
 
 ## Parses all instruction fields and takes the offset
@@ -337,54 +291,64 @@ def get_alias_for_regs(adl_name):
 # @param adl_name The name of the adl.xml file (configured inside config.txt)
 # @return  A tuple of 2 dictionaries containing various instruction field information
 def get_instrfield_offset(adl_name):
-    tree = ET.parse(adl_name)
-    root = tree.getroot()
-    alias_dict = dict()
-    instrfield_dict = dict()
-    instrfield_data = dict()
-    instrfield_data_ref = dict()
-    instrfield_offset = dict()
-    for core in root.iter("cores"):
-        for instr_field in core.iter("instrfield"):
-            instruction_field = instr_field.attrib["name"]
-            parameters = dict()
-            enumerated_dict = dict()
-            exclude_values = dict()
-            for instr in instr_field:
-                for elem in instr:
-                    parameters[instr.tag] = elem.text
+    try:
+        tree = ET.parse(adl_name)
+        root = tree.getroot()
+        alias_dict = dict()
+        instrfield_dict = dict()
+        instrfield_data = dict()
+        instrfield_data_ref = dict()
+        instrfield_offset = dict()
+        for core in root.iter("cores"):
+            for instr_field in core.iter("instrfield"):
+                instruction_field = instr_field.attrib["name"]
+                parameters = dict()
+                enumerated_dict = dict()
+                exclude_values = dict()
+                for instr in instr_field:
+                    for elem in instr:
+                        parameters[instr.tag] = elem.text
+                        if instr.tag == "enumerated":
+                            enumerated_list = [
+                                option[0].text for option in elem.iter("option")
+                            ]
+                            if elem.attrib != {}:
+                                if elem.attrib["name"] not in enumerated_dict.keys():
+                                    enumerated_dict[elem.attrib["name"]] = enumerated_list
+                                else:
+                                    enumerated_dict[elem.attrib["name"]] += enumerated_list
+                        if instr.tag == "excluded_values":
+                            enumerated_list = [
+                                option[0].text for option in elem.iter("option")
+                            ]
+                            if elem.attrib != {}:
+                                if elem.attrib["name"] not in exclude_values.keys():
+                                    exclude_values[elem.attrib["name"]] = enumerated_list
+                                else:
+                                    exclude_values[elem.attrib["name"]] += enumerated_list
                     if instr.tag == "enumerated":
-                        enumerated_list = [
-                            option[0].text for option in elem.iter("option")
-                        ]
-                        if elem.attrib != {}:
-                            if elem.attrib["name"] not in enumerated_dict.keys():
-                                enumerated_dict[elem.attrib["name"]] = enumerated_list
-                            else:
-                                enumerated_dict[elem.attrib["name"]] += enumerated_list
+                        parameters["enumerated"] = enumerated_dict
                     if instr.tag == "excluded_values":
-                        enumerated_list = [
-                            option[0].text for option in elem.iter("option")
-                        ]
-                        if elem.attrib != {}:
-                            if elem.attrib["name"] not in exclude_values.keys():
-                                exclude_values[elem.attrib["name"]] = enumerated_list
-                            else:
-                                exclude_values[elem.attrib["name"]] += enumerated_list
-                if instr.tag == "enumerated":
-                    parameters["enumerated"] = enumerated_dict
-                if instr.tag == "excluded_values":
-                    parameters["excluded_values"] = exclude_values
-            instrfield_data[instruction_field] = parameters
-            if "ref" in parameters.keys():
-                if "enumerated" in parameters.keys():
-                    alias_dict[parameters["ref"]] = parameters["enumerated"]
-                    instrfield_dict[instruction_field] = parameters["enumerated"]
-    for key in instrfield_data.keys():
-        if "ref" in instrfield_data[key].keys():
-            instrfield_data_ref[key] = instrfield_data[key]
-    instrfield_offset = utils.get_instrfield_offset(instrfield_data_ref)
-    return instrfield_offset, instrfield_data_ref
+                        parameters["excluded_values"] = exclude_values
+                instrfield_data[instruction_field] = parameters
+                if "ref" in parameters.keys():
+                    if "enumerated" in parameters.keys():
+                        alias_dict[parameters["ref"]] = parameters["enumerated"]
+                        instrfield_dict[instruction_field] = parameters["enumerated"]
+        for key in instrfield_data.keys():
+            if "ref" in instrfield_data[key].keys():
+                instrfield_data_ref[key] = instrfield_data[key]
+        instrfield_offset = utils.get_instrfield_offset(instrfield_data_ref)
+        return instrfield_offset, instrfield_data_ref
+    except:
+        print("Error detected when running : " + get_instrfield_offset.__name__)
+        print("No XML model is provided in the command line! Please run make_td.py with a proper XML file as first argument!")
+        parser = argparse.ArgumentParser()
+        parser.add_argument("file", type=str)
+        parser.add_argument("--extension", "-e", dest="extension", type=str)  # Elimină "="
+        parser.add_argument("--output", "-o", dest='output', type=str)
+        parser.print_help(sys.stderr)
+        sys.exit(1)
 
 
 ## This function parses all instruction fields and sort them based on their type: instruction fields
@@ -392,51 +356,61 @@ def get_instrfield_offset(adl_name):
 # @param adl_name The name of the adl.xml file (configured inside config.txt)
 # @return A tuple of 2 dictionaries which contain all instruction fields sorted on the criteria mention above
 def get_instrfield_from_adl(adl_name):
-    tree = ET.parse(adl_name)
-    root = tree.getroot()
-    instrfield_dict = dict()
-    instrfield_data_ref = dict()
-    instrfield_data_imm = dict()
-    for core in root.iter("cores"):
-        for instr_field in core.iter("instrfield"):
-            instruction_field = instr_field.attrib["name"]
-            parameters = dict()
-            enumerated_dict = dict()
-            list_range = list()
-            range_tuples = list()
-            for instr in instr_field:
-                for elem in instr:
-                    parameters[instr.tag] = elem.text
-                    if instr.tag == "enumerated":
-                        enumerated_list = [
-                            option[0].text for option in elem.iter("option")
-                        ]
-                    if instr.tag == "bits":
-                        for instr_bits in instr.iter("range"):
-                            for index in range(len(instr_bits)):
-                                list_range.append(instr_bits[index].text)
-                                if len(list_range) >= 2:
-                                    range_tuple = (list_range[0], list_range[1])
-                                    if range_tuple not in range_tuples:
-                                        range_tuples.append(range_tuple)
-                                        list_range.clear()
-                    enumerated_list = [option[0].text for option in elem.iter("option")]
-                    if elem.attrib != {}:
-                        if elem.attrib["name"] not in enumerated_dict.keys():
-                            enumerated_dict[elem.attrib["name"]] = enumerated_list
-                        else:
-                            enumerated_dict[elem.attrib["name"]] += enumerated_list
-                parameters["aliases"] = enumerated_dict
-                list_tuples_range = list()
-                for elem in range_tuples:
-                    elem = list(elem)
-                    list_tuples_range.append(elem)
-                parameters["range"] = list_tuples_range
-            if "ref" in parameters.keys():
-                instrfield_data_ref[instruction_field] = parameters
-            else:
-                instrfield_data_imm[instruction_field] = parameters
-    return instrfield_data_imm, instrfield_data_ref
+    try:
+        tree = ET.parse(adl_name)
+        root = tree.getroot()
+        instrfield_dict = dict()
+        instrfield_data_ref = dict()
+        instrfield_data_imm = dict()
+        for core in root.iter("cores"):
+            for instr_field in core.iter("instrfield"):
+                instruction_field = instr_field.attrib["name"]
+                parameters = dict()
+                enumerated_dict = dict()
+                list_range = list()
+                range_tuples = list()
+                for instr in instr_field:
+                    for elem in instr:
+                        parameters[instr.tag] = elem.text
+                        if instr.tag == "enumerated":
+                            enumerated_list = [
+                                option[0].text for option in elem.iter("option")
+                            ]
+                        if instr.tag == "bits":
+                            for instr_bits in instr.iter("range"):
+                                for index in range(len(instr_bits)):
+                                    list_range.append(instr_bits[index].text)
+                                    if len(list_range) >= 2:
+                                        range_tuple = (list_range[0], list_range[1])
+                                        if range_tuple not in range_tuples:
+                                            range_tuples.append(range_tuple)
+                                            list_range.clear()
+                        enumerated_list = [option[0].text for option in elem.iter("option")]
+                        if elem.attrib != {}:
+                            if elem.attrib["name"] not in enumerated_dict.keys():
+                                enumerated_dict[elem.attrib["name"]] = enumerated_list
+                            else:
+                                enumerated_dict[elem.attrib["name"]] += enumerated_list
+                    parameters["aliases"] = enumerated_dict
+                    list_tuples_range = list()
+                    for elem in range_tuples:
+                        elem = list(elem)
+                        list_tuples_range.append(elem)
+                    parameters["range"] = list_tuples_range
+                if "ref" in parameters.keys():
+                    instrfield_data_ref[instruction_field] = parameters
+                else:
+                    instrfield_data_imm[instruction_field] = parameters
+        return instrfield_data_imm, instrfield_data_ref
+    except:
+        print("Error detected when running : " + get_instrfield_from_adl.__name__)
+        print("No XML model is provided in the command line! Please run make_td.py with a proper XML file as first argument!")
+        parser = argparse.ArgumentParser()
+        parser.add_argument("file", type=str)
+        parser.add_argument("--extension", "-e", dest="extension", type=str)  # Elimină "="
+        parser.add_argument("--output", "-o", dest='output', type=str)
+        parser.print_help(sys.stderr)
+        sys.exit(1)
 
 
 ## This function parses all the instruction found in ADL file
@@ -446,405 +420,480 @@ def get_instrfield_from_adl(adl_name):
 # the list contains only the instructions which use registers and constants. Sorting_attributes list contains all the attributes
 # found in instructions definitions from ADL file.
 def parse_instructions_from_adl(adl_name):
-    instrfield_imm = get_instrfield_from_adl(adl_name)[0]
-    instrfield_ref = get_instrfield_from_adl(adl_name)[1]
-    tree = ET.parse(adl_name)
-    root = tree.getroot()
-    instructions = dict()
-    sorting_attributes = list()
-    for core in root.iter("cores"):
-        for instr in core.iter("instruction"):
-            attributes = list()
-            list_fields = list()
-            instruction = instr.attrib["name"]
-            parameters = dict()
-            list_inputs = list()
-            intrinsic_args_list = list()
-            list_outputs = list()
-            fields = dict()
-            syntax_list = list()
-            dsyntax_list = list()
-            enumerated_dict = dict()
-            args_dict = dict()
-            intrinsic_parsed = False
-            for instruction_info in instr:
-                for elem in instruction_info:
-                    parameters[instruction_info.tag] = elem.text
-                    if instruction_info.tag == "syntax":
-                        x = re.split(r"[, ]", elem.text)
-                        syntax_list.extend(x)
-                    if instruction_info.tag == "dsyntax":
-                        x = re.split(r"[, ]", elem.text)
-                        dsyntax_list.extend(x)
-                    if instruction_info.tag == "inputs":
-                        for instr_ins in instr.iter("inputs"):
-                            for index in range(len(instr_ins)):
-                                list_inputs.append(instr_ins[index].text)
-                    if instruction_info.tag == "intrinsic_args":
-                        for intrinsic_args in instr.iter("intrinsic_args"):
-                            for index in range(len(intrinsic_args)):
-                                if intrinsic_parsed is False:
-                                    intrinsic_args_list.append(
-                                        intrinsic_args[index].text
-                                    )
-                        intrinsic_parsed = True
-                    if instruction_info.tag == "outputs":
-                        for instr_outs in instr.iter("outputs"):
-                            for index in range(len(instr_outs)):
-                                list_outputs.append(instr_outs[index].text)
-                    if instruction_info.tag == "excluded_values":
-                        enumerated_list = [
-                            option[0].text for option in elem.iter("option")
-                        ]
-                        if elem.attrib != {}:
-                            if elem.attrib["name"] not in enumerated_dict.keys():
-                                if len(enumerated_list) > 0:
-                                    enumerated_dict[
-                                        elem.attrib["name"]
-                                    ] = enumerated_list
-                            else:
-                                if len(enumerated_list) > 0:
-                                    enumerated_dict[
-                                        elem.attrib["name"]
-                                    ] += enumerated_list
-                            parameters["excluded_values"] = enumerated_dict
-                    if instruction_info.tag == "intrinsic_type":
-                        args_list = [
-                            option[0].text
-                            for option in elem.iter("instrfield_intrinsic")
-                        ]
-                        if elem.attrib != {}:
-                            if elem.attrib["name"] not in args_dict.keys():
-                                if len(args_list) > 0:
-                                    args_dict[elem.attrib["name"]] = args_list
-                            else:
-                                if len(args_list) > 0:
-                                    args_dict[elem.attrib["name"]] += args_list
-                            parameters["intrinsic_type"] = args_dict
-                    for attribute in instruction_info.iter("attribute"):
-                        if "name" in attribute.attrib.keys():
-                            attributes.append(attribute.attrib["name"])
-                    for field in instruction_info.iter("field"):
-                        if "name" in field.attrib.keys():
-                            if field[0].text is not None:
-                                fields[field.attrib["name"]] = field[0].text
-                            else:
-                                if field.attrib["name"] in instrfield_ref.keys():
-                                    fields[field.attrib["name"]] = "reg"
-                                elif field.attrib["name"] in instrfield_imm.keys():
-                                    fields[field.attrib["name"]] = "imm"
-            list_fields.insert(len(list_fields), fields)
-            parameters["syntax"] = syntax_list
-            parameters["dsyntax"] = dsyntax_list
-            parameters["attributes"] = list(set(attributes))
-            for attribute in parameters["attributes"]:
-                if attribute not in sorting_attributes:
-                    sorting_attributes.append(attribute)
-            parameters["fields"] = list(list_fields)
-            parameters["intrinsic_args"] = list(intrinsic_args_list)
-            parameters["inputs"] = list(set(list_inputs))
-            parameters["outputs"] = list(set(list_outputs))
+    try:
+        instrfield_imm = get_instrfield_from_adl(adl_name)[0]
+        instrfield_ref = get_instrfield_from_adl(adl_name)[1]
+        tree = ET.parse(adl_name)
+        root = tree.getroot()
+        instructions = dict()
+        sorting_attributes = list()
+        for core in root.iter("cores"):
+            for instr in core.iter("instruction"):
+                attributes = list()
+                list_fields = list()
+                instruction = instr.attrib["name"]
+                parameters = dict()
+                list_inputs = list()
+                intrinsic_args_list = list()
+                list_outputs = list()
+                fields = dict()
+                syntax_list = list()
+                dsyntax_list = list()
+                enumerated_dict = dict()
+                args_dict = dict()
+                intrinsic_parsed = False
+                for instruction_info in instr:
+                    for elem in instruction_info:
+                        parameters[instruction_info.tag] = elem.text
+                        if instruction_info.tag == "syntax":
+                            x = re.split(r"[, ]", elem.text)
+                            syntax_list.extend(x)
+                        if instruction_info.tag == "dsyntax":
+                            x = re.split(r"[, ]", elem.text)
+                            dsyntax_list.extend(x)
+                        if instruction_info.tag == "inputs":
+                            for instr_ins in instr.iter("inputs"):
+                                for index in range(len(instr_ins)):
+                                    list_inputs.append(instr_ins[index].text)
+                        if instruction_info.tag == "intrinsic_args":
+                            for intrinsic_args in instr.iter("intrinsic_args"):
+                                for index in range(len(intrinsic_args)):
+                                    if intrinsic_parsed is False:
+                                        intrinsic_args_list.append(
+                                            intrinsic_args[index].text
+                                        )
+                            intrinsic_parsed = True
+                        if instruction_info.tag == "outputs":
+                            for instr_outs in instr.iter("outputs"):
+                                for index in range(len(instr_outs)):
+                                    list_outputs.append(instr_outs[index].text)
+                        if instruction_info.tag == "excluded_values":
+                            enumerated_list = [
+                                option[0].text for option in elem.iter("option")
+                            ]
+                            if elem.attrib != {}:
+                                if elem.attrib["name"] not in enumerated_dict.keys():
+                                    if len(enumerated_list) > 0:
+                                        enumerated_dict[
+                                            elem.attrib["name"]
+                                        ] = enumerated_list
+                                else:
+                                    if len(enumerated_list) > 0:
+                                        enumerated_dict[
+                                            elem.attrib["name"]
+                                        ] += enumerated_list
+                                parameters["excluded_values"] = enumerated_dict
+                        if instruction_info.tag == "intrinsic_type":
+                            args_list = [
+                                option[0].text
+                                for option in elem.iter("instrfield_intrinsic")
+                            ]
+                            if elem.attrib != {}:
+                                if elem.attrib["name"] not in args_dict.keys():
+                                    if len(args_list) > 0:
+                                        args_dict[elem.attrib["name"]] = args_list
+                                else:
+                                    if len(args_list) > 0:
+                                        args_dict[elem.attrib["name"]] += args_list
+                                parameters["intrinsic_type"] = args_dict
+                        for attribute in instruction_info.iter("attribute"):
+                            if "name" in attribute.attrib.keys():
+                                attributes.append(attribute.attrib["name"])
+                        for field in instruction_info.iter("field"):
+                            if "name" in field.attrib.keys():
+                                if field[0].text is not None:
+                                    fields[field.attrib["name"]] = field[0].text
+                                else:
+                                    if field.attrib["name"] in instrfield_ref.keys():
+                                        fields[field.attrib["name"]] = "reg"
+                                    elif field.attrib["name"] in instrfield_imm.keys():
+                                        fields[field.attrib["name"]] = "imm"
+                list_fields.insert(len(list_fields), fields)
+                parameters["syntax"] = syntax_list
+                parameters["dsyntax"] = dsyntax_list
+                parameters["attributes"] = list(set(attributes))
+                for attribute in parameters["attributes"]:
+                    if attribute not in sorting_attributes:
+                        sorting_attributes.append(attribute)
+                parameters["fields"] = list(list_fields)
+                parameters["intrinsic_args"] = list(intrinsic_args_list)
+                parameters["inputs"] = list(set(list_inputs))
+                parameters["outputs"] = list(set(list_outputs))
+                check_instruction = True
+                for attribute in config_variables['IgnoredAttrib']:
+                    if attribute in parameters["attributes"]:
+                        check_instruction = False
+                        break
+                if check_instruction is True:
+                    instructions[instruction] = parameters
+        list_instructions_with_regs = list()
+        list_instructions_imms = list()
+        for key in instructions.keys():
             if (
-                config_variables["InstructionIgnoredAttrib"]
-                not in parameters["attributes"]
+                "imm" not in instructions[key]["fields"][0].values()
+                and len(instructions[key]["fields"][0].values()) != 0
             ):
-                instructions[instruction] = parameters
-    list_instructions_with_regs = list()
-    list_instructions_imms = list()
-    for key in instructions.keys():
-        if (
-            "imm" not in instructions[key]["fields"][0].values()
-            and len(instructions[key]["fields"][0].values()) != 0
-        ):
-            list_instructions_with_regs.append(key)
-        elif (
-            "imm" in instructions[key]["fields"][0].values()
-            and len(instructions[key]["fields"][0].values()) != 0
-        ):
-            list_instructions_imms.append(key)
-    return (
-        instructions,
-        list_instructions_with_regs,
-        list_instructions_imms,
-        sorting_attributes,
-    )
+                list_instructions_with_regs.append(key)
+            elif (
+                "imm" in instructions[key]["fields"][0].values()
+                and len(instructions[key]["fields"][0].values()) != 0
+            ):
+                list_instructions_imms.append(key)
+        return (
+            instructions,
+            list_instructions_with_regs,
+            list_instructions_imms,
+            sorting_attributes,
+        )
+    except:
+        print("Error detected when running : " + parse_instructions_from_adl.__name__)
+        print("No XML model is provided in the command line! Please run make_td.py with a proper XML file")
+        parser = argparse.ArgumentParser()
+        parser.add_argument("file", type=str)
+        parser.add_argument("--extension", "-e", dest="extension", type=str)  # Elimină "="
+        parser.add_argument("--output", "-o", dest='output', type=str)
+        parser.print_help(sys.stderr)
+        sys.exit(1)
 
 
-## This function will parsed all information about aliases from an ADL file given as parameter
+## This function parses all information about aliases from an ADL file given as parameter
 #
 # @param adl_name This argument represents the ADL file from which the information will be parsed
-# @return The function will return the dictionary containing all information parsed from ADL file
+# @return The function returns the dictionary containing all information parsed from ADL file
 def parse_instructions_aliases_from_adl(adl_name):
-    instrfield_imm = get_instrfield_from_adl(adl_name)[0]
-    instrfield_ref = get_instrfield_from_adl(adl_name)[1]
-    tree = ET.parse(adl_name)
-    root = tree.getroot()
-    instructions_aliases = dict()
-    for core in root.iter("cores"):
-        for instr in core.iter("instruction"):
-            attributes = list()
-            aliases = list()
-            list_fields = list()
-            instruction = instr.attrib["name"]
-            parameters = dict()
-            list_inputs = list()
-            list_outputs = list()
-            fields = dict()
-            syntax_list = list()
-            dsyntax_list = list()
-            miscs = dict()
-            args_dict = dict()
-            intrinsic_args_list = list()
-            for instruction_info in instr:
-                for elem in instruction_info:
-                    parameters[instruction_info.tag] = elem.text
-                    if instruction_info.tag == "syntax":
-                        x = re.split(r"[, ]", elem.text)
-                        syntax_list.extend(x)
-                    if instruction_info.tag == "dsyntax":
-                        x = re.split(r"[, ]", elem.text)
-                        dsyntax_list.extend(x)
-                    if instruction_info.tag == "inputs":
-                        for instr_ins in instr.iter("inputs"):
-                            for index in range(len(instr_ins)):
-                                list_inputs.append(instr_ins[index].text)
-                    if instruction_info.tag == "outputs":
-                        for instr_outs in instr.iter("outputs"):
-                            for index in range(len(instr_outs)):
-                                list_outputs.append(instr_outs[index].text)
-                    if instruction_info.tag == "intrinsic_args":
-                        for intrinsic_args in instr.iter("intrinsic_args"):
-                            for index in range(len(intrinsic_args)):
-                                intrinsic_args_list.append(intrinsic_args[index].text)
-                    for attribute in instruction_info.iter("attribute"):
-                        if "name" in attribute.attrib.keys():
-                            attributes.append(attribute.attrib["name"])
-                    for alias in instruction_info.iter("alias"):
-                        if "name" in alias.attrib.keys():
-                            aliases.append(alias.attrib["name"])
-                    if instruction_info.tag == "intrinsic_type":
-                        args_list = [
-                            option[0].text
-                            for option in elem.iter("instrfield_intrinsic")
-                        ]
-                        if elem.attrib != {}:
-                            if elem.attrib["name"] not in args_dict.keys():
-                                if len(args_list) > 0:
-                                    args_dict[elem.attrib["name"]] = args_list
-                            else:
-                                if len(args_list) > 0:
-                                    args_dict[elem.attrib["name"]] += args_list
-                            parameters["intrinsic_type"] = args_dict
-                if instruction_info.tag == "aliases":
-                    fields = {}
-                    stack = [(instruction_info, fields)]
-                    while stack:
-                        elem, current_dict = stack.pop()
-                        for child in elem:
-                            if len(child) == 0:
-                                current_dict[child.tag] = (
-                                    child.text.strip() if child.text else ""
-                                )
-                            else:
-                                if child.tag not in current_dict:
-                                    current_dict[child.tag] = []
-                                new_dict = {}
-                                current_dict[child.tag].append(new_dict)
-                                stack.append((child, new_dict))
-                    for key, value in fields.items():
-                        for item in value:
-                            if "field" in item and "value" in item:
-                                field_name = item["field"]
-                                field_value = item["value"]
-                                miscs[field_name] = field_value
-                    for field in instruction_info.iter("field"):
-                        if "name" in field.attrib.keys():
-                            if field[0].text is not None:
-                                fields[field.attrib["name"]] = field[0].text
-                            else:
-                                if field.attrib["name"] in instrfield_ref.keys():
-                                    fields[field.attrib["name"]] = "reg"
-                                elif field.attrib["name"] in instrfield_imm.keys():
-                                    fields[field.attrib["name"]] = "imm"
-            list_fields.insert(len(list_fields), fields)
-            parameters["syntax"] = syntax_list
-            parameters["dsyntax"] = dsyntax_list
-            parameters["attributes"] = list(set(attributes))
-            if len(aliases) > 0:
-                parameters["aliases"] = list(set(aliases))
-            parameters["fields"] = list(list_fields)
-            parameters["inputs"] = list(set(list_inputs))
-            parameters["outputs"] = list(set(list_outputs))
-            parameters["intrinsic_args"] = list(set(intrinsic_args_list))
-            if (
-                config_variables["InstructionIgnoredAttrib"]
-                not in parameters["attributes"]
-            ):
-                if "aliases" in parameters.keys():
-                    instructions_aliases[instruction] = parameters
-    return instructions_aliases
+    try:
+        instrfield_imm = get_instrfield_from_adl(adl_name)[0]
+        instrfield_ref = get_instrfield_from_adl(adl_name)[1]
+        tree = ET.parse(adl_name)
+        root = tree.getroot()
+        instructions_aliases = dict()
+        for core in root.iter("cores"):
+            for instr in core.iter("instruction"):
+                attributes = list()
+                aliases = list()
+                list_fields = list()
+                instruction = instr.attrib["name"]
+                parameters = dict()
+                list_inputs = list()
+                list_outputs = list()
+                fields = dict()
+                syntax_list = list()
+                dsyntax_list = list()
+                miscs = dict()
+                args_dict = dict()
+                intrinsic_args_list = list()
+                for instruction_info in instr:
+                    for elem in instruction_info:
+                        parameters[instruction_info.tag] = elem.text
+                        if instruction_info.tag == "syntax":
+                            x = re.split(r"[, ]", elem.text)
+                            syntax_list.extend(x)
+                        if instruction_info.tag == "dsyntax":
+                            x = re.split(r"[, ]", elem.text)
+                            dsyntax_list.extend(x)
+                        if instruction_info.tag == "inputs":
+                            for instr_ins in instr.iter("inputs"):
+                                for index in range(len(instr_ins)):
+                                    list_inputs.append(instr_ins[index].text)
+                        if instruction_info.tag == "outputs":
+                            for instr_outs in instr.iter("outputs"):
+                                for index in range(len(instr_outs)):
+                                    list_outputs.append(instr_outs[index].text)
+                        if instruction_info.tag == "intrinsic_args":
+                            for intrinsic_args in instr.iter("intrinsic_args"):
+                                for index in range(len(intrinsic_args)):
+                                    intrinsic_args_list.append(intrinsic_args[index].text)
+                        for attribute in instruction_info.iter("attribute"):
+                            if "name" in attribute.attrib.keys():
+                                attributes.append(attribute.attrib["name"])
+                        for alias in instruction_info.iter("alias"):
+                            if "name" in alias.attrib.keys():
+                                aliases.append(alias.attrib["name"])
+                        if instruction_info.tag == "intrinsic_type":
+                            args_list = [
+                                option[0].text
+                                for option in elem.iter("instrfield_intrinsic")
+                            ]
+                            if elem.attrib != {}:
+                                if elem.attrib["name"] not in args_dict.keys():
+                                    if len(args_list) > 0:
+                                        args_dict[elem.attrib["name"]] = args_list
+                                else:
+                                    if len(args_list) > 0:
+                                        args_dict[elem.attrib["name"]] += args_list
+                                parameters["intrinsic_type"] = args_dict
+                    if instruction_info.tag == "aliases":
+                        fields = {}
+                        stack = [(instruction_info, fields)]
+                        while stack:
+                            elem, current_dict = stack.pop()
+                            for child in elem:
+                                if len(child) == 0:
+                                    current_dict[child.tag] = (
+                                        child.text.strip() if child.text else ""
+                                    )
+                                else:
+                                    if child.tag not in current_dict:
+                                        current_dict[child.tag] = []
+                                    new_dict = {}
+                                    current_dict[child.tag].append(new_dict)
+                                    stack.append((child, new_dict))
+                        for key, value in fields.items():
+                            for item in value:
+                                if "field" in item and "value" in item:
+                                    field_name = item["field"]
+                                    field_value = item["value"]
+                                    miscs[field_name] = field_value
+                        for field in instruction_info.iter("field"):
+                            if "name" in field.attrib.keys():
+                                if field[0].text is not None:
+                                    fields[field.attrib["name"]] = field[0].text
+                                else:
+                                    if field.attrib["name"] in instrfield_ref.keys():
+                                        fields[field.attrib["name"]] = "reg"
+                                    elif field.attrib["name"] in instrfield_imm.keys():
+                                        fields[field.attrib["name"]] = "imm"
+                list_fields.insert(len(list_fields), fields)
+                parameters["syntax"] = syntax_list
+                parameters["dsyntax"] = dsyntax_list
+                parameters["attributes"] = list(set(attributes))
+                if len(aliases) > 0:
+                    parameters["aliases"] = list(set(aliases))
+                parameters["fields"] = list(list_fields)
+                parameters["inputs"] = list(set(list_inputs))
+                parameters["outputs"] = list(set(list_outputs))
+                parameters["intrinsic_args"] = list(set(intrinsic_args_list))
+                check_instruction = True
+                for attribute in config_variables['IgnoredAttrib']:
+                    if attribute not in parameters["attributes"]:
+                        check_instruction = False
+                        break
+                if check_instruction is False:
+                    if "aliases" in parameters.keys():
+                        instructions_aliases[instruction] = parameters
+        return instructions_aliases
+    except:
+        print("Error detected when running : " + parse_instructions_aliases_from_adl.__name__)
+        print("No XML model is provided in the command line! Please run make_td.py with a proper XML file as first argument!")
+        parser = argparse.ArgumentParser()
+        parser.add_argument("file", type=str)
+        parser.add_argument("--extension", "-e", dest="extension", type=str)  # Elimină "="
+        parser.add_argument("--output", "-o", dest='output', type=str)
+        parser.print_help(sys.stderr)
+        sys.exit(1)
 
 
-## This function will parsed the information describing the registers containing subregisters. It saves the subregisters
+## This function parses the information describing the registers containing subregisters. It saves the subregisters
 # description for a register
 #
 # @param adl_name This argument represents the ADL file from which the information will be parsed
-# @return The function will generate a dictionary containing all the information
+# @return The function generates a dictionary containing all the information
 def parse_registers_subregs(adl_name):
-    tree = ET.parse(adl_name)
-    root = tree.getroot()
-    registers = dict()
-    for core in root.iter("cores"):
-        for register in core.iter("regfile"):
-            xml_dict = {}
-            register_name = register.attrib["name"]
-            xml_dict["register_name"] = register_name
-            for element in register:
-                if element.tag == "doc":
-                    xml_dict[element.tag] = element[0].text.strip()
-                elif element.tag == "width":
-                    xml_dict[element.tag] = int(element[0].text)
-                elif element.tag == "fields":
-                    fields_dict = {}
-                    for field_element in element:
-                        field_name = field_element.attrib["name"]
-                        field_dict = {}
-                        for sub_element in field_element:
-                            if sub_element.tag == "doc":
-                                field_dict[sub_element.tag] = sub_element[
-                                    0
-                                ].text.strip()
-                            elif sub_element.tag == "bits":
-                                bits_dict = {}
-                                for sub_sub_element in sub_element:
-                                    if sub_sub_element.tag == "range":
-                                        values = [
-                                            int(value.text) for value in sub_sub_element
-                                        ]
-                                        bits_dict[sub_sub_element.tag] = values
-                                field_dict[sub_element.tag] = bits_dict
-                        fields_dict[field_name] = field_dict
-                    xml_dict[element.tag] = fields_dict
-                elif element.tag == "attributes":
-                    attributes_dict = {}
-                    for attribute_element in element:
-                        attribute_name = attribute_element.attrib["name"]
-                        attribute_list = list()
-                        for sub_element in attribute_element:
-                            str_element = sub_element.find("str")
-                            if str_element is not None:
-                                attribute_list.append(sub_element.tag)
-                        attributes_dict[attribute_name] = attribute_list
-                    xml_dict[element.tag] = attributes_dict
-                elif element.tag == "shared":
-                    xml_dict[element.tag] = element.text
-            registers[register_name] = xml_dict
-    return registers
+    try:
+        tree = ET.parse(adl_name)
+        root = tree.getroot()
+        registers = dict()
+        for core in root.iter("cores"):
+            for register in core.iter("regfile"):
+                xml_dict = {}
+                register_name = register.attrib["name"]
+                xml_dict["register_name"] = register_name
+                for element in register:
+                    if element.tag == "doc":
+                        xml_dict[element.tag] = element[0].text.strip()
+                    elif element.tag == "width":
+                        xml_dict[element.tag] = int(element[0].text)
+                    elif element.tag == "fields":
+                        fields_dict = {}
+                        for field_element in element:
+                            field_name = field_element.attrib["name"]
+                            field_dict = {}
+                            for sub_element in field_element:
+                                if sub_element.tag == "doc":
+                                    field_dict[sub_element.tag] = sub_element[
+                                        0
+                                    ].text.strip()
+                                elif sub_element.tag == "bits":
+                                    bits_dict = {}
+                                    for sub_sub_element in sub_element:
+                                        if sub_sub_element.tag == "range":
+                                            values = [
+                                                int(value.text) for value in sub_sub_element
+                                            ]
+                                            bits_dict[sub_sub_element.tag] = values
+                                    field_dict[sub_element.tag] = bits_dict
+                            fields_dict[field_name] = field_dict
+                        xml_dict[element.tag] = fields_dict
+                    elif element.tag == "attributes":
+                        attributes_dict = {}
+                        for attribute_element in element:
+                            attribute_name = attribute_element.attrib["name"]
+                            attribute_list = list()
+                            for sub_element in attribute_element:
+                                str_element = sub_element.find("str")
+                                if str_element is not None:
+                                    attribute_list.append(sub_element.tag)
+                            attributes_dict[attribute_name] = attribute_list
+                        xml_dict[element.tag] = attributes_dict
+                    elif element.tag == "shared":
+                        xml_dict[element.tag] = element.text
+                registers[register_name] = xml_dict
+        return registers
+    except:
+        print("Error detected when running : " + parse_registers_subregs.__name__)
+        print("No XML model is provided in the command line! Please run make_td.py with a proper XML file as first argument!")
+        parser = argparse.ArgumentParser()
+        parser.add_argument("file", type=str)
+        parser.add_argument("--extension", "-e", dest="extension", type=str)  # Elimină "="
+        parser.add_argument("--output", "-o", dest='output', type=str)
+        parser.print_help(sys.stderr)
+        sys.exit(1)
 
-
+## This function parses the information for relocations
+#
+# @param adl_name This argument represents the ADL file from which the information will be parsed
+# @return The function generates a dictionary containing all the information
 def parse_relocations(adl_name):
-    tree = ET.parse(adl_name)
-    root = tree.getroot()
-    reloc_data = dict()
-    for core in root.iter("cores"):
-        for reloc_core in core.iter("relocations"):
-            for instr_field in reloc_core.iter("reloc"):
-                reloc_name = instr_field.attrib["name"]
-                parameters = dict()
-                for instr in instr_field:
-                    for elem in instr:
-                        parameters[instr.tag] = elem.text
-                reloc_data[reloc_name] = parameters
-    return reloc_data
+    try:
+        tree = ET.parse(adl_name)
+        root = tree.getroot()
+        reloc_data = dict()
+        for core in root.iter("cores"):
+            for reloc_core in core.iter("relocations"):
+                for instr_field in reloc_core.iter("reloc"):
+                    reloc_name = instr_field.attrib["name"]
+                    parameters = dict()
+                    for instr in instr_field:
+                        for elem in instr:
+                            parameters[instr.tag] = elem.text
+                    reloc_data[reloc_name] = parameters
+        return reloc_data
+    except:
+        print("Error detected when running : " + parse_relocations.__name__)
+        print("No XML model is provided in the command line! Please run make_td.py with a proper XML file as first argument!")
+        parser = argparse.ArgumentParser()
+        parser.add_argument("file", type=str)
+        parser.add_argument("--extension", "-e", dest="extension", type=str)  # Elimină "="
+        parser.add_argument("--output", "-o", dest='output', type=str)
+        parser.print_help(sys.stderr)
+        sys.exit(1)
 
-
+## This function parses the scheduling table from ADL file
+#
+# @param adl_name This argument represents the ADL file from which the information will be parsed
+# @return The function generates a dictionary containing all the information
 def parse_sched_table_from_adl(adl_name):
-    tree = ET.parse(adl_name)
-    root = tree.getroot()
-    sched_table_dict = dict()
-    for core in root.iter("cores"):
-        for sched_table in core.iter("sched-table"):
-            if sched_table.attrib["name"] not in sched_table_dict.keys():
-                sched_table_dict[sched_table.attrib["name"]] = {}
-                resource_forwarding = dict()
-                pipelines = dict()
-                resources_list = list()
-                pipelines_list = list()
-                aux_pipeline = dict()
-                instruction_sched = dict()
-                for instr in core.iter("instruction-sched"):
-                    if "name" in instr.attrib.keys():
-                        parameters = dict()
-                        instruction_name = instr.attrib["name"]
-                        for instruction_info in instr:
-                            if instruction_info.tag == 'instruction_list':
-                                for elem in instruction_info:
-                                    aux = elem.text.split(",")
-                                parameters[instruction_info.tag] = aux
-                            else:
-                                for elem in instruction_info:
-                                    if instruction_info.tag == "pipelines":
-                                        pipeline_dict = dict()
-                                        for pipeline in instruction_info:
-                                            pipeline_name = pipeline.attrib['name']
-                                            pipeline_tags = dict()
-                                            for element in pipeline:
-                                                pipeline_tags[element.tag] = element[0].text
-                                            pipeline_dict[pipeline_name] = pipeline_tags
-                                            parameters[instruction_info.tag] = pipeline_dict
-                                    elif instruction_info.tag == "forwarding":
-                                        for resource in core.iter("read_resource"):
-                                            resource_dict = dict()
-                                            resources = dict()
-                                            resource_name = resource.attrib['name']
-                                            for element in resource:
-                                                for element_parsed in element:
-                                                    if element.tag == 'resource_list':
-                                                        if element_parsed.text is not None:
-                                                            resource_dict[element.tag] = element_parsed.text.split(",")
+    # try:
+        tree = ET.parse(adl_name)
+        root = tree.getroot()
+        sched_table_dict = dict()
+        for core in root.iter("cores"):
+            for sched_table in core.iter("sched-table"):
+                if sched_table.attrib["name"] not in sched_table_dict.keys():
+                    sched_table_dict[sched_table.attrib["name"]] = {}
+                    resource_forwarding = dict()
+                    pipelines = dict()
+                    resources_list = list()
+                    pipelines_list = list()
+                    aux_pipeline = dict()
+                    instruction_sched = dict()
+                    for instr in core.iter("instruction-sched"):
+                        if "name" in instr.attrib.keys():
+                            parameters = dict()
+                            instruction_name = instr.attrib["name"]
+                            for instruction_info in instr:
+                                if instruction_info.tag == 'instruction_list':
+                                    for elem in instruction_info:
+                                        aux = elem.text.split(",")
+                                    parameters[instruction_info.tag] = aux
+                                else:
+                                    for elem in instruction_info:
+                                        if instruction_info.tag == "pipelines":
+                                            pipeline_dict = dict()
+                                            for pipeline in instruction_info:
+                                                pipeline_name = pipeline.attrib['name']
+                                                pipeline_tags = dict()
+                                                for element in pipeline:
+                                                    pipeline_tags[element.tag] = element[0].text
+                                                pipeline_dict[pipeline_name] = pipeline_tags
+                                                parameters[instruction_info.tag] = pipeline_dict
+                                        elif instruction_info.tag == "forwarding":
+                                            for resource in core.iter("read_resource"):
+                                                resource_dict = dict()
+                                                resources = dict()
+                                                resource_name = resource.attrib['name']
+                                                for element in resource:
+                                                    for element_parsed in element:
+                                                        if element.tag == 'resource_list':
+                                                            if element_parsed.text is not None:
+                                                                resource_dict[element.tag] = element_parsed.text.split(",")
+                                                            else:
+                                                                resource_dict[element.tag] = []
                                                         else:
-                                                            resource_dict[element.tag] = []
-                                                    else:
-                                                        resource_dict[element.tag] = element_parsed.text
-                                            resources[resource_name] = resource_dict
-                                            if instruction_name not in resource_forwarding.keys():
-                                                if resource_name not in resources_list:
-                                                    aux = dict()
-                                                    aux[resource_name] = resource_dict
-                                                    resource_forwarding[instruction_name] = aux
-                                                    resources_list.append(resource_name)
-                                    else:
-                                        parameters[instruction_info.tag] = elem.text
-                    aux = dict()
-                    aux['forwarding'] = resource_forwarding[instruction_name]
-                    instruction_sched[instruction_name] = parameters
-                    instruction_sched[instruction_name].update(aux)
-                sched_table_dict[sched_table.attrib["name"]].update(instruction_sched)
-    return sched_table_dict
+                                                            resource_dict[element.tag] = element_parsed.text
+                                                resources[resource_name] = resource_dict
+                                                if instruction_name not in resource_forwarding.keys():
+                                                    if resource_name not in resources_list:
+                                                        aux = dict()
+                                                        aux[resource_name] = resource_dict
+                                                        resource_forwarding[instruction_name] = aux
+                                                        resources_list.append(resource_name)
+                                        else:
+                                            parameters[instruction_info.tag] = elem.text
+                        aux = dict()
+                        if instruction_name in resource_forwarding.keys():
+                            aux['forwarding'] = resource_forwarding[instruction_name]
+                        instruction_sched[instruction_name] = parameters
+                        instruction_sched[instruction_name].update(aux)
+                    sched_table_dict[sched_table.attrib["name"]].update(instruction_sched)
+        return sched_table_dict
+    # except:
+    #     print("Error detected when running : " + parse_sched_table_from_adl.__name__)
+    #     print("No XML model is provided in the command line! Please run make_td.py with a proper XML file as first argument!")
+    #     parser = argparse.ArgumentParser()
+    #     parser.add_argument("file", type=str)
+    #     parser.add_argument("--extension", "-e", dest="extension", type=str)  # Elimină "="
+    #     parser.add_argument("--output", "-o", dest='output', type=str)
+    #     parser.print_help(sys.stderr)
+    #     sys.exit(1)
 
+## This function parses the scheduling parameters from ADL file
+#
+# @param adl_name This argument represents the ADL file from which the information will be parsed
+# @return The function generates a dictionary containing all the information
 def parse_scheduling_model_params(adl_name):
-    tree = ET.parse(adl_name)
-    root = tree.getroot()
-    sched_table_params = dict()
-    for core in root.iter("cores"):
-        for sched_table in core.iter("sched-table"):
-            if sched_table.attrib["name"] not in sched_table_params.keys():
-                sched_table_params[sched_table.attrib["name"]] = {}
-            parameters = dict()
-            for info in sched_table:
-                for elem in info:
-                    if info.tag != 'instruction-sched':
-                            parameters[info.tag] = elem.text
-                    if info.tag == 'FunctionalUnits':
-                        functional_dict = dict()
-                        for functional_unit in info :
-                            func_unit_dict = dict()
-                            func_unit_name = functional_unit.attrib['name']
-                            for element in functional_unit:
-                                func_unit_dict[element.tag] = element[0].text
-                            functional_dict[func_unit_name] = func_unit_dict
-                        parameters[info.tag] = functional_dict
-            sched_table_params[sched_table.attrib["name"]].update(parameters)
-    return sched_table_params
+    try:
+        tree = ET.parse(adl_name)
+        root = tree.getroot()
+        sched_table_params = dict()
+        for core in root.iter("cores"):
+            for sched_table in core.iter("sched-table"):
+                if sched_table.attrib["name"] not in sched_table_params.keys():
+                    sched_table_params[sched_table.attrib["name"]] = {}
+                parameters = dict()
+                for info in sched_table:
+                    for elem in info:
+                        if info.tag != 'instruction-sched':
+                                parameters[info.tag] = elem.text
+                        if info.tag == 'FunctionalUnits':
+                            functional_dict = dict()
+                            for functional_unit in info :
+                                func_unit_dict = dict()
+                                func_unit_name = functional_unit.attrib['name']
+                                for element in functional_unit:
+                                    func_unit_dict[element.tag] = element[0].text
+                                functional_dict[func_unit_name] = func_unit_dict
+                            parameters[info.tag] = functional_dict
+                sched_table_params[sched_table.attrib["name"]].update(parameters)
+        return sched_table_params
+    except:
+        print("Error detected when running : " + parse_scheduling_model_params.__name__)
+        print("No XML model is provided in the command line! Please run make_td.py with a proper XML file as first argument!")
+        parser = argparse.ArgumentParser()
+        parser.add_argument("file", type=str)
+        parser.add_argument("--extension", "-e", dest="extension", type=str)  # Elimină "="
+        parser.add_argument("--output", "-o", dest='output', type=str)
+        parser.print_help(sys.stderr)
+        sys.exit(1)
 
 
