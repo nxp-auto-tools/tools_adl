@@ -19,14 +19,17 @@ def main():
     # Get the command line arguments
     adl_file_path, adl_file_name, symbol_max_value, extension_list, output_dir, display_extensions = utils_reloc.cmd_args()
 
+    relocation_attributes_dict = parse_reloc.relocations_attributes(adl_file_path)
+    relocation_attributes_dict = utils_reloc.set_available_extensions(relocation_attributes_dict)
+
     # Check for invalid extensions
     if extension_list is not None:
-        extension_error = [extension for extension in extension_list if not any(extension in attributes for attributes in parse_reloc.relocations_attributes(adl_file_path).values())]
+        extension_error = [extension for extension in extension_list if not any(extension in attributes for attributes in relocation_attributes_dict.values())]
         if extension_error:
             sys.exit(f"Error: The following extensions were not found: {', '.join(extension_error)}")
     
     if display_extensions:
-        sys.exit(f"Available extensions for relocations in this model: {list(dict.fromkeys(value for sublist in parse_reloc.relocations_attributes(adl_file_path).values() for value in sublist))}")
+        sys.exit(f"Available extensions for relocations in this model: {list(dict.fromkeys(value for sublist in relocation_attributes_dict.values() for value in sublist))}")
 
     # Generate the relocations - instructions file structure
     generate_reloc_tests.generate_file_structure()

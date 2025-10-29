@@ -6,8 +6,10 @@
 #
 # This module contains utility functions for test generation
 import os
+import sys
 import argparse
-
+sys.path.append(os.path.join(os.path.dirname(__file__), "./../../"))
+import config
 
 ## Remove all extensions from a file path
 # @param file_path The file path to remove extensions from
@@ -28,6 +30,7 @@ def remove_all_extensions(file_path):
 # @return @b output_dir The output directory for the tests
 def cmd_args():
 
+    # Get the path of the script
     script_directory = os.path.dirname(os.path.abspath(__file__))
 
     parser = argparse.ArgumentParser(description="Generate encoding tests based on ADL file and extensions", usage="python make_test.py adl_file [--extension <comma-separated_list_of_extensions>] [-o, --output <output_directory>]")
@@ -49,3 +52,23 @@ def cmd_args():
 ## Split command line extensions
 def parse_extensions(extensions_list):
     return extensions_list.split(',')
+
+
+## Set available architectures
+def set_available_extensions(instruction_attributes_dict):
+
+    # Get the path of the script
+    script_directory = os.path.dirname(os.path.abspath(__file__))
+    
+    # A dictionary for the configuration environment
+    llvm_config_dict = config.config_environment(os.path.join(script_directory, "../../config.txt"), os.path.join(script_directory, "../../llvm_config.txt"))
+
+    # Set available architectures
+    available_architectures = list()
+    for key, arch in llvm_config_dict.items():
+        if key.startswith('HasStd') and key.endswith('Extension'):
+            available_architectures.append(arch.lower())
+    for instruction in instruction_attributes_dict.keys():
+        instruction_attributes_dict[instruction] = [architecture for architecture in instruction_attributes_dict[instruction] if architecture in available_architectures]
+
+    return instruction_attributes_dict

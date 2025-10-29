@@ -1,6 +1,6 @@
 [[Title]]
 = ADL Tools Documentation
-Version 0.2
+Version 0.4
 :doctype: book
 :encoding: utf-8
 :lang: en
@@ -26,17 +26,29 @@ SPDX-License-Identifier: BSD-2-Clause
 
 | 0.1     | 01-03-2024 | Updated Release Notes for WP4_M15 release
 | 0.2     | 15-11-2024 | Updated Release Notes for WP4_M24 release
-| 0.3     | 28-03-2025 | Updated Release Notes for WP4_M28 release     
+| 0.3     | 28-03-2025 | Updated Release Notes for WP4_M28 release
+| 0.4     | 03-07-2025 | Updated Release Notes for WP4_M31 release     
+ 
 |===
 
 
 == Overview
 
-This project comprises two main components aimed at facilitating the automatic generation and testing of LLVM target description files based on the information parsed from an architectural description of a RISC-V core.
+This project consists of two primary components designed to automate the generation and testing of LLVM *target description files*, based on architectural data extracted from a RISC-V core description.
 
-* The first component focuses on the creation of target description files. These files serve as templates for generating instructions to be used within a specific context or application. The generation process involves defining various parameters, conditions, and constraints necessary for producing accurate and functional instructions.
+*Target Description Generation:*
+The first component automates the creation of LLVM *target description files*. These files act as templates for defining instructions tailored to a specific architecture. The generation process involves specifying parameters, conditions, and constraints to ensure the instructions are accurate and compatible with the target environment.
 
-* The second component is dedicated to generating encoding tests for the instructions within the target description files. This phase involves executing and evaluating the functionality and reliability of the instructions by rigorously validating each bit individually.
+*Test Generation:*
+The second component focuses on generating comprehensive tests for the instructions defined in the target description files. This includes:
+
+ - *Encoding tests*, which validate the correctness of binary representations at the bit level.
+ - *Relocation tests*, which ensure that symbolic references are correctly resolved during linking.
+ - *Fixup tests*, which verify that immediate values and offsets are properly adjusted during assembly and linking.
+
+This work was developed as part of Tristan European project, CHIPSJU Contract no: 101095947.
+
+This work was supported by a grant of the Ministry of Research, Innovation and Digitization, CNCS/CCCDI - USFISCDI project number PN-IV-P8-8.1-PME-2024-0026 within PNCDI IV.
 
 More information on ADL technology can be found at https://github.com/nxp-archive/adl-tools_adl/
 
@@ -62,49 +74,49 @@ NOTE: The files generated were included in *LLVM 19.x* project, also tested and 
 
 === TD generation module
 
-In order to run the application, the user has to use *make_td.py* module
-which is the main module that triggers the other modules. Besides
-calling this module, the user also has to provide a proper XML file
-which is given as a command line argument when the module above is
-run. Finally, an example of running the application should look like:
+This tool is used to generate architecture-specific content based on an XML model. The main entry point is the *make_td.py* script, which coordinates the generation process.
+
+#### Basic Usage
+
+To run the tool, use the following command:
 
 	python ./tools/make_td.py rv32i.adl.xml	
 
-Obviously, if the XML model is not in the same directory with the tools,
-then the user provides a path to the XML.
-In  order to work properly, the user has to make sure the working directory
-is tools_adl, the main folder cloned.
+#### Select Specific Extensions
 
-Another feature provided is to select certain architecture from the XML
-given. For example, if the XML provides instructions for a bunch of
-extensions, the user can specify, using the command line arguments,
-which extensions should be generated. Beside specifying *the extensions enabled*,
-it is also possible to specify *the directory* in which the content is generated.
+You can limit generation to specific extensions defined in the XML using the --extension flag:
 
-The user is also able to enable or not the generation for SAIL description. The flag --no_sail
-enables or not this feature. If *--no_sail* is set as True (e.g. --no_sail=True) then the tool will
-not generate the SAIL description. Otherwise, when the flag is not specified, then the SAIL description 
-will be generated as usual.
+	--extension=zclsd,zilsd,rv32i
+	
+Extensions must be comma-separated with *no spaces*.
+If no extensions are specified, the tool will generate content for *all extensions* in the XML.
 
-NOTE: If *no extension is specified*, then the tools generates content
-for *all the extensions declared* in the XML file, without exception.
+#### Specify Output Directory
 
+Use the --output flag to define where the generated content should be saved:
 
-An example of selecting certain extensions and a specified directory for content generation is similar to:
+	--output=./examples/TD/test_zilsd
 
-	python ./tools/make_td.py rv32i.adl.xml --extension=zclsd,zilsd,rv32i --output=./examples/TD/test_zilsd
+NOTE: The specified directory will be overwritten on each run.
 
-NOTE: Here the user selected to generate only the information related to zclsd, zilsd and rv32i
-extensions. Consequently, any other extension which is also defined in
-the rv32i XML model is ignored and nothing related to it generated.
-The flag in order to enable extension generation is *--extension=*, while for specifying the output directory is
-*--output=*.
-It is very important to pass the extensions *without
-any spaces, just commas (,).*
+####  Enable or Disable SAIL Description
 
-NOTE: *None of these 2 flags are mandatory*, so any of these could not be specified. The flags are independent, consequently 
-the user chooses if these is used or not.
-Moreover, it should consider the fact that the directory specified is *overwritten* at every run.
+By default, the tool generates a SAIL description. To disable this, use:
+
+	--no-sail
+	
+If this flag is omitted, SAIL generation is enabled by default.
+
+#### Full Example
+
+	python ./tools/make_td.py rv32i.adl.xml --extension=zclsd,zilsd,rv32i --output=./examples/TD/test_zilsd --no-sail
+	
+This command:
+
+ - Uses rv32i.adl.xml as the input model
+ - Generates content only for zclsd, zilsd, and rv32i extensions
+ - Saves the output to ./examples/TD/test_zilsd
+ - Skips SAIL description generation
 
 
 === Testing module
@@ -1694,5 +1706,4 @@ NOTE: Core-name is generated automatically based on the information parsed from 
 NOTE: This command line shows the result from every single test from the test suite run and also provide a *.txt* file which serves as log, for more information about certain tests. 
 		
 == Known Limitations
-	* *Fix-up relocations not supported*
 	* *Scheduling information is for demo purposes*

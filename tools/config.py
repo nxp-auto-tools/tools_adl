@@ -22,7 +22,7 @@ def config_environment(config_file, llvm_file):
     for line in Lines[1:]:
         newline = line.strip()
         x = re.findall(
-            r'\.*[\#\"a-zA-Z0-9_\-\ \\]*\/*\.*(?:\.\.\/*)*[\#\"a-zA-Z0-9_\-\ ]*\/*\.*[\#\"a-zA-Z0-9_\-\ \\]*\/*\.*[\#\"a-zA-Z0-9_\-\.\ \\]*',
+            r'\.*[:\#\"a-zA-Z0-9_\-\ \\]*\/*\.*(?:\.\.\/*)*[\#\"a-zA-Z0-9_\-\ ]*\/*\.*[\#\"a-zA-Z0-9_\-\ \\]*\/*\.*[\#\"a-zA-Z0-9_\-\.\ \\]*',
             newline,
         )
         args = [elem.strip(" ") for elem in x if elem != ""]
@@ -266,6 +266,11 @@ def config_environment(config_file, llvm_file):
             config_vars[args[0]] = result
         elif args[0] == "RegisterClassWrapper":
             pattern = r"(\w+(?:\{\d+(?:-\d+)?\})?)=('[^']*'|!?\w+\([^)]*\)|\w+)"
+            matches = re.findall(pattern, line)
+            result = {match[0] :match[1] for match in matches}
+            config_vars[args[0]] = result
+        elif args[0] == "VectorRegisterClass":
+            pattern = r"(\w+(?:\{\d+(?:-\d+)?\})?)=('[^']*'|!?\w+\([^)]*\)|\w+|(?:\[[^\]]*\]))"
             matches = re.findall(pattern, line)
             result = {match[0] :match[1] for match in matches}
             config_vars[args[0]] = result

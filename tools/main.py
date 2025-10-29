@@ -89,7 +89,7 @@ def main():
     parser.add_argument("file", type=str)
     parser.add_argument("--extension", "-e", dest="extension", type=str)  # Elimină "="
     parser.add_argument("--output", "-o", dest='output', type=str)
-    parser.add_argument("--no_sail", dest="no_sail", type=str)
+    parser.add_argument("--no-sail", dest="no_sail", type=str)
     args = parser.parse_args()
     if args.extension is None:
         extensions_list = list()
@@ -112,9 +112,11 @@ def main():
                 shutil.rmtree(output_dir, ignore_errors=True)    
                 output_dir_refresh = True
                 if os.path.exists(output_dir) is False:
-                    os.mkdir(output_dir)
+                    os.makedirs(output_dir)
+                    os.chmod(output_dir, 0o777)
         else:
-            os.mkdir(output_dir)
+            os.makedirs(output_dir)
+            os.chmod(output_dir, 0o777)
             output_dir_refresh = True
         config_variables['RegisterInfoFile'] = output_dir + file_name
         legalDisclaimer.get_copyright(config_variables["RegisterInfoFile"])
@@ -162,9 +164,11 @@ def main():
             if output_dir_refresh is False:
                 shutil.rmtree(output_dir, ignore_errors=True)    
                 output_dir_refresh = True
-                os.mkdir(output_dir)
+                os.makedirs(output_dir)
+                os.chmod(output_dir, 0o777)
         else:
-            os.mkdir(output_dir)
+            os.makedirs(output_dir)
+            os.chmod(output_dir, 0o777)
             output_dir_refresh = True
         config_variables['ScheduleFileTable'] = output_dir + file_name
         config_variables['SchedulePath'] = output_dir
@@ -180,9 +184,11 @@ def main():
             if output_dir_refresh is False:
                 shutil.rmtree(output_dir, ignore_errors=True)    
                 output_dir_refresh = True
-                os.mkdir(output_dir)
+                os.makedirs(output_dir)
+                os.chmod(output_dir, 0o777)
         else:
-            os.mkdir(output_dir)
+            os.makedirs(output_dir)
+            os.chmod(output_dir, 0o777)
             output_dir_refresh = True
         config_variables['InstructionInfoFile'] = output_dir + file_name
         legalDisclaimer.get_copyright(config_variables["InstructionInfoFile"])
@@ -205,9 +211,11 @@ def main():
             if output_dir_refresh is False:
                 shutil.rmtree(output_dir, ignore_errors=True)    
                 output_dir_refresh = True
-                os.mkdir(output_dir)
+                os.makedirs(output_dir)
+                os.chmod(output_dir, 0o777)
         else:
-            os.mkdir(output_dir)
+            os.makedirs(output_dir)
+            os.chmod(output_dir, 0o777)
             output_dir_refresh = True
         config_variables['RegisterInfoFile'] = output_dir + file_name
         files.generate_register_pairs(config_variables["RegisterInfoFile"])
@@ -222,9 +230,11 @@ def main():
             if output_dir_refresh is False:
                 shutil.rmtree(output_dir, ignore_errors=True)    
                 output_dir_refresh = True
-                os.mkdir(output_dir)
+                os.makedirs(output_dir)
+                os.chmod(output_dir, 0o777)
         else:
-            os.mkdir(output_dir)
+            os.makedirs(output_dir)
+            os.chmod(output_dir, 0o777)
             output_dir_refresh = True
         config_variables['InstructionFormatFile'] = output_dir + file_name
         legalDisclaimer.get_copyright(config_variables["InstructionFormatFile"])
@@ -244,9 +254,11 @@ def main():
             if output_dir_refresh is False:
                 shutil.rmtree(output_dir, ignore_errors=True)    
                 output_dir_refresh = True
-                os.mkdir(output_dir)
+                os.makedirs(output_dir)
+                os.chmod(output_dir, 0o777)
         else:
-            os.mkdir(output_dir)
+            os.makedirs(output_dir)
+            os.chmod(output_dir, 0o777)
             output_dir_refresh = True
         config_variables['OperandsFile'] = output_dir + file_name
         config_variables['OperandsFile16'] = output_dir + file_name_c
@@ -280,9 +292,11 @@ def main():
             if output_dir_refresh is False:
                 shutil.rmtree(output_dir, ignore_errors=True)    
                 output_dir_refresh = True
-                os.mkdir(output_dir)
+                os.makedirs(output_dir)
+                os.chmod(output_dir, 0o777)
         else:
-            os.mkdir(output_dir)
+            os.makedirs(output_dir)
+            os.chmod(output_dir, 0o777)
             output_dir_refresh = True
         config_variables['InstructionInfoFile'] = output_dir + file_name
         adl_parser.parse_instructions_aliases_from_adl(config_variables["ADLName"])
@@ -304,9 +318,11 @@ def main():
             if output_dir_refresh is False:
                 shutil.rmtree(output_dir, ignore_errors=True)    
                 output_dir_refresh = True
-                os.mkdir(output_dir)
+                os.makedirs(output_dir)
+                os.chmod(output_dir, 0o777)
         else:
-            os.mkdir(output_dir)
+            os.makedirs(output_dir)
+            os.chmod(output_dir, 0o777)
             output_dir_refresh = True
         config_variables['CallingConventionFile'] = output_dir + file_name
         legalDisclaimer.get_copyright(config_variables["CallingConventionFile"])
@@ -329,9 +345,11 @@ def main():
             if output_dir_refresh is False:
                 shutil.rmtree(output_dir, ignore_errors=True)    
                 output_dir_refresh = True
-                os.mkdir(output_dir)
+                os.makedirs(output_dir)
+                os.chmod(output_dir, 0o777)
         else:
-            os.mkdir(output_dir)
+            os.makedirs(output_dir)
+            os.chmod(output_dir, 0o777)
             output_dir_refresh = True
         config_variables['RelocationFile'] = output_dir + file_name
         legalDisclaimer.get_copyright(config_variables["RelocationFile"])
@@ -354,9 +372,11 @@ def main():
             if output_dir_refresh is False:
                 shutil.rmtree(output_dir, ignore_errors=True)    
                 output_dir_refresh = True
-                os.mkdir(output_dir)
+                os.makedirs(output_dir)
+                os.chmod(output_dir, 0o777)
         else:
-            os.mkdir(output_dir)
+            os.makedirs(output_dir)
+            os.chmod(output_dir, 0o777)
             output_dir_refresh = True
         config_variables['IntrinsicsFile'] = output_dir + file_name
         config_variables['BuiltinFile'] = output_dir + builtin_file
@@ -388,9 +408,11 @@ def main():
             if output_dir_refresh is False:
                 shutil.rmtree(output_dir, ignore_errors=True)    
                 output_dir_refresh = True
-                os.mkdir(output_dir)
+                os.makedirs(output_dir)
+                os.chmod(output_dir, 0o777)
         else:
-            os.mkdir(output_dir)
+            os.makedirs(output_dir)
+            os.chmod(output_dir, 0o777)
             output_dir_refresh = True
         config_variables['MemoryOperand'] = output_dir + file_name
         files.generate_operand_mem_wrapper_class(config_variables["MemoryOperand"])
@@ -414,9 +436,11 @@ def main():
                 if output_dir_refresh is False:
                     shutil.rmtree(output_dir, ignore_errors=True)    
                     output_dir_refresh = True
-                    os.mkdir(output_dir)
+                    os.makedirs(output_dir)
+                    os.chmod(output_dir, 0o777)
             else:
-                os.mkdir(output_dir)
+                os.makedirs(output_dir)
+                os.chmod(output_dir, 0o777)
                 output_dir_refresh = True
             config_variables['SailDescription'] = output_dir + file_name
             files.generate_sail_description(config_variables["SailDescription"], extensions_list)

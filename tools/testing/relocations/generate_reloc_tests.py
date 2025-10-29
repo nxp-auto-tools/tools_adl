@@ -28,9 +28,11 @@ def generate_file_structure():
 
     relocation_instructions_dict = parse_reloc.relocations_instructions(adl_file_path, parse_reloc.operands_instructions(parse_reloc.instructions_operands(adl_file_path)))
     relocation_attributes_dict = parse_reloc.relocations_attributes(adl_file_path)
-    instruction_attribute_dict, instruction_attribute_stripped_dict = parse.instruction_attribute(adl_file_path)
+    instruction_attributes_dict, instruction_attribute_stripped_dict = parse.instruction_attribute(adl_file_path)
+    relocation_attributes_dict = utils_reloc.set_available_extensions(relocation_attributes_dict)
+    instruction_attributes_dict = utils_reloc.set_available_extensions(instruction_attributes_dict)
 
-    # check if the output directory exists and refresh it
+    # Check if the output directory exists and refresh it
     if extension_list is not None:
         if os.path.exists(os.path.join(output_dir, 'reloc_results_' + adl_file_name, 'tests_' + '_'.join(extension_list))):
             shutil.rmtree(os.path.join(output_dir, 'reloc_results_' + adl_file_name, 'tests_' + '_'.join(extension_list)))
@@ -38,22 +40,22 @@ def generate_file_structure():
         if os.path.exists(os.path.join(output_dir, 'reloc_results_' + adl_file_name, 'tests_all')):
             shutil.rmtree(os.path.join(output_dir, 'reloc_results_' + adl_file_name, 'tests_all'))
 
-    # create a folder for each relocation
+    # Create a folder for each relocation
     for i, (relocation, instructions) in enumerate(relocation_instructions_dict.items()):
-        # generate tests for specific extensions
-        if extension_list is None or all(extension in extension_list for extension in relocation_attributes_dict[relocation]):
-            # create a folder for each instruction
+        # Generate tests for specific extensions
+        if extension_list is None or all(extension in relocation_attributes_dict[relocation] for extension in extension_list ):
+            # Create a folder for each instruction
             if extension_list is not None:
                 folder_name = os.path.join(output_dir, 'reloc_results_' + adl_file_name, 'tests_' + '_'.join(extension_list), f"{relocation}")
             else:
                 folder_name = os.path.join(output_dir, 'reloc_results_' + adl_file_name, 'tests_all', f"{relocation}")               
             os.makedirs(folder_name)
 
-            # create a file for each instruction
+            # Create a file for each instruction
             for instruction in instructions:
-                # generate tests for specific extensions
-                if extension_list is None or all(extension in extension_list for extension in instruction_attribute_dict[instruction]):
-                    # check if the relocation applies only to a subset of instructions          
+                # Generate tests for specific extensions
+                if extension_list is None or all(extension in instruction_attributes_dict[instruction] for extension in extension_list):
+                    # Check if the relocation applies only to a subset of instructions          
                     file_name = os.path.join(folder_name, f"{relocation}_{instruction}.s")
                     with open(file_name, "w") as f:
                         f.close()
@@ -66,18 +68,19 @@ def generate_symbols():
     # Get the command line arguments
     adl_file_path, adl_file_name, symbol_max_value, extension_list, output_dir, display_extensions = utils_reloc.cmd_args()
 
+    file_name = None
     if extension_list is not None:
         # Get all the directories containing the relocations tests
         dir_paths = glob.glob(output_dir + '/reloc_results_' + adl_file_name + '/tests_' + '_'.join(extension_list) + '/*/', recursive=True)
-        
-        file_list = os.listdir(output_dir + '/reloc_results_' + adl_file_name + '/tests_' + '_'.join(extension_list))
 
-        # Check in file_list if there are any old symbol files and remove them
-        for item in file_list:
-            if item.startswith("sym") and item.endswith(".inc"):
-                os.remove(os.path.join(output_dir, 'reloc_results_' + adl_file_name, 'tests_' + '_'.join(extension_list), item))
+        if dir_paths:
+            file_list = os.listdir(output_dir + '/reloc_results_' + adl_file_name + '/tests_' + '_'.join(extension_list))
+            # Check in file_list if there are any old symbol files and remove them
+            for item in file_list:
+                if item.startswith("sym") and item.endswith(".inc"):
+                    os.remove(os.path.join(output_dir, 'reloc_results_' + adl_file_name, 'tests_' + '_'.join(extension_list), item))
 
-        file_name = os.path.join(output_dir, 'reloc_results_' + adl_file_name, 'tests_' + '_'.join(extension_list), f"sym{symbol_max_value}.inc")
+            file_name = os.path.join(output_dir, 'reloc_results_' + adl_file_name, 'tests_' + '_'.join(extension_list), f"sym{symbol_max_value}.inc")
     else:
         # Get all the directories containing the relocations tests
         dir_paths = glob.glob(output_dir + '/reloc_results_' + adl_file_name + '/tests_all' + '/*/', recursive=True)
@@ -92,18 +95,19 @@ def generate_symbols():
         file_name = os.path.join(output_dir, 'reloc_results_' + adl_file_name, 'tests_all', f"sym{symbol_max_value}.inc")
 
     # Create a file with the symbols in the tests folder
-    with open(file_name, "w") as f:
-        for i in range(0,2**(int(symbol_max_value) - 1)):
-            f.write(f"\t .global var{i}\n")
-        f.close()
-
-    # Copy the file with the symbols in each relocation folder
-    for dir in dir_paths:
-        file_name = os.path.join(dir, f"sym{symbol_max_value}.inc")
+    if file_name:
         with open(file_name, "w") as f:
             for i in range(0,2**(int(symbol_max_value) - 1)):
                 f.write(f"\t .global var{i}\n")
-        f.close()
+            f.close()
+
+        # Copy the file with the symbols in each relocation folder
+        for dir in dir_paths:
+            file_name = os.path.join(dir, f"sym{symbol_max_value}.inc")
+            with open(file_name, "w") as f:
+                for i in range(0,2**(int(symbol_max_value) - 1)):
+                    f.write(f"\t .global var{i}\n")
+            f.close()
         
     return
 
@@ -165,7 +169,7 @@ def write_header():
     base_arch, extensions = attributes.split(baseArchitecture)
 
     # A dictionary with instructions and associated attribute prefixes
-    instruction_attribute_dict, new_instruction_attribute_dict = parse.instruction_attribute(adl_file_path)
+    instruction_attributes_dict, new_instruction_attributes_dict = parse.instruction_attribute(adl_file_path)
 
     # Split the extension by underscores in order to get extensions and versions
     extensions_and_versions = extensions.split('_')
@@ -239,7 +243,7 @@ def write_header():
                             f.write('\t.text\n')
                             f.write('\t.attribute	4, 16\n')
                             f.write(f'\t.attribute	5, "{baseArchitecture}i{extension_versions_dict["i"]}')
-                            for extension in new_instruction_attribute_dict[instruction]:
+                            for extension in new_instruction_attributes_dict[instruction]:
                                 if extension in extension_versions_dict.keys() and extension != "i":
                                     f.write(f'_{extension}{extension_versions_dict[extension]}')
                             f.write(f'"\n')
@@ -280,9 +284,10 @@ def generate_relocations():
     final_width_dict = {key: int(instrfield_width_dict[key] + instrfield_shift_dict[key] + instrfield_signed_dict[key]) for key in instrfield_width_dict}
     relocation_pcrel_dict = parse_reloc.relocations_pcrel(adl_file_path)
 
-    with open (sym_file_path[0], 'r') as f:
-        sym_content = f.read()
-        syms = re.findall(re.compile(r'\.global\s+(\w+)'), sym_content)
+    if sym_file_path:
+        with open (sym_file_path[0], 'r') as f:
+            sym_content = f.read()
+            syms = re.findall(re.compile(r'\.global\s+(\w+)'), sym_content)
     # Collect all the info needed:
     for test_file in test_file_paths:
         for label_file in label_file_paths:
@@ -296,14 +301,14 @@ def generate_relocations():
                 for instruction in instructions:
                     char_after_substring = utils_reloc.get_char_after_substring(os.path.basename(test_file), instruction)
                     instruction_substring = utils_reloc.search_with_separators(os.path.basename(test_file), instruction)
-                    # start instruction generation
+                    # Start instruction generation
                     if relocation in test_file and relocation in label_file and instruction == instruction_substring and char_after_substring == '.':
                         with open(test_file, 'a') as f:
 
-                            # a list in which offsets are separated from immediates
+                            # A list in which offsets are separated from immediates
                             operands_extended = instruction_operands_dict[instruction][:]
 
-                            # check if immediate has offset
+                            # Check if immediate has offset
                             for i in range(len(operands_extended)):
                                 offset = re.findall(r'\((.*?)\)', operands_extended[i])
                                 if offset:
@@ -311,7 +316,7 @@ def generate_relocations():
                                         r'\(.*?\)', '', operands_extended[i])
                                     operands_extended.insert(i + 1, offset[0])
 
-                            # store offsets separately
+                            # Store offsets separately
                             offsets = []
                             for op in instruction_operands_dict[instruction]:
                                 offset = re.search(r'\((.*?)\)', op)
@@ -326,13 +331,13 @@ def generate_relocations():
                                         return '(' + str(utils_reloc.extract_highest_even_value_for_pair_instructions(instrfield_optionName_dict, instruction_register_pair_dict[instruction][0])) + ')'                                   
                                     else:
                                         return '(' + str(operand_values_dict[op][-1]) + ')'
-                                # if operands doen't have offset but it's a value from info dict take its register value
+                                # If operands doen't have offset but it's a value from info dict take its register value
                                 elif op in operand_values_dict:
                                     if instruction in instruction_register_pair_dict:
                                         return str(utils_reloc.extract_highest_even_value_for_pair_instructions(instrfield_optionName_dict, instruction_register_pair_dict[instruction][0]))  
                                     else:
                                         return operand_values_dict[op][-1]
-                                # if operand is an immediate generate values based on label
+                                # If operand is an immediate generate values based on label
                                 elif op in final_width_dict:
                                     if abbrev:
                                         return '%' + abbrev + '(' + str(label) + ')'
@@ -351,7 +356,7 @@ def generate_relocations():
                                         return str(utils_reloc.extract_highest_even_value_for_pair_instructions(instrfield_optionName_dict, instruction_register_pair_dict[instruction][0]))
                                     else:
                                         return operand_values_dict[op][-1]
-                                # if operand is an immediate generate values based on label
+                                # If operand is an immediate generate values based on label
                                 elif op in final_width_dict:
                                     if abbrev:
                                         return '%' + abbrev + '(' + str(label) + ')'
@@ -364,19 +369,19 @@ def generate_relocations():
                                   
                             # A function that handles different types of operands (offsets, registers, immediates with or without abbreviations) for the Addend case
                             def handle_operand_addend(op, label, abbrev, suffix, addend=None):
-                                # if operand has offset and it's a value from info dict put its value between ()
+                                # If operand has offset and it's a value from info dict put its value between ()
                                 if op in offsets and op in operand_values_dict:
                                     if instruction in instruction_register_pair_dict:
                                         return '(' + str(utils_reloc.extract_highest_even_value_for_pair_instructions(instrfield_optionName_dict, instruction_register_pair_dict[instruction][0])) + ')'
                                     else:
                                         return '(' + str(operand_values_dict[op][-1]) + ')'
-                                # if operands doen't have offset but it's a value from info dict take its register value
+                                # If operands doen't have offset but it's a value from info dict take its register value
                                 elif op in operand_values_dict:
                                     if instruction in instruction_register_pair_dict:
                                         return str(utils_reloc.extract_highest_even_value_for_pair_instructions(instrfield_optionName_dict, instruction_register_pair_dict[instruction][0]))
                                     else:
                                         return operand_values_dict[op][-1]
-                                # if operand is an immediate generate values based on label + addend
+                                # If operand is an immediate generate values based on label + addend
                                 elif op in final_width_dict:
                                     if addend is not None:
                                         if abbrev:
@@ -397,19 +402,19 @@ def generate_relocations():
                                     
                             # A function that handles different types of operands (offsets, registers, immediates with or without abbreviations) for the Info case
                             def handle_operand_info(op, abbrev, suffix):
-                                # if operand has offset and it's a value from info dict put its value between ()
+                                # If operand has offset and it's a value from info dict put its value between ()
                                 if op in offsets and op in operand_values_dict:
                                     if instruction in instruction_register_pair_dict:
                                         return '(' + str(utils_reloc.extract_highest_even_value_for_pair_instructions(instrfield_optionName_dict, instruction_register_pair_dict[instruction][0])) + ')'
                                     else:
                                         return '(' + str(operand_values_dict[op][-1]) + ')'
-                                # if operands doen't have offset but it's a value from info dict take its register value
+                                # If operands doen't have offset but it's a value from info dict take its register value
                                 elif op in operand_values_dict:
                                     if instruction in instruction_register_pair_dict:
                                         return str(utils_reloc.extract_highest_even_value_for_pair_instructions(instrfield_optionName_dict, instruction_register_pair_dict[instruction][0]))
                                     else:
                                         return operand_values_dict[op][-1]
-                                # if operand is an immediate generate values based on a global variable
+                                # If operand is an immediate generate values based on a global variable
                                 elif op in final_width_dict:
                                     if abbrev:
                                         return '%' + abbrev + '(' + 'var' + str(2**i - 1) + ')'
@@ -464,7 +469,7 @@ def generate_relocations():
                                 # Check if the operand has offset
                                 if not offsets:
                                     f.write(f"\t{instruction_syntaxName_dict[instruction]} {','.join(op_values)}\n")
-                                # if it does, concatenate last operand without comma
+                                # If it does, concatenate last operand without comma
                                 else:
                                     f.write(f"\t{instruction_syntaxName_dict[instruction]} {','.join(op_values[:-1])}{op_values[-1]}\n")
                                 
@@ -482,7 +487,7 @@ def generate_relocations():
                                 # Check if the operand has offset
                                 if not offsets:
                                     f.write(f"\t{instruction_syntaxName_dict[instruction]} {','.join(op_values)}\n")
-                                # if it does, concatenate last operand without comma
+                                # If it does, concatenate last operand without comma
                                 else:
                                     f.write(f"\t{instruction_syntaxName_dict[instruction]} {','.join(op_values[:-1])}{op_values[-1]}\n")
                                 
@@ -495,15 +500,15 @@ def generate_relocations():
                                     for op in operands_extended:
                                         if op in offsets and op not in operand_values_dict:
                                             op_values.append('(' + str(operand_values_dict[op][-1]) + ')')
-                                        # if operand has offset and it's a value from dict put its value between ()
+                                        # If operand has offset and it's a value from dict put its value between ()
                                         elif op in offsets and op in operand_values_dict:
                                             op_values.append('(' + str(operand_values_dict[op][-1]) + ')')
-                                        # if operand is a register take the value from the dict
+                                        # If operand is a register take the value from the dict
                                         elif op in operand_values_dict:
                                             op_values.append(operand_values_dict[op][-1])
-                                        # if operand is an immediate generate values based on label
+                                        # If operand is an immediate generate values based on label
                                         elif op in final_width_dict:
-                                            # check if relocation has abbreviaton
+                                            # Check if relocation has abbreviaton
                                             if relocation in relocation_abbrev_dict and relocation_abbrev_dict[relocation] is not None:
                                                     op_values.append('%' + relocation_abbrev_dict[relocation] + '(' 'L' + str(2**i - 1) + ')')
                                             elif relocation in relocation_suffix_dict and relocation_suffix_dict[relocation] is not None:
@@ -511,13 +516,13 @@ def generate_relocations():
                                             else:
                                                     op_values.append('L' + str(2**i - 1))
                                         else:
-                                        # if operand not found in any dictionary use the operand name as its value
+                                        # If operand not found in any dictionary use the operand name as its value
                                             op_values.append(op)
                                     # Check if the operand has offset
                                     if offsets == []:
                                         if (2**i - 1) in label_numbers:
                                             f.write(f"\t{instruction_syntaxName_dict[instruction]} {','.join(op_values)}\n")
-                                    # if it does, concatenate last operand without comma
+                                    # If it does, concatenate last operand without comma
                                     else:
                                         if (2**i - 1) in label_numbers:
                                             f.write(f"\t{instruction_syntaxName_dict[instruction]} {','.join(op_values[:-1]) + '' + op_values[-1]}\n")
@@ -539,7 +544,7 @@ def generate_relocations():
                                     if offsets == []:
                                         if (2**i - 1) in sym_numbers:
                                             f.write(f"\t{instruction_syntaxName_dict[instruction]} {','.join(op_values)}\n")
-                                    # if it does, concatenate last operand without comma
+                                    # If it does, concatenate last operand without comma
                                     else:
                                         if (2**i - 1) in sym_numbers:
                                             f.write(f"\t{instruction_syntaxName_dict[instruction]} {','.join(op_values[:-1]) + '' + op_values[-1]}\n")
@@ -582,14 +587,14 @@ def generate_data_relocations():
     relocation_directives_dict = parse_reloc.relocations_directives(adl_file_path)
 
     for relocation in relocation_label_dict.keys():
-        # create a folder for each instruction
+        # Create a folder for each instruction
         if extension_list is not None:
             folder_name = os.path.join(output_dir, 'reloc_results_' + adl_file_name, 'tests_' + '_'.join(extension_list), f"{relocation}")
         else:
             folder_name = os.path.join(output_dir, 'reloc_results_' + adl_file_name, 'tests_all', f"{relocation}")
         os.makedirs(folder_name)
 
-        # create a file for each directive
+        # Create a file for each directive
         if relocation in relocation_directives_dict.keys():
             for directive in relocation_directives_dict[relocation]:
                 file_name = os.path.join(folder_name, f"{relocation}_{directive}.s")

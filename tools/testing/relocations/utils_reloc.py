@@ -11,6 +11,8 @@ import argparse
 import re
 import parse_reloc
 sys.path.append(os.path.join(os.path.dirname(__file__), "../encoding/"))
+sys.path.append(os.path.join(os.path.dirname(__file__), "./../../"))
+import config
 import utils
 
 ## Get the command line arguments
@@ -102,3 +104,23 @@ def extract_highest_even_value_for_pair_instructions(my_dict, key):
     
     # Return None if the key doesn't exist or no even tuples found
     return None
+
+
+## Set available architectures
+def set_available_extensions(relocation_attributes_dict):
+
+    # Get the path of the script
+    script_directory = os.path.dirname(os.path.abspath(__file__))
+    
+    # A dictionary for the configuration environment
+    llvm_config_dict = config.config_environment(os.path.join(script_directory, "../../config.txt"), os.path.join(script_directory, "../../llvm_config.txt"))
+
+    # Set available architectures
+    available_architectures = list()
+    for key, arch in llvm_config_dict.items():
+        if key.startswith('HasStd') and key.endswith('Extension'):
+            available_architectures.append(arch.lower())
+    for instruction in relocation_attributes_dict.keys():
+        relocation_attributes_dict[instruction] = [architecture for architecture in relocation_attributes_dict[instruction] if architecture in available_architectures]
+
+    return relocation_attributes_dict

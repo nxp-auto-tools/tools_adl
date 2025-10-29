@@ -36,7 +36,7 @@ def write_tests():
     base_arch, extensions = attributes.split(baseArchitecture)
 
     # A dictionary with instructions and associated attribute prefixes
-    instruction_attribute_dict, new_instruction_attribute_dict = parse.instruction_attribute(adl_file_path)
+    instruction_attributes_dict, new_instruction_attributes_dict = parse.instruction_attribute(adl_file_path)
 
     # Split the extension by underscores in order to get extensions and versions
     extensions_and_versions = extensions.split('_')
@@ -52,7 +52,7 @@ def write_tests():
             extension_versions_dict[match.group(1)] = match.group(2)
 
     # Begin test generation setup 
-    instruction_attribute_dict, instruction_attribute_stripped_dict = parse.instruction_attribute(adl_file_path)
+    instruction_attributes_dict, instruction_attribute_stripped_dict = parse.instruction_attribute(adl_file_path)
     instruction_operands_dict, instr_name_syntaxName_dict, imm_width_dict, imm_shift_dict, imm_signed_dict, instr_field_value_dict = parse.instructions_operands(adl_file_path)
     operand_values_dict, widths_dict, op_signExt_dict = parse.operands_values(adl_file_path)
     instruction_register_pair_dict, instrfield_optionName_dict = parse.register_pairs(adl_file_path)
@@ -70,20 +70,28 @@ def write_tests():
     relocation_attributes_dict = parse_reloc.relocations_attributes(adl_file_path)
     relocation_action_dict = parse_reloc.relocations_action(adl_file_path)
 
+    # Set available extensions
+    relocation_attributes_dict = utils_reloc.set_available_extensions(relocation_attributes_dict)
+    instruction_attributes_dict = utils_reloc.set_available_extensions(instruction_attributes_dict)
+
     # Check if the output directory exists and refresh it
     if extension_list is not None:
-        if os.path.exists(os.path.join(output_dir, 'fixup_results_' + adl_file_name, 'tests_' + '_'.join(extension_list))):
-            shutil.rmtree(os.path.join(output_dir, 'fixup_results_' + adl_file_name, 'tests_' + '_'.join(extension_list)))
+        tests_directory = os.path.join(output_dir, 'fixup_results_' + adl_file_name, 'tests_' + '_'.join(extension_list))
+        if os.path.exists(tests_directory):
+            shutil.rmtree(tests_directory)
+        os.makedirs(os.path.join(output_dir, 'fixup_results_' + adl_file_name, 'tests_' + '_'.join(extension_list)), exist_ok=True)
     else:
-        if os.path.exists(os.path.join(output_dir, 'fixup_results_' + adl_file_name, 'tests_all')):
-            shutil.rmtree(os.path.join(output_dir, 'fixup_results_' + adl_file_name, 'tests_all'))
+        tests_directory = os.path.join(output_dir, 'fixup_results_' + adl_file_name, 'tests_all')
+        if os.path.exists(tests_directory):
+            shutil.rmtree(tests_directory)
+        os.makedirs(os.path.join(output_dir, 'fixup_results_' + adl_file_name, 'tests_all'), exist_ok=True)
 
     # Create a folder for each relocation
     for i, (relocation, instructions) in enumerate(relocation_instructions_dict.items()):
         # Check if relocation has fixup information
         if relocation in relocation_action_dict.keys():
             # Generate tests for specific extensions
-            if extension_list is None or any(extension in extension_list for extension in relocation_attributes_dict[relocation]):
+            if extension_list is None or all(extension in relocation_attributes_dict[relocation] for extension in extension_list):
                 # Create a folder for each instruction
                 if extension_list is not None:
                     folder_name = os.path.join(output_dir, 'fixup_results_' + adl_file_name, 'tests_' + '_'.join(extension_list), f"{relocation}")
@@ -94,7 +102,7 @@ def write_tests():
                 # Create a file for each instruction
                 for instruction in instructions:
                     # Generate tests for specific extensions
-                    if extension_list is None or any(extension in extension_list for extension in instruction_attribute_dict[instruction]):
+                    if extension_list is None or all(extension in instruction_attributes_dict[instruction] for extension in extension_list):
 
                         # A list in which offsets are separated from immediates
                         operands_extended = instruction_operands_dict[instruction][:]
@@ -116,19 +124,19 @@ def write_tests():
 
                         # A function that handles different types of operands (offsets, registers, immediates with or without abbreviations) for the Sym.Value case
                         def handle_operand_sym_value(op, label, abbrev, suffix):
-                            # if operand has offset and it's a value from info dict put its value between ()
+                            # If operand has offset and it's a value from info dict put its value between ()
                             if op in offsets and op in operand_values_dict:
                                 if instruction in instruction_register_pair_dict:
                                     return '(' + str(utils_reloc.extract_highest_even_value_for_pair_instructions(instrfield_optionName_dict, instruction_register_pair_dict[instruction][0])) + ')'                                   
                                 else:
                                     return '(' + str(operand_values_dict[op][-1]) + ')'
-                            # if operands doen't have offset but it's a value from info dict take its register value
+                            # If operands doen't have offset but it's a value from info dict take its register value
                             elif op in operand_values_dict:
                                 if instruction in instruction_register_pair_dict:
                                     return str(utils_reloc.extract_highest_even_value_for_pair_instructions(instrfield_optionName_dict, instruction_register_pair_dict[instruction][0]))  
                                 else:
                                     return operand_values_dict[op][-1]
-                            # if operand is an immediate generate values based on label
+                            # If operand is an immediate generate values based on label
                             elif op in final_width_dict:
                                 if abbrev:
                                     return '%' + abbrev + '(' + str(label) + ')'
@@ -141,13 +149,13 @@ def write_tests():
                             
                         # A function that handles different types of operands (offsets, registers, immediates with or without abbreviations) for the Sym.Value case
                         def handle_operand_sym_value_dependency(op, label, abbrev, suffix):
-                            # if operands doen't have offset but it's a value from info dict take its register value
+                            # If operands doen't have offset but it's a value from info dict take its register value
                             if op in operand_values_dict:
                                 if instruction in instruction_register_pair_dict:
                                     return str(utils_reloc.extract_highest_even_value_for_pair_instructions(instrfield_optionName_dict, instruction_register_pair_dict[instruction][0]))
                                 else:
                                     return operand_values_dict[op][-1]
-                            # if operand is an immediate generate values based on label
+                            # If operand is an immediate generate values based on label
                             elif op in final_width_dict:
                                 if abbrev:
                                     return '%' + abbrev + '(' + str(label) + ')'
@@ -160,19 +168,19 @@ def write_tests():
                             
                         # A function that handles different types of operands (offsets, registers, immediates with or without abbreviations) for the Addend case
                         def handle_operand_addend(op, label, abbrev, suffix, addend=None):
-                            # if operand has offset and it's a value from info dict put its value between ()
+                            # If operand has offset and it's a value from info dict put its value between ()
                             if op in offsets and op in operand_values_dict:
                                 if instruction in instruction_register_pair_dict:
                                     return '(' + str(utils_reloc.extract_highest_even_value_for_pair_instructions(instrfield_optionName_dict, instruction_register_pair_dict[instruction][0])) + ')'
                                 else:
                                     return '(' + str(operand_values_dict[op][-1]) + ')'
-                            # if operands doen't have offset but it's a value from info dict take its register value
+                            # If operands doen't have offset but it's a value from info dict take its register value
                             elif op in operand_values_dict:
                                 if instruction in instruction_register_pair_dict:
                                     return str(utils_reloc.extract_highest_even_value_for_pair_instructions(instrfield_optionName_dict, instruction_register_pair_dict[instruction][0]))
                                 else:
                                     return operand_values_dict[op][-1]
-                            # if operand is an immediate generate values based on label + addend
+                            # If operand is an immediate generate values based on label + addend
                             elif op in final_width_dict:
                                 if addend is not None:
                                     if abbrev:
@@ -234,7 +242,7 @@ def write_tests():
                             f.write('\t.text\n')
                             f.write('\t.attribute	4, 16\n')
                             f.write(f'\t.attribute	5, "{baseArchitecture}i{extension_versions_dict["i"]}_c{extension_versions_dict["c"]}')
-                            for extension in new_instruction_attribute_dict[instruction]:
+                            for extension in new_instruction_attributes_dict[instruction]:
                                 if extension in extension_versions_dict.keys() and extension != "i" and extension != "c":
                                     f.write(f'_{extension}{extension_versions_dict[extension]}')
                             f.write(f'"\n')
@@ -285,7 +293,7 @@ def write_tests():
                                 # Check if the operand has offset
                                 if not offsets:
                                     f.write(f"\t{instruction_syntaxName_dict[instruction]} {','.join(op_values)}\n")
-                                # if it does, concatenate last operand without comma
+                                # If it does, concatenate last operand without comma
                                 else:
                                     f.write(f"\t{instruction_syntaxName_dict[instruction]} {','.join(op_values[:-1])}{op_values[-1]}\n")    
                             # Testing each bit for the Addend field
@@ -302,7 +310,7 @@ def write_tests():
                                 # Check if the operand has offset
                                 if not offsets:
                                     f.write(f"\t{instruction_syntaxName_dict[instruction]} {','.join(op_values)}\n")
-                                # if it does, concatenate last operand without comma
+                                # If it does, concatenate last operand without comma
                                 else:
                                     f.write(f"\t{instruction_syntaxName_dict[instruction]} {','.join(op_values[:-1])}{op_values[-1]}\n")                            
                             f.close()

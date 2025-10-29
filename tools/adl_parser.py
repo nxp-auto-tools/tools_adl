@@ -149,81 +149,83 @@ def parse_registers_from_adl(adl_name):
                 )
                 registers[register_class] = reginfo
                     
-            for regclass in core.iter("regs"):
-                for regs in regclass:
-                    parameters = dict()
-                    attributes = list()
-                    debug_info = dict()
-                    entries = list()
-                    syntax = list()
-                    register_name = regs.attrib["name"]
-                    for reg_info in regs:
-                        for sub_reg_info in reg_info:
-                            for attribute in sub_reg_info.iter("attribute"):
-                                if "name" in sub_reg_info.attrib["name"]:
-                                    debug_info[sub_reg_info.attrib["name"]] = str(
-                                        attribute[0].text
-                                    )
-                                attributes.append(attribute.attrib["name"])
-                        parameters[reg_info.tag] = sub_reg_info.text
-                        parameters["attributes"] = attributes
-                        registers[register_name] = parameters
-                    if bool(attributes):
-                        attributes = set(attributes)
-                    if "pseudo" in parameters.keys():
-                        pseudo = parameters["pseudo"]
-                    debug = ""
-                    prefix = ""
-                    reserved_mask = ""
-                    doc_info = ""
-                    size = ""
-                    shared = ""
-                    pseudo = ""
-                    for key in parameters.keys():
-                        if key == "doc":
-                            doc_info = parameters[key].strip()
-                        elif key == "width":
-                            width = parameters[key].strip()
-                        elif key == "size":
-                            size = parameters[key].strip()
-                        elif key == "prefix":
-                            prefix = parameters[key].strip()
-                        elif key == "shared":
-                            shared = parameters[key].strip()
-                        elif key == "reserved_mask":
-                            reserved_mask = parameters[key].strip()
-                    if bool(debug_info) is not False:
-                        for _, value in enumerate(debug_info.values()):
-                            debug = str(value)
-                    reginfo2 = registerInfo.RegisterGeneric(
-                        register_name,
-                        doc_info,
-                        width,
-                        attributes,
-                        size,
-                        entries,
-                        syntax,
-                        debug,
-                        prefix,
-                        shared,
-                        reserved_mask,
-                        None,
-                        None,
-                        None,
-                        pseudo,
-                        alignment,
-                        None
-                    )
-                    registers[register_name] = reginfo2
+            # for regclass in core.iter("regs"):
+            #     for regs in regclass:
+            #         parameters = dict()
+            #         attributes = list()
+            #         debug_info = dict()
+            #         entries = list()
+            #         syntax = list()
+            #         register_name = regs.attrib["name"]
+            #         for reg_info in regs:
+            #             for sub_reg_info in reg_info:
+            #                 for attribute in sub_reg_info.iter("attribute"):
+            #                     if "name" in sub_reg_info.attrib["name"]:
+            #                         debug_info[sub_reg_info.attrib["name"]] = str(
+            #                             attribute[0].text
+            #                         )
+            #                     attributes.append(attribute.attrib["name"])
+            #             parameters[reg_info.tag] = sub_reg_info.text
+            #             parameters["attributes"] = attributes
+            #             registers[register_name] = parameters
+            #         if bool(attributes):
+            #             attributes = set(attributes)
+            #         if "pseudo" in parameters.keys():
+            #             pseudo = parameters["pseudo"]
+            #         debug = ""
+            #         prefix = ""
+            #         reserved_mask = ""
+            #         doc_info = ""
+            #         size = ""
+            #         shared = ""
+            #         pseudo = ""
+            #         for key in parameters.keys():
+            #             if key == "doc":
+            #                 doc_info = parameters[key].strip()
+            #             elif key == "width":
+            #                 width = parameters[key].strip()
+            #             elif key == "size":
+            #                 size = parameters[key].strip()
+            #             elif key == "prefix":
+            #                 prefix = parameters[key].strip()
+            #             elif key == "shared":
+            #                 shared = parameters[key].strip()
+            #             elif key == "reserved_mask":
+            #                 reserved_mask = parameters[key].strip()
+            #         if bool(debug_info) is not False:
+            #             for _, value in enumerate(debug_info.values()):
+            #                 debug = str(value)
+            #         reginfo2 = registerInfo.RegisterGeneric(
+            #             register_name,
+            #             doc_info,
+            #             width,
+            #             attributes,
+            #             size,
+            #             entries,
+            #             syntax,
+            #             debug,
+            #             prefix,
+            #             shared,
+            #             reserved_mask,
+            #             None,
+            #             None,
+            #             None,
+            #             pseudo,
+            #             alignment,
+            #             None
+            #         )
+                    # registers[register_name] = reginfo2
         utils.remove_ignored_attrib_regs(registers)
         return registers
     except:
-        print("Error detected when running : " + parse_registers_from_adl.__name__)
-        print("No XML model is provided in the command line! Please run make_td.py with a proper XML file as first argument!")
+        if sys.argv[1] != "-h":
+            print("Error detected when running : " + parse_registers_from_adl.__name__)
+            print("No XML model is provided in the command line! Please run make_td.py with a proper XML file as first argument!")
         parser = argparse.ArgumentParser()
         parser.add_argument("file", type=str)
         parser.add_argument("--extension", "-e", dest="extension", type=str)  # Elimină "="
         parser.add_argument("--output", "-o", dest='output', type=str)
+        parser.add_argument("--no-sail", dest='no_sail', type=str)
         parser.print_help(sys.stderr)
         sys.exit(1)
 
@@ -276,12 +278,14 @@ def get_alias_for_regs(adl_name):
                     instrfield_dict[instruction_field] = parameters["aliases"]
         return alias_dict
     except:
-        print("Error detected when running : " + get_alias_for_regs.__name__)
-        print("No XML model is provided in the command line! Please run make_td.py with a proper XML file as first argument!")
+        if sys.argv[1] != "-h":
+            print("Error detected when running : " + get_alias_for_regs.__name__)
+            print("No XML model is provided in the command line! Please run make_td.py with a proper XML file as first argument!")
         parser = argparse.ArgumentParser()
         parser.add_argument("file", type=str)
         parser.add_argument("--extension", "-e", dest="extension", type=str)  # Elimină "="
         parser.add_argument("--output", "-o", dest='output', type=str)
+        parser.add_argument("--no-sail", dest='no_sail', type=str)
         parser.print_help(sys.stderr)
         sys.exit(1)
 
@@ -341,12 +345,14 @@ def get_instrfield_offset(adl_name):
         instrfield_offset = utils.get_instrfield_offset(instrfield_data_ref)
         return instrfield_offset, instrfield_data_ref
     except:
-        print("Error detected when running : " + get_instrfield_offset.__name__)
-        print("No XML model is provided in the command line! Please run make_td.py with a proper XML file as first argument!")
+        if sys.argv[1] != "-h":
+            print("Error detected when running : " + get_instrfield_offset.__name__)
+            print("No XML model is provided in the command line! Please run make_td.py with a proper XML file as first argument!")
         parser = argparse.ArgumentParser()
         parser.add_argument("file", type=str)
         parser.add_argument("--extension", "-e", dest="extension", type=str)  # Elimină "="
         parser.add_argument("--output", "-o", dest='output', type=str)
+        parser.add_argument("--no-sail", dest='no_sail', type=str)
         parser.print_help(sys.stderr)
         sys.exit(1)
 
@@ -403,12 +409,14 @@ def get_instrfield_from_adl(adl_name):
                     instrfield_data_imm[instruction_field] = parameters
         return instrfield_data_imm, instrfield_data_ref
     except:
-        print("Error detected when running : " + get_instrfield_from_adl.__name__)
-        print("No XML model is provided in the command line! Please run make_td.py with a proper XML file as first argument!")
+        if sys.argv[1] != "-h":
+            print("Error detected when running : " + get_instrfield_from_adl.__name__)
+            print("No XML model is provided in the command line! Please run make_td.py with a proper XML file as first argument!")
         parser = argparse.ArgumentParser()
         parser.add_argument("file", type=str)
         parser.add_argument("--extension", "-e", dest="extension", type=str)  # Elimină "="
         parser.add_argument("--output", "-o", dest='output', type=str)
+        parser.add_argument("--no-sail", dest='no_sail', type=str)
         parser.print_help(sys.stderr)
         sys.exit(1)
 
@@ -546,12 +554,14 @@ def parse_instructions_from_adl(adl_name):
             sorting_attributes,
         )
     except:
-        print("Error detected when running : " + parse_instructions_from_adl.__name__)
-        print("No XML model is provided in the command line! Please run make_td.py with a proper XML file")
+        if sys.argv[1] != "-h":
+            print("Error detected when running : " + parse_instructions_from_adl.__name__)
+            print("No XML model is provided in the command line! Please run make_td.py with a proper XML file")
         parser = argparse.ArgumentParser()
         parser.add_argument("file", type=str)
         parser.add_argument("--extension", "-e", dest="extension", type=str)  # Elimină "="
         parser.add_argument("--output", "-o", dest='output', type=str)
+        parser.add_argument("--no-sail", dest='no_sail', type=str)
         parser.print_help(sys.stderr)
         sys.exit(1)
 
@@ -673,12 +683,14 @@ def parse_instructions_aliases_from_adl(adl_name):
                         instructions_aliases[instruction] = parameters
         return instructions_aliases
     except:
-        print("Error detected when running : " + parse_instructions_aliases_from_adl.__name__)
-        print("No XML model is provided in the command line! Please run make_td.py with a proper XML file as first argument!")
+        if sys.argv[1] != "-h":
+            print("Error detected when running : " + parse_instructions_aliases_from_adl.__name__)
+            print("No XML model is provided in the command line! Please run make_td.py with a proper XML file as first argument!")
         parser = argparse.ArgumentParser()
         parser.add_argument("file", type=str)
         parser.add_argument("--extension", "-e", dest="extension", type=str)  # Elimină "="
         parser.add_argument("--output", "-o", dest='output', type=str)
+        parser.add_argument("--no-sail", dest='no_sail', type=str)
         parser.print_help(sys.stderr)
         sys.exit(1)
 
@@ -740,12 +752,14 @@ def parse_registers_subregs(adl_name):
                 registers[register_name] = xml_dict
         return registers
     except:
-        print("Error detected when running : " + parse_registers_subregs.__name__)
-        print("No XML model is provided in the command line! Please run make_td.py with a proper XML file as first argument!")
+        if sys.argv[1] != "-h":
+            print("Error detected when running : " + parse_registers_subregs.__name__)
+            print("No XML model is provided in the command line! Please run make_td.py with a proper XML file as first argument!")
         parser = argparse.ArgumentParser()
         parser.add_argument("file", type=str)
         parser.add_argument("--extension", "-e", dest="extension", type=str)  # Elimină "="
         parser.add_argument("--output", "-o", dest='output', type=str)
+        parser.add_argument("--no-sail", dest='no_sail', type=str)
         parser.print_help(sys.stderr)
         sys.exit(1)
 
@@ -769,12 +783,14 @@ def parse_relocations(adl_name):
                     reloc_data[reloc_name] = parameters
         return reloc_data
     except:
-        print("Error detected when running : " + parse_relocations.__name__)
-        print("No XML model is provided in the command line! Please run make_td.py with a proper XML file as first argument!")
+        if sys.argv[1] != "-h":
+            print("Error detected when running : " + parse_relocations.__name__)
+            print("No XML model is provided in the command line! Please run make_td.py with a proper XML file as first argument!")
         parser = argparse.ArgumentParser()
         parser.add_argument("file", type=str)
         parser.add_argument("--extension", "-e", dest="extension", type=str)  # Elimină "="
         parser.add_argument("--output", "-o", dest='output', type=str)
+        parser.add_argument("--no-sail", dest='no_sail', type=str)
         parser.print_help(sys.stderr)
         sys.exit(1)
 
@@ -847,15 +863,6 @@ def parse_sched_table_from_adl(adl_name):
                         instruction_sched[instruction_name].update(aux)
                     sched_table_dict[sched_table.attrib["name"]].update(instruction_sched)
         return sched_table_dict
-    # except:
-    #     print("Error detected when running : " + parse_sched_table_from_adl.__name__)
-    #     print("No XML model is provided in the command line! Please run make_td.py with a proper XML file as first argument!")
-    #     parser = argparse.ArgumentParser()
-    #     parser.add_argument("file", type=str)
-    #     parser.add_argument("--extension", "-e", dest="extension", type=str)  # Elimină "="
-    #     parser.add_argument("--output", "-o", dest='output', type=str)
-    #     parser.print_help(sys.stderr)
-    #     sys.exit(1)
 
 ## This function parses the scheduling parameters from ADL file
 #
@@ -887,12 +894,14 @@ def parse_scheduling_model_params(adl_name):
                 sched_table_params[sched_table.attrib["name"]].update(parameters)
         return sched_table_params
     except:
-        print("Error detected when running : " + parse_scheduling_model_params.__name__)
-        print("No XML model is provided in the command line! Please run make_td.py with a proper XML file as first argument!")
+        if sys.argv[1] != "-h":
+            print("Error detected when running : " + parse_scheduling_model_params.__name__)
+            print("No XML model is provided in the command line! Please run make_td.py with a proper XML file as first argument!")
         parser = argparse.ArgumentParser()
         parser.add_argument("file", type=str)
         parser.add_argument("--extension", "-e", dest="extension", type=str)  # Elimină "="
         parser.add_argument("--output", "-o", dest='output', type=str)
+        parser.add_argument("--no-sail", dest='no_sail', type=str)
         parser.print_help(sys.stderr)
         sys.exit(1)
 

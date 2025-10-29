@@ -3951,10 +3951,10 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 ]]></str>
 </doc>
 <syntax>
-<str>c.addi rd,imm_ci</str>
+<str>c.addi rx,imm_ci</str>
 </syntax>
 <dsyntax>
-<str>c.addi ${rd},${imm_ci}</str>
+<str>c.addi ${rx},${imm_ci}</str>
 </dsyntax>
 <attributes>
 <attribute name="rv32c">
@@ -3968,7 +3968,7 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 <field name="imm_ci">
 <str></str>
 </field>
-<field name="rd">
+<field name="rx">
 <str></str>
 </field>
 <field name="op_c">
@@ -3978,19 +3978,24 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 <action>
 <str><![CDATA[
 {
-    GPR ( rd ) = GPR ( rd ) + imm_ci ;
+    GPR ( rx ) = GPR ( rx ) + imm_ci ;
 }
 ]]></str>
 </action>
 <disassemble>
 <str>true</str>
 </disassemble>
+<excluded_values>
+<option name="imm_ci">
+<str>0</str>
+</option>
+</excluded_values>
 <inputs>
-<str>GPR(rd)</str>
+<str>GPR(rx)</str>
 <str>RV32E_ENABLE</str>
 </inputs>
 <outputs>
-<str>GPR(rd)</str>
+<str>GPR(rx)</str>
 </outputs>
 </instruction>
 <instruction name="c.nop">
@@ -4620,7 +4625,7 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 </instruction-sched>
 <instruction-sched name="IALU">
 <instruction_list>
-<str>auipc,lui,add</str>
+<str>auipc,lui,add,c.addi</str>
 </instruction_list>
 </instruction-sched>
 </sched-table>

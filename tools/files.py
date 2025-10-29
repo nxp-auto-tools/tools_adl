@@ -208,32 +208,35 @@ def generate_namespace(namespace):
 # @return The string representing register class definition from RegisterInfo.td
 def generate_register_class(class_name, register_size, subregs_enabled):
     size = int(math.log2(int(register_size)))
+    class_name_list = list()
     if type(class_name) is dict:
         register_class_generated = ""
         for key in class_name.keys():
-            class_statement = "class " + class_name[key] + "<"
-            class_defined = ""
-            if subregs_enabled is True:
-                parameters = (
-                    "bits<"
-                    + str(size)
-                    + "> Enc, string n, list<Register> subregs, list<string> alt = []> : RegisterWithSubRegs<n, subregs> {\n"
-                )
-            else:
-                parameters = (
-                    "bits<"
-                    + str(size)
-                    + "> Enc, string n, list<string> alt = []> : Register<n> {\n"
-                )
-            class_content = ""
-            riscv_regclass = ""
-            child_class = ""
-            HWEncoding = "\tlet HWEncoding{" + str(size - 1) + "-" + str(0) + "} = Enc;\n"
-            AltNames = "\tlet AltNames = alt;\n"
-            class_content = class_content + HWEncoding + AltNames + "}"
-            register_class_generated += class_statement + parameters + class_content + "\n"
-            config_variables = config.config_environment(config_file, llvm_config)
-            registers = adl_parser.parse_registers_from_adl(config_variables["ADLName"])
+            if class_name not in class_name_list:
+                class_name_list.append(class_name)
+                class_statement = "class " + class_name[key] + "<"
+                class_defined = ""
+                if subregs_enabled is True:
+                    parameters = (
+                        "bits<"
+                        + str(size)
+                        + "> Enc, string n, list<Register> subregs, list<string> alt = []> : RegisterWithSubRegs<n, subregs> {\n"
+                    )
+                else:
+                    parameters = (
+                        "bits<"
+                        + str(size)
+                        + "> Enc, string n, list<string> alt = []> : Register<n> {\n"
+                    )
+                class_content = ""
+                riscv_regclass = ""
+                child_class = ""
+                HWEncoding = "\tlet HWEncoding{" + str(size - 1) + "-" + str(0) + "} = Enc;\n"
+                AltNames = "\tlet AltNames = alt;\n"
+                class_content = class_content + HWEncoding + AltNames + "}"
+                register_class_generated += class_statement + parameters + class_content + "\n"
+                config_variables = config.config_environment(config_file, llvm_config)
+                registers = adl_parser.parse_registers_from_adl(config_variables["ADLName"])
     else:
         class_statement = "class " + class_name + "<"
         class_defined = ""
@@ -298,98 +301,6 @@ def generate_register_classes_extended():
             register_class_generated += other_defs
     register_class_generated += "\n" + riscv_regclass  + "\n"
     return register_class_generated
-
-## Function generating vector register
-#
-# It returns the defintion for vector register classes
-def generate_vector_register():
-    config_variables = config.config_environment(config_file, llvm_config)
-    registers = adl_parser.parse_registers_from_adl(config_variables["ADLName"])
-    content_statement = ""
-    statement = ""
-    class_def = ""
-    parameters = ""
-    content_register = ""
-    excluded_values = dict()
-    instrfields = adl_parser.get_instrfield_from_adl(config_variables["ADLName"])[1]
-    instructions = adl_parser.parse_instructions_from_adl(config_variables["ADLName"])[0]
-    for instr in instructions.keys():
-        if 'excluded_values' in instructions[instr].keys():
-            excluded_values = instructions[instr]['excluded_values']
-    excluded_values_dict = dict()
-    for register in registers.keys():
-        if len(excluded_values) > 0:
-            for key in excluded_values.keys():
-                if key in instrfields.keys():
-                    if instrfields[key]['ref'].upper() == register:
-                        excluded_values_dict[register+"No" + excluded_values[key][0].upper()] = excluded_values[key][0].upper()
-    if 'VectorRegisterClass' in config_variables.keys():
-        statement = "def " + config_variables['VectorRegisterClass']['ClassName'] + "<list<ValueType> regTypes, dag regList, int Vlmul>\n"
-        class_def = " :" + config_variables['VectorRegisterClass']['ParentClass'] + "<regTypes, " + config_variables['VectorRegisterClass']['Width'] + ", regList> {\n"
-        for element in config_variables['VectorRegisterClass'].keys():
-            if element == 'Parameters':
-                for param in config_variables['VectorRegisterClass']['Parameters'].split(","):
-                    parameters += param.replace("[", "").replace("]", "") + ", "
-            if element != 'ParentClass' and element != 'ClassName' and element != "Width" and element != "Parameters":
-                content_statement += "\tlet " + element + " = " + config_variables['VectorRegisterClass'][element] + ";\n"
-    for register in registers.keys():
-        register_list = list()
-        if 'vector' in registers[register].attributes:
-            for order in config_variables['RegisterAllocationOrder'][register]:
-                for reg in registers[register].calling_convention:
-                    if registers[register].calling_convention[reg][0] == order:
-                        register_list.append(reg)
-            register_statement = "def " + register + " : " + config_variables['VectorRegisterClass']['ClassName'] + "<!listconcat(" + parameters.rstrip(", ") + "),\n"
-            register_content = "\t(add (" + ""
-            width = registers[register].width
-            index_tab = 1
-            index_row = 1
-            for register in register_list:
-                if index_row == 5:
-                    index_row = 0
-                if index_tab < 5:
-                    if index_row == 0:
-                        register_content += "\t"
-                    register_content += register + ", "
-                    index_tab += 1
-                    index_row += 1
-                if index_tab == 5:
-                    register_content += "\n"
-                    index_tab = 0
-            content_register += register_statement + register_content.rstrip(", ") + ")), " + config_variables['VectorRegisterClass']['VLMul'] + ">;\n"
-    if len(excluded_values_dict) > 0:
-        for register in excluded_values_dict.keys():
-            register_list = list()
-            register_base = register.split("No")[0]
-            if 'vector' in registers[register_base].attributes:
-                for order in config_variables['RegisterAllocationOrder'][register_base]:
-                    for reg in registers[register_base].calling_convention:
-                        if registers[register_base].calling_convention[reg][0] == order:
-                            if reg not in excluded_values_dict[register]:
-                                register_list.append(reg)
-                register_statement = "def " + register + " : " + config_variables['VectorRegisterClass']['ClassName'] + "<!listconcat(" + parameters.rstrip(", ") + "),\n"
-                register_content = "\t(add (" + ""
-                width = registers[register_base].width
-                index_tab = 1
-                index_row = 1
-                for register_base_key in register_list:
-                    if index_row == 5:
-                        index_row = 0
-                    if index_tab < 5:
-                        if index_row == 0:
-                            register_content += "\t"
-                        register_content += register_base_key + ", "
-                        index_tab += 1
-                        index_row += 1
-                    if index_tab == 5:
-                        register_content += "\n"
-                        index_tab = 0
-                content_register += register_statement + register_content.rstrip(", ") + ")), " + config_variables['VectorRegisterClass']['VLMul'] + ">;\n"
-    if content_statement != "":
-        content_statement += "}\n"
-    if content_register != "":
-         content_register += "\n"
-    return statement + class_def + content_statement + content_register
     
 
 ## Function for generating the GPR register file
@@ -631,7 +542,114 @@ def generate_registers_by_prefix(
     registers_define[reg_class] = registers
     return registers_generated, registers_aliases, additional_register_classes
 
-
+## Function generating vector register
+#
+# It returns the defintion for vector register classes
+def generate_vector_register():
+    config_variables = config.config_environment(config_file, llvm_config)
+    alias_regs = adl_parser.get_alias_for_regs(config_variables["ADLName"])
+    registers = adl_parser.parse_registers_from_adl(config_variables["ADLName"])
+    content_statement = ""
+    vector_registers = list()
+    statement = ""
+    class_def = ""
+    parameters = ""
+    content_register = ""
+    excluded_values = dict()
+    instrfields = adl_parser.get_instrfield_from_adl(config_variables["ADLName"])[1]
+    instructions = adl_parser.parse_instructions_from_adl(config_variables["ADLName"])[0]
+    for instr in instructions.keys():
+        if 'excluded_values' in instructions[instr].keys():
+            excluded_values = instructions[instr]['excluded_values']
+    excluded_values_dict = dict()
+    for register in registers.keys():
+        if len(excluded_values) > 0:
+            for key in excluded_values.keys():
+                if key in instrfields.keys():
+                    if instrfields[key]['ref'].upper() == register:
+                        excluded_values_dict[register+"No" + excluded_values[key][0].upper()] = excluded_values[key][0].upper()
+    if 'VectorRegisterClass' in config_variables.keys():
+        statement = "class " + config_variables['VectorRegisterClass']['ClassName'] + "<list<ValueType> regTypes, dag regList, int Vlmul>\n"
+        class_def = " :" + config_variables['VectorRegisterClass']['ParentClass'] + "<regTypes, " + config_variables['VectorRegisterClass']['Width'] + ", regList> {\n"
+        for element in config_variables['VectorRegisterClass'].keys():
+            if element == 'Parameters':
+                for param in config_variables['VectorRegisterClass']['Parameters'].split(","):
+                    parameters += param.replace("[", "").replace("]", "") + ", "
+            if element != 'ParentClass' and element != 'ClassName' and element != "Width" and element != "Parameters":
+                content_statement += "\tlet " + element + " = " + config_variables['VectorRegisterClass'][element] + ";\n"
+    for register in registers.keys():
+        if 'vector' in registers[register].attributes:
+            if utils.check_register_class_prefix(registers, register) is True:
+                vector_registers = generate_registers_by_prefix(
+                                config_variables["RegAltNameIndex"],
+                                str.lower(register),
+                                config_variables['RegisterClass'][register],
+                                registers[register].prefix,
+                                registers[register].debug,
+                                int(registers[register].size),
+                                alias_regs,
+                            )
+    for register in registers.keys():
+        register_list = list()
+        if 'vector' in registers[register].attributes:
+            for order in config_variables['RegisterAllocationOrder'][register]:
+                for reg in registers[register].calling_convention:
+                    if registers[register].calling_convention[reg][0] == order:
+                        register_list.append(reg)
+            register_statement = "def " + register + " : " + config_variables['VectorRegisterClass']['ClassName'] + "<!listconcat(" + parameters.rstrip(", ") + "),\n"
+            register_content = "\t(add (" + ""
+            width = registers[register].width
+            index_tab = 1
+            index_row = 1
+            for register in register_list:
+                if index_row == 5:
+                    index_row = 0
+                if index_tab < 5:
+                    if index_row == 0:
+                        register_content += "\t"
+                    register_content += register + ", "
+                    index_tab += 1
+                    index_row += 1
+                if index_tab == 5:
+                    register_content += "\n"
+                    index_tab = 0
+            content_register += register_statement + register_content.rstrip(", ") + ")), " + config_variables['VectorRegisterClass']['VLMulValue'] + ">;\n"
+    if len(excluded_values_dict) > 0:
+        for register in excluded_values_dict.keys():
+            register_list = list()
+            register_base = register.split("No")[0]
+            if 'vector' in registers[register_base].attributes:
+                for order in config_variables['RegisterAllocationOrder'][register_base]:
+                    for reg in registers[register_base].calling_convention:
+                        if registers[register_base].calling_convention[reg][0] == order:
+                            if reg not in excluded_values_dict[register]:
+                                register_list.append(reg)
+                register_statement = "def " + register + " : " + config_variables['VectorRegisterClass']['ClassName'] + "<!listconcat(" + parameters.rstrip(", ") + "),\n"
+                register_content = "\t(add (" + ""
+                width = registers[register_base].width
+                index_tab = 1
+                index_row = 1
+                for register_base_key in register_list:
+                    if index_row == 5:
+                        index_row = 0
+                    if index_tab < 5:
+                        if index_row == 0:
+                            register_content += "\t"
+                        register_content += register_base_key + ", "
+                        index_tab += 1
+                        index_row += 1
+                    if index_tab == 5:
+                        register_content += "\n"
+                        index_tab = 0
+                content_register += register_statement + register_content.rstrip(", ") + ")), " + config_variables['VectorRegisterClass']['VLMulValue'] + ">;\n"
+    if content_statement != "":
+        content_statement += "}\n"
+    if content_register != "":
+         content_register += "\n"
+    if len(vector_registers) > 0:
+        return vector_registers[0].replace("\t", "") + "\n" + statement + class_def + content_statement + content_register
+    else:
+        return ""
 ## Function for generating the CSR or other generic register file
 #
 # @param name Define name
@@ -975,7 +993,7 @@ def generate_file(
     additional_register_classes = dict()
     for key in regclass.keys():
         if 'vector' not in regclass[key].attributes:
-            if utils.check_register_class_prefix(regclass, key) is True and key in  config_variables["RegisterClass"].keys():
+            if utils.check_register_class_prefix(regclass, key) is True and key in config_variables["RegisterClass"].keys():
                 additional_register_classes = generate_registers_by_prefix(
                     config_variables["RegAltNameIndex"],
                     str.lower(key),
@@ -1557,7 +1575,7 @@ def generate_instruction_define(
                 predicates += config_variables["LLVMExt" + element.capitalize()] + ", "
                 predicate_checked = True
             if element.capitalize() in config_variables['DecoderNamespace'].keys() or element.lower() in config_variables['DecoderNamespace'].keys():
-                decoderNamespace_predicate = config_variables['DecoderNamespace'][element.capitalize()].capitalize()
+                decoderNamespace_predicate = config_variables['DecoderNamespace'][element.capitalize()]
     predicates = predicates.rstrip(", ")
     predicates += "] in {\n"
     if "disassemble" in instructions[key]:
@@ -1676,7 +1694,8 @@ def generate_instruction_define(
                     break
             if attribute_checked is False:
                 define += str(str(key).replace(".", "_")).upper() + " :"
-            
+    else:
+        define += str(str(key).replace(".", "_")).upper() + " :"        
     if width == config_variables["LLVMStandardInstructionWidth"]:
         define += config_variables["InstructionClass"] + "<"
         decoderMethod = (
@@ -1871,10 +1890,14 @@ def generate_instruction_define(
                                             + instrfield,
                                         )
                                     else:
-                                        instrfield_regs_outs.insert(
-                                            len(instrfield_regs_outs),
-                                            instr_key.lower() + ":" + "$" + instrfield,
-                                        )
+                                        if 'enumerated' in instrfield_imm[instrfield].keys():
+                                                if len(instrfield_imm[instrfield]['enumerated'] > 0):
+                                                    if 'ref' in instrfield_imm[instrfield].keys():
+                                                        if instrfield_imm[instrfield]['ref'] != "":
+                                                            instrfield_regs_outs.insert(
+                                                                len(instrfield_regs_outs),
+                                                                instr_key.lower() + ":" + "$" + instrfield,
+                                                            )
                                 else:
                                     if "nonzero" in ref_imm:
                                         if (
@@ -1882,15 +1905,23 @@ def generate_instruction_define(
                                             not in instructions[key].keys()
                                         ):
                                             ref_imm = ref_imm.replace("nonzero", "")
-                                            instrfield_regs_outs.insert(
-                                                len(instrfield_regs_outs),
-                                                ref_imm + ":" + "$" + instrfield,
-                                            )
+                                            if 'enumerated' in instrfield_imm[instrfield].keys():
+                                                if len(instrfield_imm[instrfield]['enumerated'] > 0):
+                                                    if 'ref' in instrfield_imm[instrfield].keys():
+                                                        if instrfield_imm[instrfield]['ref'] != "":
+                                                            instrfield_regs_outs.insert(
+                                                                len(instrfield_regs_outs),
+                                                                ref_imm + ":" + "$" + instrfield,
+                                                            )
                                         else:
-                                            instrfield_regs_outs.insert(
-                                                len(instrfield_regs_outs),
-                                                ref_imm + ":" + "$" + instrfield,
-                                            )
+                                            if 'enumerated' in instrfield_imm[instrfield].keys():
+                                                if len(instrfield_imm[instrfield]['enumerated'] > 0):
+                                                    if 'ref' in instrfield_imm[instrfield].keys():
+                                                        if instrfield_imm[instrfield]['ref'] != "":
+                                                            instrfield_regs_outs.insert(
+                                                                len(instrfield_regs_outs),
+                                                                ref_imm + ":" + "$" + instrfield,
+                                                            )
                                     else:
                                         if (
                                             "excluded_values"
@@ -1905,15 +1936,23 @@ def generate_instruction_define(
                                                     )
                                                 )
                                             )
-                                            instrfield_regs_outs.insert(
-                                                len(instrfield_regs_outs),
-                                                ref_imm + ":" + "$" + instrfield,
-                                            )
+                                            if 'enumerated' in instrfield_imm[instrfield].keys():
+                                                if len(instrfield_imm[instrfield]['enumerated'] > 0):
+                                                    if 'ref' in instrfield_imm[instrfield].keys():
+                                                        if instrfield_imm[instrfield]['ref'] != "":
+                                                            instrfield_regs_outs.insert(
+                                                                len(instrfield_regs_outs),
+                                                                ref_imm + ":" + "$" + instrfield,
+                                                            )
                                         else:
-                                            instrfield_regs_outs.insert(
-                                                len(instrfield_regs_outs),
-                                                ref_imm + ":" + "$" + instrfield,
-                                            )
+                                            if 'enumerated' in instrfield_imm[instrfield].keys():
+                                                if len(instrfield_imm[instrfield]['enumerated'] > 0):
+                                                    if 'ref' in instrfield_imm[instrfield].keys():
+                                                        if instrfield_imm[instrfield]['ref'] != "":
+                                                            instrfield_regs_outs.insert(
+                                                                len(instrfield_regs_outs),
+                                                                ref_imm + ":" + "$" + instrfield,
+                                                            )
     outs = str(instructions[key]["outputs"])
     ins = str(instructions[key]["inputs"])
     outs = re.split(r"[()]", outs)
@@ -4889,6 +4928,7 @@ def generate_instruction_format(file_name, file_name_c):
                 )
                 f.write("\n\n")
         else:
+            base_name = os.path.basename(config_variables["InstructionFormatFile"])
             file_name =  os.path.basename(config_variables["InstructionFormatFile" + width])
             file_name = file_name_c + file_name
             if os.getcwd().endswith("tools"):
@@ -9643,8 +9683,6 @@ def write_instructions_aliases(file_name, file_name_c, extensions_list):
                                     )
                                 else:
                                     new_file_name = file_name_c.replace(".td", file_extension + ".td")
-                                if os.getcwd().endswith("tools") is True:
-                                    new_file_name = "." + new_file_name
                                 f = open(new_file_name, "a")
                                 if new_file_name not in section_delimiter_dump.keys():
                                     f.write(section_delimiter)
@@ -9690,8 +9728,6 @@ def write_instructions_aliases(file_name, file_name_c, extensions_list):
                                 )
                             else:
                                 new_file_name = file_name_c.replace(".td", file_extension + ".td")
-                            if os.getcwd().endswith("tools") is True:
-                                new_file_name = "." + new_file_name
                             f = open(new_file_name, "a")
                             if new_file_name not in section_delimiter_dump.keys():
                                 f.write(section_delimiter)
@@ -10833,6 +10869,7 @@ def generate_intrinsic_tests(folder, include_path):
     mattrib = ""
     architecture = ""
     attributes = ""
+    extension = ""
     for cores in root.iter("cores"):
         for asm_config in cores.iter("asm_config"):
             architecture = asm_config.find("arch").find("str").text
@@ -10858,10 +10895,6 @@ def generate_intrinsic_tests(folder, include_path):
     list_dir = list()
     for fname in os.listdir("."):
         list_dir.append(fname)
-    if "tools" not in list_dir:
-        folder = folder.replace(
-            "/tools", ""
-        )
     folder = folder_name.split("/")[0]
     path_dir = os.path.dirname(config_variables['TestIntrinsics'].replace(".", ""))
     path_abs = os.path.abspath('tools/').replace("\\", "/")
@@ -10875,15 +10908,12 @@ def generate_intrinsic_tests(folder, include_path):
     if folder_name.endswith("/tests_intrinsics") is False:
         folder_name = folder_name + config_variables['TestIntrinsics'].replace(".", "") + "tests_intrinsics"
         if os.path.exists(folder_name) is False:
-            os.mkdir(folder_name)
+            os.makedirs(folder_name)
+            os.chmod(folder_name, 0o777)
     if os.path.exists(folder_name):
         os.chmod(folder_name, 0o777)
-        if len(os.listdir(folder_name)) == 0:
-            pathlib.Path.rmdir(folder_name)
-            os.mkdir(folder_name)
-        else:
-            shutil.rmtree(folder_name, ignore_errors=True)
-            os.mkdir(folder_name)
+        shutil.rmtree(folder_name, ignore_errors=True)
+        os.makedirs(folder_name)
     for key in instructions.keys():
         character = "int *values_set"
         character2 = "*values_set"
@@ -11032,12 +11062,8 @@ def generate_operand_mem_wrapper_class(file_name):
     list_dir = list()
     for fname in os.listdir("."):
         list_dir.append(fname)
-    if "tools" not in list_dir:
-        if file_name.startswith("./"):
-            file_name = "." + file_name
     f = open(file_name, "a")
     legalDisclaimer.get_copyright(file_name)
-    #legalDisclaimer.get_generated_file(file_name)
     f.write(content + definition)
     f.close()
 
@@ -11122,65 +11148,79 @@ def generate_register_pairs(file_name):
                                         ] = list_aux
     index_dummy = 0
     for register in registers.keys():
-        prefix = registers[register].prefix
-        if registers[register].calling_convention is not None and prefix.upper() + str(index_dummy) in registers[register].calling_convention.keys():
-            if registers[register].calling_convention[prefix.upper() + str(index_dummy)][0] == 'Hard_wired_zero':
-                    if register in config_variables['RegisterClassWrapper']['RISCVRegisterClass']:
-                        def_dummy_reg_pair = "def DUMMY_REG_PAIR_WITH_" + prefix.upper() + str(index_dummy) + " : RISCVReg<" + str(index_dummy) + ", " + "\"" + str(index_dummy) + "\"" + ">;\n"
-                        def_add_dummy = "def " + register.upper() + "All : " + register.upper() + "RegisterClass<(\n"
-                        def_add_dummy += "\tadd " + register.upper() + ", DUMMY_REG_PAIR_WITH_" + prefix.upper() + str(index_dummy) + "\n\t)>;\n"
-                    else:
-                        def_dummy_reg_pair = "def DUMMY_REG_PAIR_WITH_" + prefix.upper() + str(index_dummy) + " : RISCVReg<" + str(index_dummy) + ", " + "\"" + str(index_dummy) + "\"" + ">;\n"
-                        def_add_dummy = "def " + register.upper() + "All : " + "RegisterClass<" + "\"" + config_variables['Namespace'] + "\"" + ", " + "[" + config_variables['XLenVT_key'] + "]" + ", " + config_variables['LLVMRegBasicWidth'] + ", " + "(\n"
-                        def_add_dummy += "\tadd " + register.upper() + ", DUMMY_REG_PAIR_WITH_" + prefix.upper() + str(index_dummy) + "\n\t)> {\n"
-                        def_add_dummy += "\tlet RegInfos = " + config_variables["XLenRI_key"] + ";\n"
-                        def_add_dummy += "}"
+        register_pair_check = False
+        for register_pair in register_pairs.keys():
+            for element in register_pairs[register_pair]:
+                if element in instrfield_data_ref.keys() and instrfield_data_ref[element]['ref'] == register.upper():
+                    register_pair_check = True
+                    break
+        if register_pair_check is True:
+            prefix = registers[register].prefix
+            if registers[register].calling_convention is not None and prefix.upper() + str(index_dummy) in registers[register].calling_convention.keys():
+                if registers[register].calling_convention[prefix.upper() + str(index_dummy)][0] == 'Hard_wired_zero':
+                        if register in config_variables['RegisterClassWrapper']['RISCVRegisterClass']:
+                            def_dummy_reg_pair = "def DUMMY_REG_PAIR_WITH_" + prefix.upper() + str(index_dummy) + " : RISCVReg<" + str(index_dummy) + ", " + "\"" + str(index_dummy) + "\"" + ">;\n"
+                            def_add_dummy = "def " + register.upper() + "All : " + register.upper() + "RegisterClass<(\n"
+                            def_add_dummy += "\tadd " + register.upper() + ", DUMMY_REG_PAIR_WITH_" + prefix.upper() + str(index_dummy) + "\n\t)>;\n"
+                        else:
+                            def_dummy_reg_pair = "def DUMMY_REG_PAIR_WITH_" + prefix.upper() + str(index_dummy) + " : RISCVReg<" + str(index_dummy) + ", " + "\"" + str(index_dummy) + "\"" + ">;\n"
+                            def_add_dummy = "def " + register.upper() + "All : " + "RegisterClass<" + "\"" + config_variables['Namespace'] + "\"" + ", " + "[" + config_variables['XLenVT_key'] + "]" + ", " + config_variables['LLVMRegBasicWidth'] + ", " + "(\n"
+                            def_add_dummy += "\tadd " + register.upper() + ", DUMMY_REG_PAIR_WITH_" + prefix.upper() + str(index_dummy) + "\n\t)> {\n"
+                            def_add_dummy += "\tlet RegInfos = " + config_variables["XLenRI_key"] + ";\n"
+                            def_add_dummy += "}"
     reg_pair_content = ""
     check_reg_pair = False
     for register in registers.keys():
-        check_register = False
-        reg_pair_def = ""
-        if 'RegisterClassDisabledABI' in config_variables.keys():
-            if register.upper() not in config_variables['RegisterClassDisabledABI']:
+        register_pair_check = False
+        for register_pair in register_pairs.keys():
+            for element in register_pairs[register_pair]:
+                if element in instrfield_data_ref.keys() and instrfield_data_ref[element]['ref'] == register.upper():
+                    register_pair_check = True
+                    break
+        if register_pair_check is True:
+            check_register = False
+            reg_pair_def = ""
+            if 'RegisterClassDisabledABI' in config_variables.keys():
+                if register.upper() not in config_variables['RegisterClassDisabledABI']:
+                    reg_pair_def = "let RegAltNameIndices = [" + config_variables["RegAltNameIndex"] + "] in {\n"
+            else:
                 reg_pair_def = "let RegAltNameIndices = [" + config_variables["RegAltNameIndex"] + "] in {\n"
-        else:
-            reg_pair_def = "let RegAltNameIndices = [" + config_variables["RegAltNameIndex"] + "] in {\n"
-        if registers[register].prefix != "":
-            prefix = registers[register].prefix
-        for index in range(0, int(config_variables['LLVMRegBasicWidth']) - 1, 2):
-            subreg_list = list()
-            reg_odd = ""
-            reg_even = ""
-            alias = ""
-            if registers[register].calling_convention is not None and prefix.upper() + str(index) in registers[register].calling_convention.keys():
-                if registers[register].calling_convention[prefix.upper() + str(index)][0] == 'Hard_wired_zero':
-                    subreg_list.append(prefix.upper() + str(index))
-                    reg_even = prefix.upper() + str(index)
-                    reg_odd = prefix.upper() + str(index)
-                    subreg_list.append("DUMMY_REG_PAIR_WITH_" + prefix.upper() + str(index))
-                else:
-                    subreg_list.append(prefix.upper() + str(index))
-                    reg_even = prefix.upper() + str(index)
-                    subreg_list.append(prefix.upper() + str(index + 1))
-                    reg_odd = prefix.upper() + str(index + 1)
-                elem_reg_key = str(index)
-                if alias == "":
-                    if register in alias_dict.keys():
-                        for ref_key in alias_dict[register].keys():
-                            if ref_key == elem_reg_key:
-                                for key_reg in alias_dict[register][elem_reg_key]:
-                                    if prefix not in key_reg:
-                                        alias +=  "\"" + key_reg +  "\"" + ", "
-                                alias = alias.rstrip(", ")
-            if reg_odd != "" and reg_even != "" and alias != "":
-                check_reg_pair = True
-                check_register = True
-                reg_pair_content += "\tdef " + reg_even + "_" + reg_odd + " : RISCVRegWithSubRegs<" + str(index) + ", " + "\"" +  reg_even + "\"" + ", " + str(subreg_list).replace("'", "") + ", " + "[" + alias + "]" + ">" + " {\n"
-                reg_pair_content += "\t\tlet SubRegIndices = [sub_gpr_even, sub_gpr_odd];\n"
-                reg_pair_content += "\t\tlet CoveredBySubRegs = 1;\n"
-                reg_pair_content += "\t}\n"
-        if check_register is True:
-            reg_pair_content += "}\n"
+            if registers[register].prefix != "":
+                prefix = registers[register].prefix
+            for index in range(0, int(config_variables['LLVMRegBasicWidth']) - 1, 2):
+                subreg_list = list()
+                reg_odd = ""
+                reg_even = ""
+                alias = ""
+                if registers[register].calling_convention is not None and prefix.upper() + str(index) in registers[register].calling_convention.keys():
+                    if registers[register].calling_convention[prefix.upper() + str(index)][0] == 'Hard_wired_zero':
+                        subreg_list.append(prefix.upper() + str(index))
+                        reg_even = prefix.upper() + str(index)
+                        reg_odd = prefix.upper() + str(index)
+                        subreg_list.append("DUMMY_REG_PAIR_WITH_" + prefix.upper() + str(index))
+                    else:
+                        subreg_list.append(prefix.upper() + str(index))
+                        reg_even = prefix.upper() + str(index)
+                        subreg_list.append(prefix.upper() + str(index + 1))
+                        reg_odd = prefix.upper() + str(index + 1)
+                    elem_reg_key = str(index)
+                    if alias == "":
+                        if register in alias_dict.keys():
+                            for ref_key in alias_dict[register].keys():
+                                if ref_key == elem_reg_key:
+                                    for key_reg in alias_dict[register][elem_reg_key]:
+                                        if prefix not in key_reg:
+                                            alias +=  "\"" + key_reg +  "\"" + ", "
+                                    alias = alias.rstrip(", ")
+                if reg_odd != "" and reg_even != "" and alias != "":
+                    check_reg_pair = True
+                    check_register = True
+                    reg_pair_content += "\tdef " + reg_even + "_" + reg_odd + " : RISCVRegWithSubRegs<" + str(index) + ", " + "\"" +  reg_even + "\"" + ", " + str(subreg_list).replace("'", "") + ", " + "[" + alias + "]" + ">" + " {\n"
+                    reg_pair_content += "\t\tlet SubRegIndices = [sub_gpr_even, sub_gpr_odd];\n"
+                    reg_pair_content += "\t\tlet CoveredBySubRegs = 1;\n"
+                    reg_pair_content += "\t}\n"
+            if check_register is True:
+                reg_pair_content += "}\n"
     f = open(file_name, "a")
     if check_reg_pair is True:
         f.write(def_dummy_reg_pair)
@@ -11400,12 +11440,14 @@ def generate_sched_tests(path, extension_list):
         shutil.rmtree(path, ignore_errors=True)
     if os.path.exists(path) is False:
         os.makedirs(path)
+        os.chmod(path, 0o777)
     path_dependency = path.replace(os.path.basename(os.path.normpath(path)), os.path.basename(os.path.normpath(path)) + "_dependency/")                                   
     sched_parameters = adl_parser.parse_scheduling_model_params(config_variables['ADLName'])
     if os.path.exists(path_dependency):
         shutil.rmtree(path_dependency, ignore_errors=True)
     if not os.path.exists(path_dependency):
         os.makedirs(path_dependency)
+        os.chmod(path_dependency, 0o777)
     for instr in instructions.keys():
         extension_checked = False
         scheduling_list_app = dict()

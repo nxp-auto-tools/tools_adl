@@ -4,7 +4,7 @@ SPDX-License-Identifier: BSD-2-Clause
 -->
 <data>
 <cores>
-<core name="RV32I">
+<core name="RV32IC">
 <licenseText>
 <str> Copyright 2023-2025 NXP
 SPDX-License-Identifier: BSD-2-Clause </str>
@@ -1308,6 +1308,238 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 <str>GPR</str>
 </ref>
 </instrfield>
+<instrfield name="rx">
+<doc>
+<str><![CDATA[
+    First source register field.
+    
+]]></str>
+</doc>
+<bits>
+<range>
+<int>11</int>
+<int>7</int>
+</range>
+</bits>
+<width>
+<int>5</int>
+</width>
+<size>
+<int>5</int>
+</size>
+<mask>
+<str>0x0000000000000f80</str>
+</mask>
+<shift>
+<int>0</int>
+</shift>
+<offset>
+<int>1</int>
+</offset>
+<enumerated>
+<option name="0">
+<str>zero</str>
+</option>
+<option name="0">
+<str>x0</str>
+</option>
+<option name="1">
+<str>ra</str>
+</option>
+<option name="1">
+<str>x1</str>
+</option>
+<option name="2">
+<str>sp</str>
+</option>
+<option name="2">
+<str>x2</str>
+</option>
+<option name="3">
+<str>gp</str>
+</option>
+<option name="3">
+<str>x3</str>
+</option>
+<option name="4">
+<str>tp</str>
+</option>
+<option name="4">
+<str>x4</str>
+</option>
+<option name="5">
+<str>t0</str>
+</option>
+<option name="5">
+<str>x5</str>
+</option>
+<option name="6">
+<str>t1</str>
+</option>
+<option name="6">
+<str>x6</str>
+</option>
+<option name="7">
+<str>t2</str>
+</option>
+<option name="7">
+<str>x7</str>
+</option>
+<option name="8">
+<str>s0</str>
+</option>
+<option name="8">
+<str>x8</str>
+</option>
+<option name="8">
+<str>fp</str>
+</option>
+<option name="9">
+<str>s1</str>
+</option>
+<option name="9">
+<str>x9</str>
+</option>
+<option name="10">
+<str>a0</str>
+</option>
+<option name="10">
+<str>x10</str>
+</option>
+<option name="11">
+<str>a1</str>
+</option>
+<option name="11">
+<str>x11</str>
+</option>
+<option name="12">
+<str>a2</str>
+</option>
+<option name="12">
+<str>x12</str>
+</option>
+<option name="13">
+<str>a3</str>
+</option>
+<option name="13">
+<str>x13</str>
+</option>
+<option name="14">
+<str>a4</str>
+</option>
+<option name="14">
+<str>x14</str>
+</option>
+<option name="15">
+<str>a5</str>
+</option>
+<option name="15">
+<str>x15</str>
+</option>
+<option name="16">
+<str>a6</str>
+</option>
+<option name="16">
+<str>x16</str>
+</option>
+<option name="17">
+<str>a7</str>
+</option>
+<option name="17">
+<str>x17</str>
+</option>
+<option name="18">
+<str>s2</str>
+</option>
+<option name="18">
+<str>x18</str>
+</option>
+<option name="19">
+<str>s3</str>
+</option>
+<option name="19">
+<str>x19</str>
+</option>
+<option name="20">
+<str>s4</str>
+</option>
+<option name="20">
+<str>x20</str>
+</option>
+<option name="21">
+<str>s5</str>
+</option>
+<option name="21">
+<str>x21</str>
+</option>
+<option name="22">
+<str>s6</str>
+</option>
+<option name="22">
+<str>x22</str>
+</option>
+<option name="23">
+<str>s7</str>
+</option>
+<option name="23">
+<str>x23</str>
+</option>
+<option name="24">
+<str>s8</str>
+</option>
+<option name="24">
+<str>x24</str>
+</option>
+<option name="25">
+<str>s9</str>
+</option>
+<option name="25">
+<str>x25</str>
+</option>
+<option name="26">
+<str>s10</str>
+</option>
+<option name="26">
+<str>x26</str>
+</option>
+<option name="27">
+<str>s11</str>
+</option>
+<option name="27">
+<str>x27</str>
+</option>
+<option name="28">
+<str>t3</str>
+</option>
+<option name="28">
+<str>x28</str>
+</option>
+<option name="29">
+<str>t4</str>
+</option>
+<option name="29">
+<str>x29</str>
+</option>
+<option name="30">
+<str>t5</str>
+</option>
+<option name="30">
+<str>x30</str>
+</option>
+<option name="31">
+<str>t6</str>
+</option>
+<option name="31">
+<str>x31</str>
+</option>
+</enumerated>
+<type>
+<str>regfile</str>
+</type>
+<ref>
+<str>GPR</str>
+</ref>
+</instrfield>
 <instrfield name="rs1">
 <doc>
 <str><![CDATA[
@@ -1863,6 +2095,7 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 <inputs>
 <str>GPR(rs1)</str>
 <str>GPR(rs2)</str>
+<str>RV32E_ENABLE</str>
 </inputs>
 <outputs>
 <str>GPR(rd)</str>
@@ -2013,6 +2246,7 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 </disassemble>
 <inputs>
 <str>GPR(rs1)</str>
+<str>RV32E_ENABLE</str>
 </inputs>
 <outputs>
 <str>GPR(rd)</str>
@@ -2029,10 +2263,10 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 ]]></str>
 </doc>
 <syntax>
-<str>c.addi rd,imm_ci</str>
+<str>c.addi rx,imm_ci</str>
 </syntax>
 <dsyntax>
-<str>c.addi ${rd},${imm_ci}</str>
+<str>c.addi ${rx},${imm_ci}</str>
 </dsyntax>
 <attributes>
 <attribute name="rv32c">
@@ -2046,7 +2280,7 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 <field name="imm_ci">
 <str></str>
 </field>
-<field name="rd">
+<field name="rx">
 <str></str>
 </field>
 <field name="op_c">
@@ -2056,19 +2290,24 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 <action>
 <str><![CDATA[
 {
-    GPR ( rd ) = GPR ( rd ) + imm_ci ;
+    GPR ( rx ) = GPR ( rx ) + imm_ci ;
 }
 ]]></str>
 </action>
 <disassemble>
 <str>true</str>
 </disassemble>
+<excluded_values>
+<option name="imm_ci">
+<str>0</str>
+</option>
+</excluded_values>
 <inputs>
-<str>GPR(rd)</str>
+<str>GPR(rx)</str>
 <str>RV32E_ENABLE</str>
 </inputs>
 <outputs>
-<str>GPR(rd)</str>
+<str>GPR(rx)</str>
 </outputs>
 </instruction>
 <instruction name="and">
@@ -2125,6 +2364,7 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 <inputs>
 <str>GPR(rs1)</str>
 <str>GPR(rs2)</str>
+<str>RV32E_ENABLE</str>
 </inputs>
 <outputs>
 <str>GPR(rd)</str>
@@ -2180,6 +2420,7 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 </disassemble>
 <inputs>
 <str>GPR(rs1)</str>
+<str>RV32E_ENABLE</str>
 </inputs>
 <outputs>
 <str>GPR(rd)</str>
@@ -2229,6 +2470,7 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 </disassemble>
 <inputs>
 <str>PC</str>
+<str>RV32E_ENABLE</str>
 </inputs>
 <outputs>
 <str>GPR(rd)</str>
@@ -2276,6 +2518,9 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 <disassemble>
 <str>true </str>
 </disassemble>
+<inputs>
+<str>RV32E_ENABLE</str>
+</inputs>
 <outputs>
 <str>GPR(rd)</str>
 </outputs>
@@ -2598,6 +2843,7 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 <inputs>
 <str>GPR(rs1)</str>
 <str>GPR(rs2)</str>
+<str>RV32E_ENABLE</str>
 </inputs>
 <outputs>
 <str>GPR(rd)</str>
@@ -2653,6 +2899,7 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 </disassemble>
 <inputs>
 <str>GPR(rs1)</str>
+<str>RV32E_ENABLE</str>
 </inputs>
 <outputs>
 <str>GPR(rd)</str>
@@ -2852,6 +3099,7 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 <inputs>
 <str>GPR(rs1)</str>
 <str>GPR(rs2)[mask 0x0000001f]/p</str>
+<str>RV32E_ENABLE</str>
 </inputs>
 <outputs>
 <str>GPR(rd)</str>
@@ -2910,6 +3158,7 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 </disassemble>
 <inputs>
 <str>GPR(rs1)</str>
+<str>RV32E_ENABLE</str>
 </inputs>
 <outputs>
 <str>GPR(rd)</str>
@@ -2970,6 +3219,7 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 </disassemble>
 <inputs>
 <str>GPR(rs1)</str>
+<str>RV32E_ENABLE</str>
 </inputs>
 <outputs>
 <str>GPR(rd)</str>
@@ -3030,6 +3280,7 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 </disassemble>
 <inputs>
 <str>GPR(rs1)</str>
+<str>RV32E_ENABLE</str>
 </inputs>
 <outputs>
 <str>GPR(rd)</str>
@@ -3093,6 +3344,7 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 <inputs>
 <str>GPR(rs1)</str>
 <str>GPR(rs2)</str>
+<str>RV32E_ENABLE</str>
 </inputs>
 <outputs>
 <str>GPR(rd)</str>
@@ -3152,6 +3404,7 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 <inputs>
 <str>GPR(rs1)</str>
 <str>GPR(rs2)[mask 0x0000001f]/p</str>
+<str>RV32E_ENABLE</str>
 </inputs>
 <outputs>
 <str>GPR(rd)</str>
@@ -3211,6 +3464,7 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 <inputs>
 <str>GPR(rs1)</str>
 <str>GPR(rs2)[mask 0x0000001f]/p</str>
+<str>RV32E_ENABLE</str>
 </inputs>
 <outputs>
 <str>GPR(rd)</str>
@@ -3269,6 +3523,7 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 </disassemble>
 <inputs>
 <str>GPR(rs1)</str>
+<str>RV32E_ENABLE</str>
 </inputs>
 <outputs>
 <str>GPR(rd)</str>
@@ -3328,6 +3583,7 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 <inputs>
 <str>GPR(rs1)</str>
 <str>GPR(rs2)</str>
+<str>RV32E_ENABLE</str>
 </inputs>
 <outputs>
 <str>GPR(rd)</str>
@@ -3387,6 +3643,7 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 <inputs>
 <str>GPR(rs1)</str>
 <str>GPR(rs2)</str>
+<str>RV32E_ENABLE</str>
 </inputs>
 <outputs>
 <str>GPR(rd)</str>
@@ -3442,12 +3699,120 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 </disassemble>
 <inputs>
 <str>GPR(rs1)</str>
+<str>RV32E_ENABLE</str>
 </inputs>
 <outputs>
 <str>GPR(rd)</str>
 </outputs>
 </instruction>
 </instrs>
+<sched-tables>
+<sched-table name="zilsd">
+<MicroOpBufferSize>
+<int>0</int>
+</MicroOpBufferSize>
+<IssueWidth>
+<int>1</int>
+</IssueWidth>
+<MispredictPenalty>
+<int>5</int>
+</MispredictPenalty>
+<FunctionalUnits>
+<functional-unit name="RISCVPipelineINTEGER">
+<doc>
+<str>ALU/Integer operations</str>
+</doc>
+<BufferSize>
+<int>0</int>
+</BufferSize>
+<proc_resources>
+<int>1</int>
+</proc_resources>
+</functional-unit>
+<functional-unit name="RISCVPipelineMEMORY">
+<doc>
+<str>Load/Store/Memory operations</str>
+</doc>
+<BufferSize>
+<int>0</int>
+</BufferSize>
+<proc_resources>
+<int>1</int>
+</proc_resources>
+</functional-unit>
+<functional-unit name="RISCVPipelineBRANCH">
+<doc>
+<str>Branch/Jump operations</str>
+</doc>
+<BufferSize>
+<int>0</int>
+</BufferSize>
+<proc_resources>
+<int>1</int>
+</proc_resources>
+</functional-unit>
+<functional-unit name="RISCVPipelineMUL">
+<doc>
+<str>Multiply operations</str>
+</doc>
+<BufferSize>
+<int>0</int>
+</BufferSize>
+<proc_resources>
+<int>1</int>
+</proc_resources>
+</functional-unit>
+<functional-unit name="RISCVPipelineDIV">
+<doc>
+<str>Divide operations</str>
+</doc>
+<BufferSize>
+<int>0</int>
+</BufferSize>
+<proc_resources>
+<int>1</int>
+</proc_resources>
+</functional-unit>
+<functional-unit name="RISCVPipelineINSTR">
+<doc>
+<str>Instructions Unit operations</str>
+</doc>
+<BufferSize>
+<int>0</int>
+</BufferSize>
+<proc_resources>
+<int>1</int>
+</proc_resources>
+</functional-unit>
+<functional-unit name="RISCVPipelineMEMORY">
+<doc>
+<str>Load/Store/Memory operations</str>
+</doc>
+<BufferSize>
+<int>0</int>
+</BufferSize>
+<proc_resources>
+<int>1</int>
+</proc_resources>
+</functional-unit>
+</FunctionalUnits>
+<instruction-sched name="IALU">
+<instruction_list>
+<str>sltu,auipc,slti,sltiu,sra,srl,lui,xor,xori,addi,ori,andi,add,sub,or,and,c.addi</str>
+</instruction_list>
+</instruction-sched>
+<instruction-sched name="ShiftImm">
+<instruction_list>
+<str>slli,srli</str>
+</instruction_list>
+</instruction-sched>
+<instruction-sched name="ShiftReg">
+<instruction_list>
+<str>sll</str>
+</instruction_list>
+</instruction-sched>
+</sched-table>
+</sched-tables>
 <asm_config>
 <comments>
 <str>#</str>
