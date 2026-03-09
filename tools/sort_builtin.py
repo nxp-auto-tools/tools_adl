@@ -2,11 +2,18 @@
 # SPDX-License-Identifier: BSD-2-Clause
 
 
-## This function will sort the builtins in alphabetical order
-#
-# @param file_path The file in which the content will be generated
-# @return A file will be generated containing all the builtins sorted
 def sort_builtins(file_path):
+    """
+    Sorts the builtin definitions in alphabetical order and writes the
+    sorted output to the specified file.
+
+    Args:
+        file_path (str): Path to the file in which the sorted builtin
+            definitions will be written.
+
+    Returns:
+        str: The generated content containing all builtins sorted alphabetically.
+    """
     with open(file_path) as f:
         content_list = f.readlines()
 

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 2024 NXP 
+# Copyright 2023-2026 NXP 
 # SPDX-License-Identifier: BSD-2-Clause
 
 # 1. Copying lit.cfg file in the test folder

@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<!--Copyright 2023-2025 NXP
+<!--Copyright 2023-2026 NXP
 SPDX-License-Identifier: BSD-2-Clause 
 -->
 <data>
 <cores>
 <core name="ZILSD">
 <licenseText>
-<str> Copyright 2023-2025 NXP
+<str> Copyright 2023-2026 NXP
 SPDX-License-Identifier: BSD-2-Clause </str>
 </licenseText>
 <doc>
@@ -4261,7 +4261,12 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
      var vaddr = GPR ( rs1c_p ) + immd_cs ;
     var result = GPR ( rs2c_p ) ;
     var result1 ; 
-    result1 = GPR ( rs2c_p + 1 ) ;
+    if ( rs2c_p == 0) {
+        result1 = 0 ;
+    }
+    else {
+        result1 = GPR ( rs2c_p + 1 ) ;
+    }
     Mem ( vaddr , 4 ) = result ;
     Mem ( vaddr + 4 , 4 ) = result1 ;
 }

@@ -1,4 +1,4 @@
-# Copyright 2023-2025 NXP
+# Copyright 2023-2026 NXP
 # SPDX-License-Identifier: BSD-2-Clause
 ## @package adl_parser
 #
@@ -15,7 +15,7 @@ import os
 import sys
 import argparse
 
-## A dictionary that contains the environment variables listed inside config.txt
+""" A dictionary that contains the environment variables listed inside config.txt """
 config_file = "config.txt"
 llvm_config = "llvm_config.txt"
 list_dir = list()
@@ -26,15 +26,44 @@ llvm_config = os.path.dirname(__file__).replace("\\", "/") + "/" + "llvm_config.
 config_variables = config.config_environment(config_file, llvm_config)
 
 
-## Parsing and processing adl.xml file
-#
-# @param adl_name The name of the adl.xml file (configured inside config.txt)
-# @return The register file dictionary (key = name of the regfile, value = ?)
 def parse_registers_from_adl(adl_name):
-    # Passing the path of the
-    # xml document to enable the
-    # parsing process
-    try:
+        """
+        Parses an ADL XML file and extracts register file definitions.
+
+        This function loads the specified ADL XML (e.g., "adl.xml", configured via
+        a config file) and constructs a dictionary of register files. Each entry
+        typically includes the register file's name, size/count, width, and any
+        additional attributes (e.g., aliasing, access permissions, architectural
+        class).
+
+        Args:
+            adl_name (str):
+                The filename or path of the ADL XML file to parse.
+
+        Returns:
+            Dict[str, Dict[str, Any]]:
+                A dictionary mapping register file names to their parsed metadata.
+                The inner dictionary may contain keys such as:
+                - "name": str — register file name,
+                - "width": int — bit width of each register,
+                - "count": int — number of registers,
+                - "aliases": Dict[str, str] — (optional) alias map,
+                - "attributes": Dict[str, Any] — (optional) additional properties.
+
+        Raises:
+            FileNotFoundError:
+                If the specified ADL file cannot be found.
+            xml.etree.ElementTree.ParseError:
+                If the ADL XML is malformed or cannot be parsed.
+            ValueError:
+                If required elements (e.g., <register_files>, <regfile>) are missing.
+            TypeError:
+                If `adl_name` is not a string-like path.
+        """
+        # Passing the path of the
+        # xml document to enable the
+        # parsing process
+        # try:
         tree = ET.parse(adl_name)
         # getting the parent tag of
         # the xml document
@@ -217,7 +246,7 @@ def parse_registers_from_adl(adl_name):
                     # registers[register_name] = reginfo2
         utils.remove_ignored_attrib_regs(registers)
         return registers
-    except:
+    # except:
         if sys.argv[1] != "-h":
             print("Error detected when running : " + parse_registers_from_adl.__name__)
             print("No XML model is provided in the command line! Please run make_td.py with a proper XML file as first argument!")
@@ -229,12 +258,23 @@ def parse_registers_from_adl(adl_name):
         parser.print_help(sys.stderr)
         sys.exit(1)
 
+def get_alias_for_regs(adl_name: str) -> dict:
+    """
+    Parses and classifies aliases from instruction fields based on 'ref' tag.
+    
+    Args:
+        adl_name (str): The name of the adl.xml file (configured inside config.txt).
+    
+    Returns:
+        dict: The alias dictionary where the key is the name of regfile, and the value 
+              is another dictionary where the key is the register name and the value 
+              is the alias name.
+    
+    Raises:
+        FileNotFoundError: If the ADL file cannot be found.
+        ET.ParseError: If the XML file cannot be parsed.
+    """
 
-## A function that parses and classifies aliases from instruction fields based on 'ref' tag
-#
-# @param adl_name The name of the adl.xml file (configured inside config.txt)
-# @return The alias dictionary (key = name of regfile, value = another dictionary where (key = register name; value = alias name))
-def get_alias_for_regs(adl_name):
     try:
         tree = ET.parse(adl_name)
         root = tree.getroot()
@@ -290,11 +330,22 @@ def get_alias_for_regs(adl_name):
         sys.exit(1)
 
 
-## Parses all instruction fields and takes the offset
-#
-# @param adl_name The name of the adl.xml file (configured inside config.txt)
-# @return  A tuple of 2 dictionaries containing various instruction field information
-def get_instrfield_offset(adl_name):
+def get_instrfield_offset(adl_name: str) -> tuple[dict, dict]:
+    """
+    Parses all instruction fields and extracts the offset information.
+    
+    Args:
+        adl_name (str): The name of the adl.xml file (configured inside config.txt).
+    
+    Returns:
+        tuple[dict, dict]: A tuple of 2 dictionaries containing various instruction 
+                          field information including offsets and field data.
+    
+    Raises:
+        FileNotFoundError: If the ADL file cannot be found.
+        ET.ParseError: If the XML file cannot be parsed.
+    """
+
     try:
         tree = ET.parse(adl_name)
         root = tree.getroot()
@@ -357,11 +408,26 @@ def get_instrfield_offset(adl_name):
         sys.exit(1)
 
 
-## This function parses all instruction fields and sort them based on their type: instruction fields
-# with reference defined or imms/constants
-# @param adl_name The name of the adl.xml file (configured inside config.txt)
-# @return A tuple of 2 dictionaries which contain all instruction fields sorted on the criteria mention above
-def get_instrfield_from_adl(adl_name):
+def get_instrfield_from_adl(adl_name: str) -> tuple[dict, dict]:
+    """
+    Parses all instruction fields and sorts them based on their type.
+    
+    This function categorizes instruction fields into two types: instruction fields
+    with reference defined, and immediates/constants.
+    
+    Args:
+        adl_name (str): The name of the adl.xml file (configured inside config.txt).
+    
+    Returns:
+        tuple[dict, dict]: A tuple of 2 dictionaries which contain all instruction 
+                          fields sorted based on the criteria mentioned above 
+                          (reference-based fields and immediate/constant fields).
+    
+    Raises:
+        FileNotFoundError: If the ADL file cannot be found.
+        ET.ParseError: If the XML file cannot be parsed.
+    """
+
     try:
         tree = ET.parse(adl_name)
         root = tree.getroot()
@@ -421,13 +487,25 @@ def get_instrfield_from_adl(adl_name):
         sys.exit(1)
 
 
-## This function parses all the instruction found in ADL file
-#
-# @param adl_name The name of the adl.xml file (configured inside config.txt)
-# @return A tuple of a dictionary and a list. The dictionary contains all the instructions parsed from ADL file, while
-# the list contains only the instructions which use registers and constants. Sorting_attributes list contains all the attributes
-# found in instructions definitions from ADL file.
-def parse_instructions_from_adl(adl_name):
+def parse_instructions_from_adl(adl_name: str) -> tuple[dict, list, list]:
+    """
+    Parses all the instructions found in the ADL file.
+    
+    Args:
+        adl_name (str): The name of the adl.xml file (configured inside config.txt).
+    
+    Returns:
+        tuple[dict, list, list]: A tuple containing:
+            - dict: Contains all the instructions parsed from the ADL file.
+            - list: Contains only the instructions which use registers and constants.
+            - list: sorting_attributes list contains all the attributes found in 
+                   instruction definitions from the ADL file.
+    
+    Raises:
+        FileNotFoundError: If the ADL file cannot be found.
+        ET.ParseError: If the XML file cannot be parsed.
+    """
+
     try:
         instrfield_imm = get_instrfield_from_adl(adl_name)[0]
         instrfield_ref = get_instrfield_from_adl(adl_name)[1]
@@ -566,11 +644,21 @@ def parse_instructions_from_adl(adl_name):
         sys.exit(1)
 
 
-## This function parses all information about aliases from an ADL file given as parameter
-#
-# @param adl_name This argument represents the ADL file from which the information will be parsed
-# @return The function returns the dictionary containing all information parsed from ADL file
-def parse_instructions_aliases_from_adl(adl_name):
+def parse_instructions_aliases_from_adl(adl_name: str) -> dict:
+    """
+    Parses all information about aliases from an ADL file.
+    
+    Args:
+        adl_name (str): The ADL file from which the information will be parsed.
+    
+    Returns:
+        dict: The dictionary containing all alias information parsed from the ADL file.
+    
+    Raises:
+        FileNotFoundError: If the ADL file cannot be found.
+        ET.ParseError: If the XML file cannot be parsed.
+    """
+
     try:
         instrfield_imm = get_instrfield_from_adl(adl_name)[0]
         instrfield_ref = get_instrfield_from_adl(adl_name)[1]
@@ -695,12 +783,24 @@ def parse_instructions_aliases_from_adl(adl_name):
         sys.exit(1)
 
 
-## This function parses the information describing the registers containing subregisters. It saves the subregisters
-# description for a register
-#
-# @param adl_name This argument represents the ADL file from which the information will be parsed
-# @return The function generates a dictionary containing all the information
-def parse_registers_subregs(adl_name):
+def parse_registers_subregs(adl_name: str) -> dict:
+    """
+    Parses the information describing registers containing subregisters.
+    
+    This function extracts and saves the subregisters description for each register
+    that contains subregisters.
+    
+    Args:
+        adl_name (str): The ADL file from which the information will be parsed.
+    
+    Returns:
+        dict: A dictionary containing all the subregister information for registers.
+    
+    Raises:
+        FileNotFoundError: If the ADL file cannot be found.
+        ET.ParseError: If the XML file cannot be parsed.
+    """
+
     try:
         tree = ET.parse(adl_name)
         root = tree.getroot()
@@ -763,11 +863,21 @@ def parse_registers_subregs(adl_name):
         parser.print_help(sys.stderr)
         sys.exit(1)
 
-## This function parses the information for relocations
-#
-# @param adl_name This argument represents the ADL file from which the information will be parsed
-# @return The function generates a dictionary containing all the information
-def parse_relocations(adl_name):
+def parse_relocations(adl_name: str) -> dict:
+    """
+    Parses the information for relocations from an ADL file.
+    
+    Args:
+        adl_name (str): The ADL file from which the information will be parsed.
+    
+    Returns:
+        dict: A dictionary containing all the relocation information.
+    
+    Raises:
+        FileNotFoundError: If the ADL file cannot be found.
+        ET.ParseError: If the XML file cannot be parsed.
+    """
+
     try:
         tree = ET.parse(adl_name)
         root = tree.getroot()
@@ -794,81 +904,101 @@ def parse_relocations(adl_name):
         parser.print_help(sys.stderr)
         sys.exit(1)
 
-## This function parses the scheduling table from ADL file
-#
-# @param adl_name This argument represents the ADL file from which the information will be parsed
-# @return The function generates a dictionary containing all the information
-def parse_sched_table_from_adl(adl_name):
-    # try:
-        tree = ET.parse(adl_name)
-        root = tree.getroot()
-        sched_table_dict = dict()
-        for core in root.iter("cores"):
-            for sched_table in core.iter("sched-table"):
-                if sched_table.attrib["name"] not in sched_table_dict.keys():
-                    sched_table_dict[sched_table.attrib["name"]] = {}
-                    resource_forwarding = dict()
-                    pipelines = dict()
-                    resources_list = list()
-                    pipelines_list = list()
-                    aux_pipeline = dict()
-                    instruction_sched = dict()
-                    for instr in core.iter("instruction-sched"):
-                        if "name" in instr.attrib.keys():
-                            parameters = dict()
-                            instruction_name = instr.attrib["name"]
-                            for instruction_info in instr:
-                                if instruction_info.tag == 'instruction_list':
-                                    for elem in instruction_info:
-                                        aux = elem.text.split(",")
-                                    parameters[instruction_info.tag] = aux
-                                else:
-                                    for elem in instruction_info:
-                                        if instruction_info.tag == "pipelines":
-                                            pipeline_dict = dict()
-                                            for pipeline in instruction_info:
-                                                pipeline_name = pipeline.attrib['name']
-                                                pipeline_tags = dict()
-                                                for element in pipeline:
-                                                    pipeline_tags[element.tag] = element[0].text
-                                                pipeline_dict[pipeline_name] = pipeline_tags
-                                                parameters[instruction_info.tag] = pipeline_dict
-                                        elif instruction_info.tag == "forwarding":
-                                            for resource in core.iter("read_resource"):
-                                                resource_dict = dict()
-                                                resources = dict()
-                                                resource_name = resource.attrib['name']
-                                                for element in resource:
-                                                    for element_parsed in element:
-                                                        if element.tag == 'resource_list':
-                                                            if element_parsed.text is not None:
-                                                                resource_dict[element.tag] = element_parsed.text.split(",")
-                                                            else:
-                                                                resource_dict[element.tag] = []
-                                                        else:
-                                                            resource_dict[element.tag] = element_parsed.text
-                                                resources[resource_name] = resource_dict
-                                                if instruction_name not in resource_forwarding.keys():
-                                                    if resource_name not in resources_list:
-                                                        aux = dict()
-                                                        aux[resource_name] = resource_dict
-                                                        resource_forwarding[instruction_name] = aux
-                                                        resources_list.append(resource_name)
-                                        else:
-                                            parameters[instruction_info.tag] = elem.text
-                        aux = dict()
-                        if instruction_name in resource_forwarding.keys():
-                            aux['forwarding'] = resource_forwarding[instruction_name]
-                        instruction_sched[instruction_name] = parameters
-                        instruction_sched[instruction_name].update(aux)
-                    sched_table_dict[sched_table.attrib["name"]].update(instruction_sched)
-        return sched_table_dict
+def parse_sched_table_from_adl(adl_name: str) -> dict:
+    """
+    Parses the scheduling table from an ADL file.
+    
+    Args:
+        adl_name (str): The ADL file from which the information will be parsed.
+    
+    Returns:
+        dict: A dictionary containing all the scheduling table information.
+    
+    Raises:
+        FileNotFoundError: If the ADL file cannot be found.
+        ET.ParseError: If the XML file cannot be parsed.
+    """
 
-## This function parses the scheduling parameters from ADL file
-#
-# @param adl_name This argument represents the ADL file from which the information will be parsed
-# @return The function generates a dictionary containing all the information
-def parse_scheduling_model_params(adl_name):
+    # try:
+    tree = ET.parse(adl_name)
+    root = tree.getroot()
+    sched_table_dict = dict()
+    for core in root.iter("cores"):
+        for sched_table in core.iter("sched-table"):
+            if sched_table.attrib["name"] not in sched_table_dict.keys():
+                sched_table_dict[sched_table.attrib["name"]] = {}
+                resource_forwarding = dict()
+                pipelines = dict()
+                resources_list = list()
+                pipelines_list = list()
+                aux_pipeline = dict()
+                instruction_sched = dict()
+                for instr in core.iter("instruction-sched"):
+                    if "name" in instr.attrib.keys():
+                        parameters = dict()
+                        instruction_name = instr.attrib["name"]
+                        for instruction_info in instr:
+                            if instruction_info.tag == 'instruction_list':
+                                for elem in instruction_info:
+                                    aux = elem.text.split(",")
+                                parameters[instruction_info.tag] = aux
+                            else:
+                                for elem in instruction_info:
+                                    if instruction_info.tag == "pipelines":
+                                        pipeline_dict = dict()
+                                        for pipeline in instruction_info:
+                                            pipeline_name = pipeline.attrib['name']
+                                            pipeline_tags = dict()
+                                            for element in pipeline:
+                                                pipeline_tags[element.tag] = element[0].text
+                                            pipeline_dict[pipeline_name] = pipeline_tags
+                                            parameters[instruction_info.tag] = pipeline_dict
+                                    elif instruction_info.tag == "forwarding":
+                                        for resource in core.iter("read_resource"):
+                                            resource_dict = dict()
+                                            resources = dict()
+                                            resource_name = resource.attrib['name']
+                                            for element in resource:
+                                                for element_parsed in element:
+                                                    if element.tag == 'resource_list':
+                                                        if element_parsed.text is not None:
+                                                            resource_dict[element.tag] = element_parsed.text.split(",")
+                                                        else:
+                                                            resource_dict[element.tag] = []
+                                                    else:
+                                                        resource_dict[element.tag] = element_parsed.text
+                                            resources[resource_name] = resource_dict
+                                            if instruction_name not in resource_forwarding.keys():
+                                                if resource_name not in resources_list:
+                                                    aux = dict()
+                                                    aux[resource_name] = resource_dict
+                                                    resource_forwarding[instruction_name] = aux
+                                                    resources_list.append(resource_name)
+                                    else:
+                                        parameters[instruction_info.tag] = elem.text
+                    aux = dict()
+                    if instruction_name in resource_forwarding.keys():
+                        aux['forwarding'] = resource_forwarding[instruction_name]
+                    instruction_sched[instruction_name] = parameters
+                    instruction_sched[instruction_name].update(aux)
+                sched_table_dict[sched_table.attrib["name"]].update(instruction_sched)
+    return sched_table_dict
+
+def parse_scheduling_model_params(adl_name: str) -> dict:
+    """
+    Parses the scheduling parameters from an ADL file.
+    
+    Args:
+        adl_name (str): The ADL file from which the information will be parsed.
+    
+    Returns:
+        dict: A dictionary containing all the scheduling parameter information.
+    
+    Raises:
+        FileNotFoundError: If the ADL file cannot be found.
+        ET.ParseError: If the XML file cannot be parsed.
+    """
+
     try:
         tree = ET.parse(adl_name)
         root = tree.getroot()

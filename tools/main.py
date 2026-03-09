@@ -1,4 +1,4 @@
-# Copyright 2023-2025 NXP
+# Copyright 2023-2026 NXP
 # SPDX-License-Identifier: BSD-2-Clause
 ## @package main
 #
@@ -14,10 +14,19 @@ import shutil
 import make_td
 
 
-## The main function that calls all the necessary functions for the build
-#
-# @note Only change the values in config.txt file when needed
 def main():
+    """
+    Main entry point that orchestrates all generation steps required for the build.
+
+    Note:
+        Modify values only in the `config.txt` file when needed. This function
+        reads configuration, triggers the generation of instruction formats,
+        registers, intrinsics, scheduling tests, Sail descriptions, and all
+        other required LLVM TableGen outputs.
+
+    Returns:
+        None
+    """
     config_file = "config.txt"
     llvm_config = "llvm_config.txt"
     path = os.getcwd()
@@ -87,6 +96,7 @@ def main():
     no_sail = False
     parser = argparse.ArgumentParser()
     parser.add_argument("file", type=str)
+    parser.add_argument("--target", dest="target", type=str)
     parser.add_argument("--extension", "-e", dest="extension", type=str)  # Elimină "="
     parser.add_argument("--output", "-o", dest='output', type=str)
     parser.add_argument("--no-sail", dest="no_sail", type=str)

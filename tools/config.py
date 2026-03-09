@@ -1,4 +1,4 @@
-# Copyright 2023-2025 NXP
+# Copyright 2023-2026 NXP
 # SPDX-License-Identifier: BSD-2-Clause
 ## @package config
 #
@@ -7,12 +7,22 @@ import re
 import ast
 import os
 
-## A function that parses each line from config.txt using regular expressions
-#
-# @param config_file The configuration file 'config.txt'
-# @param llvm_file A file which contains the setup required by LLVM for proper functionality
-# @return A dictionary where key and value are the contents of config.txt
-def config_environment(config_file, llvm_file):
+def config_environment(config_file: str, llvm_file: str) -> dict:
+    """
+    Parses each line from config.txt using regular expressions.
+    
+    Args:
+        config_file (str): The configuration file 'config.txt'.
+        llvm_file (str): A file which contains the setup required by LLVM for proper functionality.
+    
+    Returns:
+        dict: A dictionary where keys and values are the contents parsed from config.txt.
+    
+    Raises:
+        FileNotFoundError: If the config file or LLVM file cannot be found.
+        IOError: If there is an error reading the files.
+    """
+
     config_vars = dict()
     configuration_file = open(config_file, "r")
     Lines = configuration_file.readlines()

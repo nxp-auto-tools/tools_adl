@@ -1,4 +1,4 @@
-# Copyright 2023-2025 NXP
+# Copyright 2023-2026 NXP
 # SPDX-License-Identifier: BSD-2-Clause
 ## @package utils
 #
@@ -6,10 +6,14 @@
 import config
 import os
 
-## Remove all registers that contain one of ignored attributes defined in config.txt
-#
-# @param registers A dictionary containing the object information of the register files
-# @return None
+"""
+Remove all registers that contain one of ignored attributes defined in config.txt
+
+Args:
+    registers A dictionary containing the object information of the register files
+Returns:
+    None
+"""
 config_file = "config.txt"
 llvm_config = "llvm_config.txt"
 list_dir = list()
@@ -19,11 +23,20 @@ config_file = os.path.dirname(__file__).replace("\\", "/") + "/" + "config.txt"
 llvm_config = os.path.dirname(__file__).replace("\\", "/") + "/" + "llvm_config.txt"
 
 
-## Remove all registers that are marked as 'ignored' based on the attributes
-#
-# @param register Dictionary containing all the registers
-# @return None
 def remove_ignored_attrib_regs(registers):
+    """
+    Removes all registers that are marked as 'ignored' based on their attributes.
+
+    This function iterates over the register definitions and filters out any
+    register entry explicitly marked with an attribute such as 'ignored',
+    effectively cleaning the register set before further processing.
+
+    Args:
+        registers (dict): Dictionary containing all register definitions.
+
+    Returns:
+        None
+    """
     config_variables = config.config_environment(config_file, llvm_config)
     delete = [
         key
@@ -41,23 +54,47 @@ def remove_ignored_attrib_regs(registers):
             del registers[key]
 
 
-## Verifies if a register class has prefix or not
-#
-# @param regclass A dictionary containing the object information of the register files
-# @param key The fields of a register file
-# @return True/False
 def check_register_class_prefix(regclass, key):
+    """
+    Checks whether a register class has a prefix defined.
+
+    The function inspects the data associated with a specific register file
+    (identified by `key`) inside the `regclass` dictionary and determines
+    whether a prefix attribute is present.
+
+    Args:
+        regclass (dict): Dictionary containing the object information for all
+            register files.
+        key (str): Identifier for the register file whose prefix should be checked.
+
+    Returns:
+        bool: True if the register class has a prefix, False otherwise.
+    """
     if regclass[key].prefix == "":
         return False
     else:
         return True
 
 
-## Takes the offset for an instruction field
-#
-# @param instrfield_data The data inside instrfield
-# @return A dictionary containing tuples (width, offset, shift) based on 'ref' tag
 def get_instrfield_offset(instrfield_data):
+    """
+    Extracts offset‑related information for an instruction field.
+
+    Based on the contents of the `instrfield_data` structure, this function
+    parses the `ref` tag and returns a dictionary where each key corresponds
+    to a referenced field, and each value is a tuple containing:
+        - width
+        - offset
+        - shift
+
+    Args:
+        instrfield_data (dict | Any): Data structure containing the instruction
+            field information, typically parsed from XML.
+
+    Returns:
+        dict: A dictionary mapping field names to tuples of the form
+            (width, offset, shift).
+    """
     instrfield_offset = dict()
     for key in instrfield_data.keys():
         ref = instrfield_data[key]["ref"]

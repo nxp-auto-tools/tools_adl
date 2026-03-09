@@ -10,12 +10,13 @@ Version 0.4
 :xrefstyle: short
 :le: &#8804;
 :rarr: &#8658;
-:title-logo-image: image:tristan_logo.png[]
+:title-logo-image: image:tristan_rigoletto_logo.png[]
 
 == Intro
 
-This project is part of European project Tristan.
-Copyright 2023-2025 NXP
+This project is part of European projects Tristan and Rigoletto.
+
+Copyright 2023-2026 NXP
 SPDX-License-Identifier: BSD-2-Clause
 
 === Revision History
@@ -27,99 +28,139 @@ SPDX-License-Identifier: BSD-2-Clause
 | 0.1     | 01-03-2024 | Updated Release Notes for WP4_M15 release
 | 0.2     | 15-11-2024 | Updated Release Notes for WP4_M24 release
 | 0.3     | 28-03-2025 | Updated Release Notes for WP4_M28 release
-| 0.4     | 03-07-2025 | Updated Release Notes for WP4_M31 release     
- 
+| 0.4     | 16-02-2026 | Updated Release Notes for WP4_WP6_M39 release     
 |===
 
 
 == Overview
 
-This project consists of two primary components designed to automate the generation and testing of LLVM *target description files*, based on architectural data extracted from a RISC-V core description.
+This project comprises three components aimed at facilitating the automatic generation and testing of LLVM target description files based on the information parsed from an architectural description of a RISC-V core.
 
-*Target Description Generation:*
-The first component automates the creation of LLVM *target description files*. These files act as templates for defining instructions tailored to a specific architecture. The generation process involves specifying parameters, conditions, and constraints to ensure the instructions are accurate and compatible with the target environment.
+* The first component focuses on the creation of target description files. These files serve as templates for generating instructions to be used within a specific context or application. The generation process involves defining various parameters, conditions, and constraints necessary for producing accurate and functional instructions.
 
-*Test Generation:*
-The second component focuses on generating comprehensive tests for the instructions defined in the target description files. This includes:
+* The second component is dedicated to generating encoding tests for the instructions within the target description files. This phase involves executing and evaluating the functionality and reliability of the instructions by rigorously validating each bit individually.
 
- - *Encoding tests*, which validate the correctness of binary representations at the bit level.
- - *Relocation tests*, which ensure that symbolic references are correctly resolved during linking.
- - *Fixup tests*, which verify that immediate values and offsets are properly adjusted during assembly and linking.
-
-This work was developed as part of Tristan European project, CHIPSJU Contract no: 101095947.
-
-This work was supported by a grant of the Ministry of Research, Innovation and Digitization, CNCS/CCCDI - USFISCDI project number PN-IV-P8-8.1-PME-2024-0026 within PNCDI IV.
+* The third component consists in a Sail to ADL converter, which allows to convert Sail specifications into ADL format for further processing and integration.
 
 More information on ADL technology can be found at https://github.com/nxp-archive/adl-tools_adl/
 
 
-== What Is ADL-Tools Project?
+== What Is Tools-ADL Project?
 
-ADL-Tools is a tool suite designed for automatically generating target description files and encoding tests using an XML file. Practically, ADL-Tools parses an XML file, which contains an ADL model for one or more RISC-V extensions, and generates all the necessary .td files required by a compiler to integrate these new extensions. In simpler terms, the ADL represented as an XML file is crucial in this process, alongside the actual tools used.
+Tools-ADL is a tool suite designed for automatically generating target description files and encoding tests using an XML file. Practically, Tools-ADL parses an XML file, which contains an ADL model for one or more RISC-V extensions, and generates all the necessary .td files required by a compiler to integrate these new extensions. In simpler terms, the ADL represented as an XML file is crucial in this process, alongside the actual tools used.
 
 == Requirements and Installation
 
-	* *Python 3.10* or higher (need to install python3 explicitly)
-	** *numpy* package installed (python3 -m pip install numpy)
-	** *num2words* package installed (python3 -m pip install num2words)
-	** *word2number* package installed (python3 -m pip install word2number)
-	* *LLVM-LIT* (used for testing)
-	* *Asciidoctor* (browser extension for Release Notes)
-	
-NOTE: No installation is required; simply cloning the repository is sufficient.
+* *python 3.10* or higher
+* *llvm-project* - integration and running test verification with llvm-lit (https://github.com/llvm/llvm-project - release/19.x) 
+* *asciidoctor* - browser extension for Release Notes
 
-NOTE: The files generated were included in *LLVM 19.x* project, also tested and validated on the same *LLVM* version.
+=== Setting up a Virtual Environment
+
+It is recommended to use a virtual environment to avoid conflicts with system packages:
+
+[source,bash]
+----
+python3 -m venv venv
+----
+
+Activate the virtual environment:
+
+On Linux/macOS:
+
+[source,bash]
+----
+source venv/bin/activate
+----
+
+On Windows:
+
+[source,bash]
+----
+venv\Scripts\activate
+----
+
+=== Installing the Package
+
+For regular users:
+
+[source,bash]
+----
+pip install -e .
+----
+
+For developers (including development dependencies):
+
+[source,bash]
+----
+pip install -e .[dev]
+----
+
+NOTE: All required dependencies (numpy, num2words, word2number) will be installed automatically.
+
+NOTE: The generated files have been included in the *llvm-project (release 19.x)* and were tested and validated against the same LLVM version.
+
 
 == How to Run the Tools?
 
 === TD generation module
 
-This tool is used to generate architecture-specific content based on an XML model. The main entry point is the *make_td.py* script, which coordinates the generation process.
-
-#### Basic Usage
-
-To run the tool, use the following command:
+To run the application, the user has to use *make_td.py* module
+which is the main module that triggers the other modules. Besides
+calling this module, the user also must provide a proper XML file
+which is given as a command line argument when the module above is
+run. Finally, an example of running the application should look like:
 
 	python ./tools/make_td.py rv32i.adl.xml	
 
-#### Select Specific Extensions
+Obviously, if the XML model is not in the same directory with the tools,
+then the user provides a path to the XML.
+There are no constraints regarding the location for running make_td.py, as a 
+result the user should be able to run it from any location, providing that the path to the XML file is correct. 
 
-You can limit generation to specific extensions defined in the XML using the --extension flag:
+Another feature provided is to select certain architecture from the XML
+given. For example, if the XML provides instructions for a bunch of
+extensions, the user can specify, using the command line arguments,
+which extensions should be generated. Besides specifying *the extensions enabled*,
+it is also possible to specify *the directory* in which the content is generated.
 
-	--extension=zclsd,zilsd,rv32i
-	
-Extensions must be comma-separated with *no spaces*.
-If no extensions are specified, the tool will generate content for *all extensions* in the XML.
+The user is also able to enable or not the generation for SAIL description. The flag --no_sail
+enables or not this feature. If *--no_sail* is set as True (e.g. --no_sail=True) then the tool will
+not generate the SAIL description. Otherwise, when the flag is not specified, then the SAIL description 
+will be generated as usual.
 
-#### Specify Output Directory
+NOTE: Sail version used is 0.10. For more information on Sail version, please refer this https://github.com/riscv/sail-riscv/releases/tag/0.10[link].
+NOTE: If *no extension is specified*, then the tool generates content
+for *all the extensions declared* in the XML file, without exception.
 
-Use the --output flag to define where the generated content should be saved:
 
-	--output=./examples/TD/test_zilsd
+An example of selecting certain extensions and a specified directory for content generation is similar to:
 
-NOTE: The specified directory will be overwritten on each run.
+	python ./tools/make_td.py rv32i.adl.xml --extension=zclsd,zilsd,rv32i --output=./examples/TD/test_zilsd
 
-####  Enable or Disable SAIL Description
+NOTE: Here the user selected to generate only the information related to zclsd, zilsd and rv32i
+extensions. Consequently, any other extension which is also defined in
+the rv32i XML model is ignored and nothing related to it is generated.
+The flag to enable extension generation is *--extension=*, while for specifying the output directory is
+*--output=*.
+It is very important to pass the extensions *without
+any spaces, just commas (,).*
 
-By default, the tool generates a SAIL description. To disable this, use:
+NOTE: *None of these 2 flags are mandatory*, so any of these could not be specified. The flags are independent, consequently 
+the user chooses if these is used or not.
+Moreover, it should consider the fact that the directory specified is *overwritten* at every run.
 
-	--no-sail
-	
-If this flag is omitted, SAIL generation is enabled by default.
+Furthermore, for enabling 64 bit support, there is an option in the command line for enabling 64 bit support generation.
 
-#### Full Example
+	python ./tools/make_td.py rv32i.adl.xml --target=riscv64 --extension=zclsd,zilsd,rv32i --output=./examples/TD/test_zilsd
 
-	python ./tools/make_td.py rv32i.adl.xml --extension=zclsd,zilsd,rv32i --output=./examples/TD/test_zilsd --no-sail
-	
-This command:
-
- - Uses rv32i.adl.xml as the input model
- - Generates content only for zclsd, zilsd, and rv32i extensions
- - Saves the output to ./examples/TD/test_zilsd
- - Skips SAIL description generation
-
+By enabling riscv64 option, tools_adl will generate the support for register description and instruction description .td files.  
 
 === Testing module
+
+NOTE: Running the script directly as in the example below requires an active Python virtual environment (venv).
+This is because the script relies on the project’s package structure and editable installation (pip install -e .), which are correctly set up only when the venv is activated.
+Without an active venv, Python may not resolve project modules properly, and imports can fail.
 
 ==== Encoding tests
 
@@ -210,7 +251,7 @@ Upon successful execution, the script generates two output directories (relocati
 
 This command executes the tests and compares the generated relocations against the reference outputs, ensuring correct relocation behavior.
 
-- For *fixup tests* the user has to firstly set up the environment by running the following command:
+- For *fixup tests* the user must firstly set up the environment by running the following command:
 
 	source fixup_llvm_lit_tester.sh <path_to_llvm_asm> <path_to_llvm_readelf> <path_to_fixup_tests_folder> <path_to_fixup_refs_folder> <path_to_lit_cfg>
 
@@ -267,7 +308,7 @@ which is essential for a complete and correct generation. The second
 file is shorter and it should not be changed by the user, unless there
 are some important reasons to do so.
 
-In order to understand the content and structure of llvm-config.txt, we
+To understand the content and structure of llvm-config.txt, we
 analyze the sections and content of this file.
 
 * *TD files used for generation*
@@ -304,12 +345,17 @@ the path or the folder (depending on the case) where the content is generated. T
 
 	TestIntrinsics = Tests
 
+	ScheduleFile = RISCVSchedule_gen.td
+	
+	ScheduleFileTable = RISCVScheduleTable_gen.td
+	
+
 * Left value is a variable which represents the identifier for the
 Instruction .td file, while the right value is the name given to the
 Instruction file which can be changed.
 
 * *LLVM Configuration Variables and Setup*
-** This section includes information about environment variables or
+** This section includes information about environmental variables or
 other variables needed for setup. All information is related to the LLVM
 standard requirements (information about register classes, constraints,
 debug info, instructions width etc). The user generally does not change
@@ -323,7 +369,7 @@ left value should not be edited, while the right value may be changed.
 
 ** The user can define a certain register class.
 
-	RegisterClass = {GPR=RISCVReg}
+	RegisterClass = {GPR=RISCVReg, VR=RISCVReg}
 
 ** The user can enable subregister generation if necessary.
 
@@ -336,6 +382,10 @@ left value should not be edited, while the right value may be changed.
 ** This tag specifies for which register classes have to inherit from parent
 
 	RegisterClassWrapper = {RISCVRegisterClass=GPR}
+
+** This tag specifies the description for the vector register class
+
+	VectorRegisterClass = {ClassName=VReg, ParentClass=RISCVRegisterClass, Width=64, VLMul=Vlmul, VLMulValue=1, IsVRegClass=1, Parameters=[VM1VTs,VMaskVTs]}
 
 ** The user can define instruction classes and formats.
 
@@ -397,9 +447,9 @@ left value should not be edited, while the right value may be changed.
 
 * *Instructions Types*
 ** This section contains instruction types definitions. Based on the
-attributes defined in the XML model, there are several instructions
+attributes defined in the XML model; there are several instructions
 types: branch, store, load, jump etc. Moreover, for compressed
-instructions, there a few instruction types defined. The left value is
+instructions, there are a few instruction types defined. The left value is
 standard and should not be changed, while the right value may be
 changed, but it should preserve the same format as for those listed below (InstrFormat):
 
@@ -558,13 +608,13 @@ information required by LLVM layout.
 	TargetOverlapConstraintTypeTSFlagsEnd = 21
 
 * *Calling Convention*
-** This sections contains calling convention information. It specifies
+** This section contains calling convention information. It specifies
 the calling convention policy. RegisterAllocationOrder is a dictionary
 in which the keys represent the register classes and the values are
 lists specifying the calling convention allocation order. The other
-entries from this sections specifies additional information.
+entries from this section specify additional information.
 
-	RegisterAllocationOrder = {GPR: [Function_arguments, Temporary, Saved_register, Hard_wired_zero, Return_address, Stack_pointer, Global_pointer, Thread_pointer]}
+	RegisterAllocationOrder = {GPR: [(Function_arguments, [0,1]), (Temporary, [0,1]), (Saved_register, [0,1]), Hard_wired_zero, (Return_address, [0,1]), (Stack_pointer, [0,1]), (Global_pointer, [0,1]), (Thread_pointer, [0,1])], VR: [Higher, Lower_7, Lower_6, Lower_5, Lower_4, Lower_3, Lower_2, Lower_1, Lower_0]}
 	
 ** The user can define calling convention allocation order
 
@@ -582,10 +632,10 @@ entries from this sections specifies additional information.
 	
 	XLenVTValueType = ValueTypeByHwMode<[RV32, RV64], [i32,  i64]>
 
-** Also, more information for register pairs are now required
+** Also, more information for register pairs is now required
 
-	RegInfosPair = RegInfoByHwMode<[RV32], [RegInfo<64, 64, 64>]>
-
+	RegInfosPair = RegInfoByHwMode<[RV32, RV64], [RegInfo<64, 64, 32>, RegInfo<128, 128, 64>]>
+	
 	SubReg_GPR_Even = SubRegIndex<32>
 
 	SubReg_GPR_Even_HW = SubRegRangeByHwMode<[RV32, RV64], [SubRegRange<32>, SubRegRange<64>]>
@@ -597,8 +647,8 @@ entries from this sections specifies additional information.
 * *Extensions Declaration*
 ** This section declares the extensions that are generated if they
 are found in the XML model. In other words, if an extension is used or
-it should be generated, then it has to be defined in this section,
-otherwise it is ignored, even if they are found in the XML model.
+it should be generated, then it must be defined in this section,
+otherwise, it is ignored, even if they are found in the XML model.
 
 	LLVMExtRv32test = HasStdExtRV32Test
 	HasStdExtRV32TestExtension = RV32Test
@@ -616,7 +666,7 @@ this structure. The right value is the extension itself *RV32Test.*
 
 * *Immediate Operands*
 ** This section declares the immediate operands that have special
-declarations which can not be automatically generated with the
+declarations which cannot be automatically generated with the
 information found in the XML model. Firstly, ImmediateOperands is a list
 in which the used should specify an operand which has a special
 declaration. After that, the same operand becomes an entry in this
@@ -642,17 +692,24 @@ incorrect or incomplete.
 ** This section contains additional information for certain extensions.
 It could specify for example if certain extensions should have a prefix
 for the instructions or if there are special DecoderNamespace values.
-For a default case, the DecoderNamespace defined is “RV32Only_”.
+As an example, for Zilsd instructions the DecoderNamespace has to be Zilsd
 
-	DecoderNamespace = {Others=RISCV32Only_}
+	
+	DecoderNamespace = {Zilsd=Zilsd}
 
-Beside the configuration file, the user should add some important information in the XML model.
+Moreover, some instructions need a specific prefix to be correctly decoded and generated. The prefix information is stored in the ExtensionPrefix 
+dictionary where the keys represent the extension names and the values are the prefix strings to be used. This ensures that similar instruction from other
+extensions will be correctly encoded and decoded without conflicts.
+
+	ExtensionPrefixed = {Zclsd, Zilsd}
+
+Besides the configuration file, the user should add some important information in the XML model.
 
 * *Instruction field definition* 
 
-Firstly, the user should provide create new instruction fields for special register subclasses.
+Firstly, the user should provide new instruction fields for special register subclasses.
 For example, if the user needs to define a special subregister class such as *GPRC*, it should be a new instruction field defined in the XML file which has a reference to the parent register class, in this case *GPR*.
-The instruction field should be similar to other instruction filed already defined.
+The instruction field should be like other instruction filed already defined.
 
 * *Change of flow and other additional attributes*
 
@@ -711,7 +768,7 @@ file containing legal information and licenses.
 This document describes the ADL xml layout. This file is meant to
 provide more details about the tags and sub-tags found in an ADL xml
 file, how these tags are used, but also specifies if these are mandatory
-or not for a proper usage of the tools. The file contains all the tags
+or not for proper usage of the tools. The file contains all the tags
 and sub-tags found in *RV32I.adl.xml* model.
 
 *<data>*
@@ -721,14 +778,14 @@ and sub-tags found in *RV32I.adl.xml* model.
 xml is written
 ** *<doc>* (str) - Documentation
 ** *<bit_endianness>* (str) – Endianness type
-** *<type_declaration>* (str) - The enum values may then be used within
+** *<type_declaration>* (str) - The enum values may then be used within
 action code, or to initialize field values, such as cache, MMU, or
 event-bus fields
-** *<RaMask>* -  Specify a real-address mask. This is applied to
+** *<RaMask>* -  Specify a real-address mask. This is applied to
 all addresses after translation, but before the request to memory.
 *** *<initial>* (str) – Specify the address
 *** *<constant>* (str) – True/false value
-** *<EaMask>* -  Specify an effective-address mask. This is applied
+** *<EaMask>* -  Specify an effective-address mask. This is applied
 to all addresses immediately before translation.
 *** *<initial>* (str) – Specify the address
 *** *<constant>* (str) – True/false value
@@ -828,11 +885,11 @@ file. If not specified, then the relocation's name is used instead.
 *** *<field_width>* (int) –Width of field used with this relocation, in
 bits. If a width is specified and it is also used by an instruction
 field, then the widths must match.
-*** *<pcrel>* (str) – Optional, whether or not this is a pc-relative
-relocation. 
+*** *<pcrel>* (str) – Optional, whether this is a pc-relative
+relocation. 
 *** *<value>* (int) – Integer value of the relocation.
 *** *<right_shift>* (int) – Optional, used to specify the number of bits
-the relocation value is right-shifted before it is encoded.
+the relocation value is right shifted before it is encoded.
 *** *<dependency>* (str) – Optional, handles the high part of the
 relocation, helping manage memory offset.
 
@@ -878,15 +935,15 @@ field. It has to match the <entries> tag for the <regfile> associated if
 applicable.
 **** *<option name =>* (str) - String identifier for option 
 *** *<ref>* (str) – If the type is one which refers to another resource,
-such as _regfile, memory_, or__ instr,__ this key specifies the
+such as _regfile, memory_, or__ instr,__ this key specifies the
 association.
-*** *<signed>* (str) –  If an immediate field, this specifies whether it
+*** *<signed>* (str) –  If an immediate field, this specifies whether it
 is a signed quantity.
 *** *<reloc>* (str) – specify the reocation associated
 *** *<unsigned_upper_bound>* (str) – If a signed immediate field, then
 this specifies that the allowed upper bound should be treated as an
 unsigned number, when performing range checking, such as by the
-assembler. 
+assembler. 
 
 [width="100%",cols="33%,8%,17%,10%,11%,21%",options="header",]
 |===
@@ -919,20 +976,20 @@ assembler. 
 
 * *<instrs>*
 ** *<instruction name=>* (str) – Define an instruction.
-*** *<width>* (int) – Instruction width, in bits. 
+*** *<width>* (int) – Instruction width, in bits. 
 *** *<doc>* (str) – Documentation
 *** *<syntax>* (str) – Specifies how an instruction is to be parsed by
 an assembler or printed by a disassembler.
-*** *<dsyntax>* (str) –  Specifies how an instruction is to be printed
-by a disassembler. 
+*** *<dsyntax>* (str) –  Specifies how an instruction is to be printed
+by a disassembler. 
 *** *<attributes>* – Lists any attributes that this instruction is
 associated with.
 **** *<attribute name=>* (str) - String identifier
 ***** <str> – Optional value given to the attribute
-*** **<fields**> –  A list of fields, sub-instructions, or bit-mapped
+*** **<fields**> –  A list of fields, sub-instructions, or bit-mapped
 fields.
 **** *<field name=>* (str) - String identifier for field
-*** *<action>* (str) –  The semantics of the instruction. Instruction
+*** *<action>* (str) –  The semantics of the instruction. Instruction
 fields are accessible using their names and registers are also
 accessible using their names.
 *** *<disassemble>* (str) – This is a hint which tells ADL whether to
@@ -943,13 +1000,13 @@ written
 *** *<intrinsic>* (str) – Tag used for specifying the intrinsic
 *** *<intrinsic_args>* (str) – Tag used for specifying the intrinsic
 arguments
-*** *<intrinsic_type>* – List used for defining arguments types for
+*** *<intrinsic_type>* – List used for defining argument types for
 intrinsic
 **** *<instrfield_intrinsic name=>* (str) - String name identifier
 ***** <str> – Intrinsic type
 *** *<generate_builtin>* (str) – Tag used for specifying information
 about builtin generation
-*** *<aliases>* –  The function name (or names) must be that of another
+*** *<aliases>* –  The function name (or names) must be that of another
 instruction already defined.
 **** *<alias name=>* (str) – The name given to the alias
 ***** *<sources>* – specify the sources read when used
@@ -1027,7 +1084,7 @@ explicit exception.
 be valid C++ identifiers
 *** *<doc>* (str) – Documentation
 *** *<priority>* (str) – Specifies the priority class for the exception.
-*** *<action>* (str) –  This code is executed when the exception is
+*** *<action>* (str) –  This code is executed when the exception is
 raised.
 
 [width="100%",cols="24%,9%,17%,12%,21%,17%",options="header",]
@@ -1204,8 +1261,8 @@ explicit exception.
 == How to generate register pairs?
 
 Register generation is supported and it is triggered automatically when the tools
-find specific information in the XML file parsed. In order to activate this feature
-the user has to make sure that the XML file specifies in *<inputs>* and/or *<outputs>* tags
+find specific information in the XML file parsed. To activate this feature
+the user must make sure that the XML file specifies in *<inputs>* and/or *<outputs>* tags
 that a certain instruction is using register pairs. For instance, the tools are limited to 
 generate only pairs of 2 registers. An example of how it could look:
 
@@ -1215,7 +1272,7 @@ generate only pairs of 2 registers. An example of how it could look:
 	</outputs>
 
 Based on the information, the tools generate definitions for the registers that could be used
-as pairs. Firstly, the tools generate consecutive pairs of register, indicating informations about
+as pairs. Firstly, the tools generate consecutive pairs of registers, indicating information about
 the *ABI alias*, the *size* also specifies the internal structure of the register pair (*even* - *odd*). 
 
 	def X2_X3 : RISCVRegWithSubRegs<2, "X2", [X2, X3], ["sp"]> {
@@ -1229,7 +1286,7 @@ the *ABI alias*, the *size* also specifies the internal structure of the registe
 
 After these definitions are generated, the tools will generate the actual register class, 
 which specifies all the register pairs available, based on the calling convention allocation
-and also based on the register class *width* and *shift* values.
+and based on the register class *width* and *shift* values as well.
 
 	// Register Class GPRP : Register Pair
 	let RegInfos = RegInfoByHwMode<[RV32], [RegInfo<64, 64, 64>]>,
@@ -1264,25 +1321,25 @@ Once register pair generation is based on even-odd structure, these have to be s
 
 The keys and values used in this definitions could be changed or updated in *llvm_config.txt* file.
 
-== How To Generate Intrinsic And Tests?
+== How To Generate Intrinsic and Tests?
 
 The tools built are meant to generate intrinsic definitions and test for
-any ADL model given as input argument. In order to activate this
+any ADL model given as input argument. To activate this
 feature, the user should be aware of the information required for proper
-generation. The tools are able to generate instructions patterns,
+generation. The tools can generate instructions patterns,
 intrinsic definitions, a header containing the mapping between the LLVM
 required names for intrinsic definitions and user custom name given to
 the same intrinsic definitions, but also a list of tests, each test
 being ready to use.
 
-In order to use all these features, the user has to provide several
-information in the ADL xml model as it follows:
+To use all these features, the user has to provide several
+information in the ADL xml model as follows:
 
 *<intrinsic> (str)*
 
 This tag specifies the identifier used for pattern generation. The tools
 takes this identifier and used it in a pattern definition associated
-with instruction for which the <intrinsic> tag is defined.
+with instructions for which the <intrinsic> tag is defined.
 
 	def : Pat<(i32 (int_riscv_add GPR:$rs1, GPR:$rs2)), (ADD  GPR:$rs1, GPR:$rs2)>;
 
@@ -1303,7 +1360,7 @@ to the <inputs>/<outputs> declaration.
 
 *<instrfield_intrinsic name= > (str)*
 
-This tag takes each argument previously defined and specifies a data
+This tag takes each argument previously defined and specifies data
 type for this argument. This information is used when defining the
 intrinsic in a separate file.
 
@@ -1327,7 +1384,7 @@ instruction.
 		<str>__rv_add</str>
 	</generate_builtin>
 
-This identifier is then used in several generated files as it follows:
+This identifier is then used in several generated files as follows:
 
 *riscv_builtinRv32i.h*
 
@@ -1337,7 +1394,7 @@ This identifier is then used in several generated files as it follows:
 
 	def add : RISCVBuiltin<"unsigned int(unsigned int, unsigned int)", "rv32i">;
 
-The files generated which contain all the details about intrinsic and
+The files generated contain all the details about intrinsic and
 builtin definitions are:
 
 * *BuiltinRISCV<extension>.def*
@@ -1363,8 +1420,8 @@ An example of an intrinsic defined for ADD instruction on RV32I model
 		<str>__rv_add</str>
 	</generate_builtin>
 
-*Naming convention* is also handled by these tools. In order to ease the
-usage of builtin defined, the user can give to the builtin an identifier
+*Naming convention* is also handled by these tools. To ease the
+usage of builtin defined the user can give to the builtin an identifier
 different from the standard required by LLVM. The tools handle this
 situation by generating a header file in which this naming convention is
 treated, basically mapping the custom builtin to a proper LLVM builtin
@@ -1381,8 +1438,8 @@ LLVM name. The definition in the header file looks like:
 For verifying and validating the builtin definitions, a test is created
 for each builtin defined. The structure of the test includes the header
 for naming convention and a function which uses the builtin
-definition in order to pass the validation. The tests are automatically
-generated in a customized folder which in generally included in
+definition to pass the validation. The tests are automatically
+generated in a customized folder which is generally included in
 tools/testing/intrinsics/Tests. For a better overview, we take an
 example:
 
@@ -1404,34 +1461,34 @@ NOTE: For more information about **Sail**: https://github.com/riscv/sail-riscv
 Sail description generation is a feature supported in ADL tools for having, beside TD files generation, the **RISC-V** extension formal specification written in Sail for instruction enconding, semantic and parsing/decoding information. 
 	
 	* *How it works?*
-		** In order to enable Sail description generation, the user should run the basic **make-td** command line. When this command is run, a **.sail** file is generated for each RISC-V extension which is specified. 
+		** To enable Sail description generation, the user should run the basic **make-td** command line. When this command is run, a **.sail** file is generated for each RISC-V extension which is specified. 
 		** When the Sail description generation is activated, the previous generated Sail file is automatically deleted and replaced by the fresh generated files.
 		
-NOTE: For SAIL the user has to set the extensions using the --extension flag. The order of the attributes from the command line matters. 
+NOTE: For SAIL the user must set the extensions using the --extension flag. The order of the attributes from the command line matters. 
 If an instruction has more than one attribute it will only be generated once for the first attribute provided at --extension flag (this may result in empty files being generated). 
 
 	* *How a Sail description looks?*
 		** Naming convention for Sail description files could be set in *llvm-config* by editing *SailDescription* field.
-		** Each instruction supported contains 4 parts defined: union clause ast, mapping clause encdec, function clause execute, mapping clause assembly.
-		** For defining an extension, there is *enum clause extension definition* where the extension enabled is defined.
+		** Each instruction supported contains 4 parts defined: union clause instruction, mapping clause encdec, function clause execute, mapping clause assembly.
+		** For defining an extension, there is *function clause extension definition* where the extension enabled is defined.
 				
-				enum clause extension = Ext_Zclsd
+NOTE: Function clause definition is not defined for I extension, only for other extensions such as C Extension, Zilsd Extension etc 
 
-		** Beside extension definition, other dependencies are defined (e.g. other extensions which are required). Any extension which represents a dependecy is then generated with *extensionEnabled()*, except from *rv32i* extension which is covered by *xlen == 32* definition.
-		** *sys_enable()* definition is also required for the extension defined, except from *rv32i* extension.
+				function clause currentlyEnabled(Ext_Zilsd) = hartSupports(Ext_Zilsd)
 
-				function clause extensionEnabled(Ext_Zclsd) = xlen == 32 & sys_enable_zclsd() & extensionEnabled(Ext_Zca) & extensionEnabled(Ext_Zilsd)
+		** Beside extension definition, other dependencies are defined (e.g. other extensions which are required). Any extension which represents a dependecy is then generated with *currentlyEnabled()*, except for *rv32i* extension definition.
+		** *hartSupports()* definition is also required for the extension defined, except for *rv32i* extension.
 
-		** Union clause ast is a formal description for the instruction mnemonic in which it also specifies which type of instruction fields is used (registers or immediates).
+			function clause currentlyEnabled(Ext_C) = hartSupports(Ext_C) & function clause currentlyEnabled(Ext_Zilsd) = hartSupports(Ext_Zilsd)
 
-				union clause ast = ADD : (regidx, regidx, regidx)
+		** Union clause instruction is a formal description for the instruction mnemonic in which it also specifies which type of instruction fields is used (registers or immediates).
+
+				union clause instruction = ADD : (regidx, regidx, regidx)
 
 		** Mapping clause encdec provides information about the encoding of the instruction. It also specifies the exact range of bits provided for an instruction field, immediate value or opcode.  
 			
 				mapping clause encdec = ADD(rs2, rs1, rd)
-					if xlen == 32
 				<-> 0b0000000 @ rs2 : bits(5) @ rs1 : bits(5) @ 0b000 @ rd : bits(5) @ 0b0110011
-					if xlen == 32
 		
 		** Function clause execute is the main part of the Sail description in which information about how the instruction behaves when executed. It also provides information about how the registers work, how the information is parsed, how the memory is handled or which operands and operators are used. Moreover, there are several exceptions which are defined and handled.
 				
@@ -1447,29 +1504,26 @@ If an instruction has more than one attribute it will only be generated once for
 		** Mapping clause assembly translates the instruction in Sail language preserving information about registers or instruction fields.
 				
 				mapping clause assembly = ADD(rs2, rs1, rd)
-					if xlen == 32
 				<-> "add" ^ spc() ^ reg_name(rs2) ^ sep() ^ reg_name(rs1) ^ sep() ^ reg_name(rd)
-					if xlen == 32
 
-NOTE: For other extension than rv32i, extensionEnabled() definitions will be generated for activating the correct extension:
+NOTE: For other extension than rv32i, currentlyEnabled() definitions will be generated for activating the correct extension:
 
 	mapping clause assembly = ZCLSD_C_LDSP(imm, rx)
-		if extensionEnabled(Ext_Zca) & extensionEnabled(Ext_Zclsd) & extensionEnabled(Ext_Zilsd) & xlen == 32
 	<-> "c.ldsp" ^ spc() ^ reg_name(rx) ^ sep() ^ hex_bits_9(imm @ 0b000)
-		if extensionEnabled(Ext_Zca) & extensionEnabled(Ext_Zclsd) & extensionEnabled(Ext_Zilsd) & xlen == 32
+		when currentlyEnabled(Ext_Zclsd)
 
 	* *Which type of instructions are supported?*
-		** For instance, the instructions supported for Sail description generation are: **R-type** instructions, **I-type** instructions (**Load** instructions included) and **S-type** instructions. Although, for a proper generation, the action specified inside  **<action>** tag in the XML file is vital. It should be double-checked and verified for not having generation issues. Also, the script uses other fields from he XML file such as **<syntax>** tag, **<inputs>**, **<outputs>** and **<fields>**, so  it would be recommended to check running the tool.  
+		** For instance, the instructions supported for Sail description generation are: **R-type** instructions, **I-type** instructions (**Load** instructions included) and **S-type** instructions. Although, for a proper generation, the action specified inside  **<action>** tag in the XML file is vital. It should be double-checked and verified for not having generation issues. Also, the script uses other fields from the XML file such as **<syntax>** tag, **<inputs>**, **<outputs>** and **<fields>**, so  it would be recommended to check running the tool.  
 
 == How to generate scheduling description? 
 
-ADL tools project can generate scheduling description for several extensions. This tool generates a scheduling table description, which contains more information about the core, but also provide scheduling information for each instruction from the extension supported. 
+ADL tools project can generate scheduling description for several extensions. This tool generates a scheduling table description, which contains more information about the core, but also provides scheduling information for each instruction from the extension supported. 
 
 	* *How it works?*
 		** Scheduling description is generated automatically when the tool is run and the information used for generating is parsed from the XML file. 
-		** The XML contains <sched-table> tag which provide a high-level description for a scheduling model. It specifies the model type, functional units, instruction types, instrution latency and throughput and other scheduling options.
+		** The XML contains <sched-table> tag which provides a high-level description for a scheduling model. It specifies the model type, functional units, instruction types, instrution latency and throughput and other scheduling options.
 
-NOTE: All the fields listed below map on *LLVM MCSchedModel* structure from *MCSchedule.h* file. Generally, *each field* from this *scheduling model* suggests which field from *MCSchedModel* structure is actually set. 
+NOTE: All the fields listed below map on *LLVM MCSchedModel* structure from *MCSchedule.h* file. Generally, *each field* from this *scheduling model* suggests which field from *MCSchedModel* structure is set. 
 		
 		** *Scheduling model name*
 
@@ -1533,7 +1587,7 @@ NOTE: *CompleteModel* *(This field maps llvm::MCSchedModel::LoadLatency)* and *U
 				</proc_resource>
 
 
-		** *_instruction-sched_ contains instructions types, latency, throughput and functional units used*
+		** *_instruction-sched_ contains instruction types, latency, throughput and functional units used*
 
 			<instruction-sched name="ST">
 
@@ -1551,7 +1605,7 @@ NOTE: *CompleteModel* *(This field maps llvm::MCSchedModel::LoadLatency)* and *U
 
 			*** *_single_issue_ allows the processor to mark some scheduling classes as single-issue*. It maps *SingleIssue* parameter from *ProcWriteResources* class
 
-NOTE: More information about this tag could be find in *llvm/include/llvm/Target/TargetSchedule.td* file.
+NOTE: More information about this tag can be found in *llvm/include/llvm/Target/TargetSchedule.td* file.
 
 				<single_issue>
 				<int>1</int>
@@ -1572,7 +1626,7 @@ NOTE: More information about this tag could be find in *llvm/include/llvm/Target
 			
 			*** *_acquire_at_cycles_ specifies the cycle at which the resource is aquired by an instruction*. It maps *AcquireAtCycles* parameter from *ProcWriteResources* class
 
-NOTE: More information about this tag could be find in *llvm/include/llvm/Target/TargetSchedule.td* file.
+NOTE: More information about this tag can be found in *llvm/include/llvm/Target/TargetSchedule.td* file.
 
 				<acquire_at_cycles>
 				<int></int>
@@ -1580,13 +1634,13 @@ NOTE: More information about this tag could be find in *llvm/include/llvm/Target
 			
 			*** *_throughput_ specifies the cycle at which the resource is released by an instruction*. It maps *ReleaseAtCycles* parameter from *ProcWriteResources* class
 
-NOTE: More information about this tag could be find in *llvm/include/llvm/Target/TargetSchedule.td* file.
+NOTE: More information about this tag can be found in *llvm/include/llvm/Target/TargetSchedule.td* file.
 
 				<throughput>
 				<int>2</int>
 				</throughput>
 
-			*** *These tags below provide informations about forwarding such as the resources for which it applies and the value used for ReadAdvance*
+			*** *These tags below provide informations about forwarding such as the resources for which it applies, and the value used for ReadAdvance*
 
 				<forwarding>
 
@@ -1606,7 +1660,7 @@ NOTE: More information about this tag could be find in *llvm/include/llvm/Target
 					<int></int>
 					</id>
 
-				**** *In case of a resource group, this tag allows the user to specify the resources that have to be grouped*
+				**** *In case of a resource group, this tag allows the user to specify the resources that must be grouped*
 
 					<resource_list>
 					<str></str>
@@ -1616,8 +1670,8 @@ NOTE: Scheduling description is entirely based on the information parsed from *<
 	
 	*	*How scheduling description looks?*
 		** Generating scheduling is a complex process which provides a scheduling table description (containing core information), a resource description (in which read and write resources are defined) and most important a scheduling description file.
-		** Scheduling description is the file in which each type of instructions has scheduling information added, such as: functional units used, latency, throughput or other scheduling details. 
-		** Naming convention for these scheduling file could be set in *llvm-config* by editing *ScheduleFile*, *SchedulePath* and *ScheduleFileTable* variables, providing information about the path and the file's name. 
+		** Scheduling description is the file in which each type of instructions has scheduling information added, such as functional units used, latency, throughput or other scheduling details. 
+		** Naming convention for these scheduling files could be set in *llvm-config* by editing *ScheduleFile*, *SchedulePath* and *ScheduleFileTable* variables, providing information about the path and the file's name. 
 
 			def ZILSDModel : SchedMachineModel {
 
@@ -1656,11 +1710,11 @@ NOTE: Scheduling description is entirely based on the information parsed from *<
 
 		def : WriteRes<WriteST, [RISCVPipelineMEMORY]> {
 			let Latency = 2;
-			let ResourceCycles = 2;
+			let ReleaseAtCycles = 2;
 		}
 		def : WriteRes<WriteLD, [RISCVPipelineMEMORY]> {
 			let Latency = 2;
-			let ResourceCycles = 2;
+			let ReleaseAtCycles = 2;
 		}
 
 		** Defines new subtarget *SchedReadAdvance* that maps information for a target *SchedRead* 
@@ -1671,10 +1725,10 @@ NOTE: Scheduling description is entirely based on the information parsed from *<
 		}
 
 	* *Scheduling tests integrating llvm-mca and llvm-lit*
-		** Once the scheduling description model is done, it should be tested and validated for avoiding possible issues. 
+		** Once the scheduling description model is done, it should be tested and validated to avoid possible issues. 
 		** It is very important to check an execution timeline when implementing a new scheduling model. 
 		** The latency and throughput defined for each instruction together with the functional units used are key elements for a correct timeline execution. 
-		** That is the reason behind generating scheduling tests. ADL tools project provide scheduling tests for each instruction parsed from the XML file. 
+		** That is the reason behind generating scheduling tests. ADL tools project provides scheduling tests for each instruction parsed from the XML file. 
 		** Moreover, references are also generated for comparing and validating results. The mechanism consists in:
 		** *Generating instructions tests*
 
@@ -1693,7 +1747,7 @@ NOTE: *CHECK* and *CHECK-NEXT* are commands for llvm-lit which specify the execu
 			// RUN: %llvm-mca -mtriple=riscv32 -mcpu=core-name -timeline --timeline-max-cycles=0 -iterations=1 %s &> %s.txt
 			// RUN: cat %s.txt | %filecheck %s
 
-		** Basically, *llvm-mca* runs the instruction and generate an execution timeline which is compared to the reference using *llvm-lit*.
+		** Basically, *llvm-mca* runs the instruction and generates an execution timeline which is compared to the reference using *llvm-lit*.
 		** After running the tool, 2 types of scheduling tests are generated: basic tests and data-dependency tests. 
 		** Data-dependency tests use the destination of the first instruction as source in the second instruction tested, if applicable. On the other hand, the basic tests use totally different registers, randomly chosen. 
 		** For validating the results and checking the scheduling model, llvm-lit allows to run an entire test suite and then check if tests passed or failed. 
@@ -1703,7 +1757,39 @@ NOTE: *CHECK* and *CHECK-NEXT* are commands for llvm-lit which specify the execu
 
 NOTE: Core-name is generated automatically based on the information parsed from *<sched-table name= "">* tag.
 
-NOTE: This command line shows the result from every single test from the test suite run and also provide a *.txt* file which serves as log, for more information about certain tests. 
-		
+NOTE: This command line shows the result from every single test from the test suite run and provides a *.txt* file which serves as log, for more information about certain tests. 
+
+
+== Sail Converter
+
+Sail conveter is a tool dedicated for translatig Sail description into ADL XML format, used as input for the ADL tools project. 
+Basically, the translator parses the Sail specification and extracts the relevant information to generate an ADL-compatible XML file.
+The information parsed in converted into structured XML elements that represent instruction definition, register definition, instruction fields,
+instruction encoding, sign extension information, asm_config parameters and calling convention information. 
+The Sail specification is generated as JSON file once SAIL-RISCV project is built.
+
+=== Command line
+
+	python .\sail2adl.py <sail_model.json> --extensions Extension1 Extension2 --output <path for the output folder>
+
+The first paramereter represents the Sail model, as it is generated in SAIL-RISCV project. 
+The second parameter specifies the extensions to be included in the conversion.
+The third parameter represents the output folder where the XML file resulted will be generated.
+
+The XML file generated has the same syntax and structure as the one used by ADL tools project, allowing seamless integration with the existing toolchain. 
+Beside the XML generated, the tool produces also a log file with conversion details and warnings for any issue encountered during the translation process, but 
+also contains information about the translation process. The log file is generated in debug/ folder. 
+
+As proof of concept, as part of the collaboration with IMT, Sail converter was used for generating the ADL model in XML format based on the Sail description.
+Sail description was also generated from an initial manually written ADL which served as a basis. So, the flow is ADL -> SAIL -> ADL, both ADL models being identical. 
+All the support and implementation for IMT extension is uploaded on https://github.com/alex2kameboss/MA-sail-riscv/tree/master/model/extensions/Zimt[GitHub].
+
+
+NOTE: Sail converter is compliant with version 0.10. For more information about Sail version, please refer https://github.com/riscv/sail-riscv/releases/tag/0.10. 
+
 == Known Limitations
+	* *Fix-up relocations not supported*
 	* *Scheduling information is for demo purposes*
+	* *Sail converter is for demo purposes*
+
+

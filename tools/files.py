@@ -1,4 +1,4 @@
-# Copyright 2023-2025 NXP
+# Copyright 2023-2026 NXP
 # SPDX-License-Identifier: BSD-2-Clause
 # @package files
 #
@@ -21,6 +21,7 @@ import random
 import operator
 import word2number
 import pathlib
+import sys
 
 config_file = "config.txt"
 llvm_config = "llvm_config.txt"
@@ -101,37 +102,60 @@ instruction_registers_used_outs = dict()
 # A dictionary containing a map between a register class and its width
 register_classes_width = dict()
 
-## Function for generating let content
-#
-# @param let_key Key of def method
-# @param let_value Value of def method
-# @return A string representing the method
-def generate_let(let_key, let_value):
+def generate_let(let_key: str, let_value: str) -> str:
+    """
+    Generates let content for TableGen definitions.
+    
+    Args:
+        let_key (str): Key of the def method.
+        let_value (str): Value of the def method.
+    
+    Returns:
+        str: A string representing the let method.
+    """
+
     content = "let " + let_key + " = " + let_value + " in \n"
     return content
 
-## Function for generating define content
-#
-# @param define_key Key of def method
-# @param define_value Value of def method
-# @return A string representing the method
-def generate_define(define_key, define_value):
+def generate_define(define_key: str, define_value: str) -> str:
+    """
+    Generates define content for TableGen definitions.
+    
+    Args:
+        define_key (str): Key of the def method.
+        define_value (str): Value of the def method.
+    
+    Returns:
+        str: A string representing the define method.
+    """
+
     content = "def " + define_key + " : " + define_value + ";"
     return content
 
 
-## Function for generating the SP register class
-#
-# @param register_aliases A dictionary composed of registers and their aliases
-# @param class_name Name of the register class
-# @param namespace Core family identifier - i.e RISCV
-# @param width Register width in bits
-# @param XLenVT Register XLenVT value
-# @param XLenRI Register XLenRI value
-# @return The string representing SP register class from RegisterInfo.td
 def generate_SP_register_class(
-    register_aliases, class_name, namespace, width, XLenVT, XLenRI
-):
+    register_aliases: dict, 
+    class_name: str, 
+    namespace: str, 
+    width: int, 
+    XLenVT: str, 
+    XLenRI: str
+) -> str:
+    """
+    Generates the SP register class for TableGen.
+    
+    Args:
+        register_aliases (dict): A dictionary composed of registers and their aliases.
+        class_name (str): Name of the register class.
+        namespace (str): Core family identifier (e.g., RISCV).
+        width (int): Register width in bits.
+        XLenVT (str): Register XLenVT value.
+        XLenRI (str): Register XLenRI value.
+    
+    Returns:
+        str: The string representing the SP register class from RegisterInfo.td.
+    """
+
     register_class_used = "RegisterClass"
     config_variables = config.config_environment(config_file, llvm_config)
     registers = adl_parser.parse_registers_from_adl(config_variables["ADLName"])
@@ -191,22 +215,35 @@ def generate_SP_register_class(
     return def_class
 
 
-## Function for generating namespace
-#
-# @param namespace Core family identifier - i.e RISCV
-# @return The definition of the namespace
-def generate_namespace(namespace):
+def generate_namespace(namespace: str) -> str:
+    """
+    Generates the namespace definition for TableGen.
+    
+    Args:
+        namespace (str): Core family identifier (e.g., RISCV).
+    
+    Returns:
+        str: The definition of the namespace.
+    """
     define_namespace = "let Namespace =" + ' "' + namespace + '" ' + "in { \n"
     return define_namespace
 
 
-## Function for generating the namespace
-#
-# @param class_name Name of the register class
-# @param register_width Register width in bits
-# @param subregs_enabled Specifies if a register class implements subregs or not (True/False value accepted)
-# @return The string representing register class definition from RegisterInfo.td
-def generate_register_class(class_name, register_size, subregs_enabled):
+
+def generate_register_class(class_name: str, register_size: int, subregs_enabled: bool) -> str:
+    """
+    Generates the register class definition for TableGen.
+    
+    Args:
+        class_name (str): Name of the register class.
+        register_size (int): Register width in bits.
+        subregs_enabled (bool): Specifies if a register class implements subregs or not 
+                               (True/False value accepted).
+    
+    Returns:
+        str: The string representing register class definition from RegisterInfo.td.
+    """
+
     size = int(math.log2(int(register_size)))
     class_name_list = list()
     if type(class_name) is dict:
@@ -263,10 +300,13 @@ def generate_register_class(class_name, register_size, subregs_enabled):
         registers = adl_parser.parse_registers_from_adl(config_variables["ADLName"])
     return register_class_generated.rstrip("\n")
 
-## Function to generate extended register classes for LLVM 19 
-#
-# It returns the definition for the register classes that are needed
 def generate_register_classes_extended():
+    """
+    Generates the extended register classes required for LLVM 19.
+
+    Returns:
+        Any: Definition for the register classes that are needed.
+    """
     config_variables = config.config_environment(config_file, llvm_config)
     registers = adl_parser.parse_registers_from_adl(config_variables["ADLName"])
     register_class_generated = ""
@@ -303,19 +343,24 @@ def generate_register_classes_extended():
     return register_class_generated
     
 
-## Function for generating the GPR register file
-#
-# @param name Define abi
-# @param reg_class Name of the register class
-# @param class_name Name of the register class
-# @param prefix Register prefix value
-# @param dwarf Register debug info
-# @param size Register size in bits
-# @param alias_dict A dictionary where each register has its alias associated
-# @return A tuple composed of a string and a dictionary
 def generate_registers_by_prefix(
     name, reg_class, class_name, prefix, dwarf, size, alias_dict
 ):
+    """
+    Generates the GPR register file based on a given register prefix.
+
+    Args:
+        name (str): ABI definition name.
+        reg_class (str): Name of the register class.
+        class_name (str): Name of the register class type.
+        prefix (str): Register prefix value.
+        dwarf (int): DWARF register debug information index.
+        size (int): Register size in bits.
+        alias_dict (dict): Dictionary mapping each register to its alias.
+
+    Returns:
+        tuple: A tuple consisting of a string and a dictionary.
+    """
     let_name = ""
     config_variables = config.config_environment(config_file, llvm_config)
     if 'RegisterClassDisabledABI' in config_variables.keys():
@@ -542,10 +587,13 @@ def generate_registers_by_prefix(
     registers_define[reg_class] = registers
     return registers_generated, registers_aliases, additional_register_classes
 
-## Function generating vector register
-#
-# It returns the defintion for vector register classes
 def generate_vector_register():
+    """
+    Generates the definition for vector register classes.
+
+    Returns:
+        Any: The definition for the vector register classes.
+    """
     config_variables = config.config_environment(config_file, llvm_config)
     alias_regs = adl_parser.get_alias_for_regs(config_variables["ADLName"])
     registers = adl_parser.parse_registers_from_adl(config_variables["ADLName"])
@@ -650,19 +698,25 @@ def generate_vector_register():
         return vector_registers[0].replace("\t", "") + "\n" + statement + class_def + content_statement + content_register
     else:
         return ""
-## Function for generating the CSR or other generic register file
-#
-# @param name Define name
-# @param reg_class Register class name
-# @param class_name Register type
-# @param entry Register entry value
-# @param syntax Register syntax value
-# @param start_index Register start_index value
-# @param alias_dict A dictionary where each register has its alias associated
-# @return The string representing CSR or other generic register file
+    
 def generate_registers_by_name(
     name, reg_class, class_name, entry, syntax, start_index, alias_dict
 ):
+    """
+    Generates the CSR or other generic register file definition.
+
+    Args:
+        name (str): Name definition.
+        reg_class (str): Register class name.
+        class_name (str): Register type.
+        entry (str): Register entry value.
+        syntax (str): Register syntax representation.
+        start_index (int): Starting index for the register file.
+        alias_dict (dict): Dictionary mapping each register to its alias.
+
+    Returns:
+        str: String representing the CSR or other generic register file.
+    """
     config_variables = config.config_environment(config_file, llvm_config)
     registers_subregs = adl_parser.parse_registers_subregs(config_variables["ADLName"])
     let_name = ""
@@ -814,20 +868,6 @@ def generate_registers_by_name(
     return subregs_def + let_name + registers_generated
 
 
-## Function for generating a register class
-#
-# @param class_name CSR GPR with their respective offsets
-# @param config_variables  A dictionary where key and value are the contents of config_file
-# @param namespace Core family identifier - i.e RISCV
-# @param registers_list The list of registers inside a register file
-# @param width Register width in bits
-# @param XLenVT Register XLenVT value
-# @param XLenRI Register XLenRI value
-# @param offset Register offset value
-# @param instrfield_width Register width from instrfield in bits
-# @param shift Register shift value
-# @param excluded_values Specifies if a register cannot take a certain value
-# @return A register class
 def define_register_class(
     class_name,
     config_variables,
@@ -841,6 +881,25 @@ def define_register_class(
     shift,
     excluded_values
 ):
+    """
+    Generates (defines) a register class.
+
+    Args:
+        class_name (str): Register class name (e.g., CSR, GPR) and their respective offsets context.
+        config_variables (dict): Dictionary where key and value are entries from the config file.
+        namespace (str): Core family identifier (e.g., "RISCV").
+        registers_list (list): List of registers included in the register file.
+        width (int): Register width in bits.
+        XLenVT (str | Any): XLenVT value for the register (value/type used in target description).
+        XLenRI (str | Any): XLenRI value for the register (RI kind used in target description).
+        offset (int): Base offset for registers.
+        instrfield_width (int): Register width from instruction field, in bits.
+        shift (int): Shift value applied to register encoding/fields.
+        excluded_values (dict | list | None): Specifies disallowed values for certain registers.
+
+    Returns:
+        Any: A register class object/definition.
+    """
     config_variables = config.config_environment(config_file, llvm_config)
     registers_parsed = adl_parser.parse_registers_from_adl(config_variables["ADLName"])
     ref = class_name
@@ -975,18 +1034,22 @@ def define_register_class(
     return def_class
 
 
-## Function that writes register specific content in RegisterInfo.td
-#
-# @param regclass Name of the register class
-# @param file_name The files it writes into
-# @param config_variables A dictionary where key and value are the contents of config_file
-# @param alias_dict A dictionary where each register has its alias associated
-# @param offset_dict A dictionary where each register file has its offset associated
-# @param instrfield_ref_dict A dictionary that displays the fields of a register file
-# @return The contents of RISCVRegisterInfo.td
 def generate_file(
-    regclass, file_name, config_variables, alias_dict, offset_dict, instrfield_ref_dict
-):
+    regclass, file_name, config_variables, alias_dict, offset_dict, instrfield_ref_dict):
+    """
+    Writes register-specific content into `RegisterInfo.td`.
+
+    Args:
+        regclass (str): Name of the register class.
+        file_name (str): Target file to write into (e.g., "RISCVRegisterInfo.td").
+        config_variables (dict): Dictionary with key/value pairs from the config file.
+        alias_dict (dict): Dictionary mapping each register to its alias.
+        offset_dict (dict): Dictionary mapping each register file to its offset.
+        instrfield_ref_dict (dict): Dictionary describing the fields of a register file.
+
+    Returns:
+        str: The generated contents for `RISCVRegisterInfo.td`.
+    """
     f = open(file_name, "a")
     instructions = adl_parser.parse_instructions_from_adl(config_variables["ADLName"])[0]
     global register_classes
@@ -1125,6 +1188,16 @@ def generate_file(
                         )
                         f.write("\n")
                         check_register_class_width.append(regclass[key].width)
+    if len(sys.argv) > 2 and sys.argv[2].split("=")[1] == "riscv64":
+        rv64_content = ""
+        size = math.log(int(config_variables["LLVMRegBasicWidth"]), 2)
+        rv64_content += "def sub_" + config_variables["LLVMRegBasicWidth"] + ": SubRegIndex<" + config_variables["LLVMRegBasicWidth"] + ">;\n"
+        rv64_content += "class RISCVReg64<RISCVReg32 subreg>"
+        rv64_content += " : RISCVRegWithSubRegs<subreg.HWEncoding{" + str(int(size-1)) + "-" + "0}, subreg.AsmName, [subreg],"
+        rv64_content += " subreg.AltNames> {\n"
+        rv64_content += "\tlet SubRegIndices = [sub_" + config_variables["LLVMRegBasicWidth"] + "];\n"
+        rv64_content += "}\n"
+        f.write(rv64_content)
     f.write(generate_let("FallbackRegAltNameIndex", config_variables['FallbackRegAltNameIndex']))
     f.write(generate_define(config_variables["RegAltNameIndex"], "RegAltNameIndex"))
     f.write("\n")
@@ -1502,17 +1575,6 @@ def generate_file(
     f.close()
 
 
-## Function for generating the definition of an instruction
-#
-# @param instructions Dictionary containing all the instructions parsed from adl
-# @param list_instructions List containing the name of the instructions that use only registers and constants
-# @param key The name of the instruction for which this functions generates the definition
-# @param width Width of the instruction parsed from ADL file
-# @param schedule Schedule list
-# @param hasImm It specifies if an instruction uses immediates or only registers and constants
-# @param disableEncoding It specifies if an instruction should have this option enabled
-# @param extension_list A list containing the extensions given by the user in the command line
-# @return The content for the instruction definition
 def generate_instruction_define(
     instructions,
     list_instructions,
@@ -1523,6 +1585,22 @@ def generate_instruction_define(
     disableEncoding,
     extension_list
 ):
+    """
+    Generates the definition for a specific instruction.
+
+    Args:
+        instructions (dict): Dictionary containing all instructions parsed from ADL.
+        list_instructions (list[str]): Names of instructions that use only registers and constants.
+        key (str): Name of the instruction for which the definition is generated.
+        width (int): Instruction width parsed from the ADL file.
+        schedule (list[str] | list[Any]): Schedule list associated with the instruction.
+        hasImm (bool): Whether the instruction uses immediates (vs. only registers/constants).
+        disableEncoding (bool): Whether encoding should be disabled for this instruction.
+        extension_list (list[str]): Extensions provided by the user via command line.
+
+    Returns:
+        str: The generated content for the instruction definition.
+    """
     config_variables = config.config_environment(config_file, llvm_config)
     instrfield_imm = adl_parser.get_instrfield_from_adl(config_variables["ADLName"])[0]
     instrfield_ref = adl_parser.get_instrfield_from_adl(config_variables["ADLName"])[1]
@@ -1542,7 +1620,7 @@ def generate_instruction_define(
     attributes_list_instruction = list()
     predicate_checked = False
     rv_predicate = ""
-    if "BaseArchitecture" in config_variables.keys():
+    if ("BaseArchitecture" in config_variables.keys()) and (len(sys.argv) > 2 and sys.argv[2].split("=")[1] == "riscv32"):
         rv_predicate = "Is" + config_variables["BaseArchitecture"].upper()
     if len(extension_list) > 0:
         for extension in extension_list:
@@ -3367,15 +3445,15 @@ def generate_instruction_define(
                 start = str(instrfield_ref[instrfield]["range"][index][1])
                 if instrfield != "opcode" and instrfield != "op_c":
                     if instructions[key]["fields"][0][instrfield] == "reg":
-                        content += (
-                            "\tlet Inst{"
-                            + end
-                            + "-"
-                            + start
-                            + "} = "
-                            + instrfield
-                            + ";\n"
-                        )
+                        # content += (
+                        #     "\tlet Inst{"
+                        #     + end
+                        #     + "-"
+                        #     + start
+                        #     + "} = "
+                        #     + instrfield
+                        #     + ";\n"
+                        # )
                         instruction_encoding_list[int(end)] = (
                             "let Inst{"
                             + end
@@ -3386,15 +3464,15 @@ def generate_instruction_define(
                             + ";"
                         )
                     else:
-                        content += (
-                            "\tlet Inst{"
-                            + end
-                            + "-"
-                            + start
-                            + "} = "
-                            + str(instructions[key]["fields"][0][instrfield])
-                            + ";\n"
-                        )
+                        # content += (
+                        #     "\tlet Inst{"
+                        #     + end
+                        #     + "-"
+                        #     + start
+                        #     + "} = "
+                        #     + str(instructions[key]["fields"][0][instrfield])
+                        #     + ";\n"
+                        # )
                         instruction_encoding_list[int(end)] = (
                             "let Inst{"
                             + end
@@ -3405,15 +3483,15 @@ def generate_instruction_define(
                             + ";"
                         )
                 else:
-                    content += (
-                        "\tlet Inst{"
-                        + end
-                        + "-"
-                        + start
-                        + "} = "
-                        + str(instructions[key]["fields"][0][instrfield])
-                        + ";\n"
-                    )
+                    # content += (
+                    #     "\tlet Inst{"
+                    #     + end
+                    #     + "-"
+                    #     + start
+                    #     + "} = "
+                    #     + str(instructions[key]["fields"][0][instrfield])
+                    #     + ";\n"
+                    # )
                     instruction_encoding_list[int(end)] = (
                         "let Inst{"
                         + end
@@ -3439,20 +3517,20 @@ def generate_instruction_define(
                         if instructions[key]["fields"][0][instrfield] == "imm":
                             diff = int(end) - int(start)
                             size_last = size_first - diff
-                            content += (
-                                "\tlet Inst{"
-                                + end
-                                + "-"
-                                + start
-                                + "} = "
-                                + instrfield
-                                + "{"
-                                + str(size_first)
-                                + "-"
-                                + str(size_last)
-                                + "}"
-                                + ";\n"
-                            )
+                            # content += (
+                            #     "\tlet Inst{"
+                            #     + end
+                            #     + "-"
+                            #     + start
+                            #     + "} = "
+                            #     + instrfield
+                            #     + "{"
+                            #     + str(size_first)
+                            #     + "-"
+                            #     + str(size_last)
+                            #     + "}"
+                            #     + ";\n"
+                            # )
                             instruction_encoding_list[int(end)] = (
                                 "let Inst{"
                                 + end
@@ -3469,15 +3547,15 @@ def generate_instruction_define(
                             )
                             size_first = size_last - 1
                         else:
-                            content += (
-                                "\tlet Inst{"
-                                + end
-                                + "-"
-                                + start
-                                + "} = "
-                                + str(instructions[key]["fields"][0][instrfield])
-                                + ";\n"
-                            )
+                            # content += (
+                            #     "\tlet Inst{"
+                            #     + end
+                            #     + "-"
+                            #     + start
+                            #     + "} = "
+                            #     + str(instructions[key]["fields"][0][instrfield])
+                            #     + ";\n"
+                            # )
                             instruction_encoding_list[int(end)] = (
                                 "let Inst{"
                                 + end
@@ -3488,15 +3566,15 @@ def generate_instruction_define(
                                 + ";"
                             )
                     else:
-                        content += (
-                            "\tlet Inst{"
-                            + end
-                            + "-"
-                            + start
-                            + "} = "
-                            + str(instructions[key]["fields"][0][instrfield])
-                            + ";\n"
-                        )
+                        # content += (
+                        #     "\tlet Inst{"
+                        #     + end
+                        #     + "-"
+                        #     + start
+                        #     + "} = "
+                        #     + str(instructions[key]["fields"][0][instrfield])
+                        #     + ";\n"
+                        # )
                         instruction_encoding_list[int(end)] = (
                             "let Inst{"
                             + end
@@ -3513,20 +3591,20 @@ def generate_instruction_define(
                     if instructions[key]["fields"][0][instrfield] == "imm":
                         diff = int(end) - int(start)
                         size_last = size_first - diff
-                        content += (
-                            "\tlet Inst{"
-                            + end
-                            + "-"
-                            + start
-                            + "} = "
-                            + instrfield
-                            + "{"
-                            + str(size_first)
-                            + "-"
-                            + str(size_last)
-                            + "}"
-                            + ";\n"
-                        )
+                        # content += (
+                        #     "\tlet Inst{"
+                        #     + end
+                        #     + "-"
+                        #     + start
+                        #     + "} = "
+                        #     + instrfield
+                        #     + "{"
+                        #     + str(size_first)
+                        #     + "-"
+                        #     + str(size_last)
+                        #     + "}"
+                        #     + ";\n"
+                        # )
                         instruction_encoding_list[int(end)] = (
                             "let Inst{"
                             + end
@@ -3543,15 +3621,15 @@ def generate_instruction_define(
                         )
                         size_first = size_last - 1
                     else:
-                        content += (
-                            "\tlet Inst{"
-                            + end
-                            + "-"
-                            + start
-                            + "} = "
-                            + str(instructions[key]["fields"][0][instrfield])
-                            + ";\n"
-                        )
+                        # content += (
+                        #     "\tlet Inst{"
+                        #     + end
+                        #     + "-"
+                        #     + start
+                        #     + "} = "
+                        #     + str(instructions[key]["fields"][0][instrfield])
+                        #     + ";\n"
+                        # )
                         instruction_encoding_list[int(end)] = (
                             "let Inst{"
                             + end
@@ -3562,15 +3640,15 @@ def generate_instruction_define(
                             + ";"
                         )
                 else:
-                    content += (
-                        "\tlet Inst{"
-                        + end
-                        + "-"
-                        + start
-                        + "} = "
-                        + str(instructions[key]["fields"][0][instrfield])
-                        + ";\n"
-                    )
+                    # content += (
+                    #     "\tlet Inst{"
+                    #     + end
+                    #     + "-"
+                    #     + start
+                    #     + "} = "
+                    #     + str(instructions[key]["fields"][0][instrfield])
+                    #     + ";\n"
+                    # )
                     instruction_encoding_list[int(end)] = (
                         "let Inst{"
                         + end
@@ -3582,6 +3660,8 @@ def generate_instruction_define(
                     )
     sorted_dict = dict(sorted(instruction_encoding_list.items(), key = lambda x: x[0], reverse = True))
     instruction_encoding_dict[key] = sorted_dict
+    for elem in instruction_encoding_dict[key].keys():
+        content += "\t" + instruction_encoding_dict[key][elem] + "\n"
     if 'branch' in instructions[key]["attributes"]:
         isBranch = "\tlet isBranch = 1;\n"
         isTerminator = "\tlet isTerminator = 1;\n"
@@ -3692,12 +3772,18 @@ def generate_instruction_define(
     
 
 
-## This function writes the definition in a RISCVInstrInfo.td file for each instruction parsed from ADL
-#
-# @param file_name ADL file name parsed for gathering all information
-# @param extensions_list A list containing all the extensions given by the user in the command line
-# @return The content of RISCVInstrInfo.td
 def generate_file_instructions(file_name, extensions_list):
+    """
+    Writes the instruction definitions into `RISCVInstrInfo.td` for each instruction
+    parsed from the ADL input.
+
+    Args:
+        file_name (str): ADL file name (or path) parsed to gather instruction information.
+        extensions_list (list[str]): List of extensions provided by the user via the command line.
+
+    Returns:
+        str: The generated content for `RISCVInstrInfo.td`.
+    """
     config_variables = config.config_environment(config_file, llvm_config)
     instructions = adl_parser.parse_instructions_from_adl(config_variables["ADLName"])[
         0
@@ -4223,7 +4309,7 @@ def generate_file_instructions(file_name, extensions_list):
             else:
                 file_name = file_name_cpy
             f = open(file_name, "a")
-            if "BaseArchitecture" in config_variables.keys():
+            if ("BaseArchitecture" in config_variables.keys()) and len(sys.argv) > 2 and sys.argv[2].split("=")[1] == "riscv32":
                 rv_predicate = "Is" + config_variables["BaseArchitecture"].upper()
             for key in instructions.keys():
                 if "ignored" not in instructions[key]["attributes"]:
@@ -4649,23 +4735,6 @@ def generate_file_instructions(file_name, extensions_list):
         instrfield_classes.update({key: list(list_instrs)})
 
 
-## This function generates the definition for all instruction classes
-#
-# @param classname The name given to the instruction class generated
-# @param namespace The namespace used parsed from config_file
-# @param asmstring The AsmString used parsed from config_file
-# @param tsflags_first The range limit for TSFlags parsed from config_file
-# @param tsflags_last The range limit for TSFlags parsed from config_file
-# @param opcode The opcode width parsed from ADL file
-# @param opcode_first The range limit for opcode parsed from ADL file
-# @param opcode_last The range limit for opcode parsed from ADL file
-# @param width Width of the instructions defined in this instruction class
-# @param constraint_class Constraint used in LLVM
-# @param constraint_prefix Constraint prefix used in LLVM
-# @param constraint_value Constraint value used in LLVM
-# @param tsflags_last_constraint The range limit for TSFlags when constraints are defined, parsed from config_file
-# @param tsflags_first_constraint The range limit for TSFlags when constraints are defined, parsed from config_file
-# @return The content for any instruction class definition
 def generate_define_instruction_class(
     classname,
     namespace,
@@ -4682,6 +4751,28 @@ def generate_define_instruction_class(
     tsflags_last_constraint,
     tsflags_first_constraint,
 ):
+    """
+    Generates the definition for all instruction classes.
+
+    Args:
+        classname (str): The name of the generated instruction class.
+        namespace (str): Namespace parsed from the configuration (e.g., target family).
+        asmstring (str): AsmString parsed from the configuration.
+        tsflags_first (int): Lower bound of the TSFlags range (from config).
+        tsflags_last (int): Upper bound of the TSFlags range (from config).
+        opcode (int): Opcode width parsed from the ADL file.
+        opcode_first (int): Lower bound of the opcode range parsed from ADL.
+        opcode_last (int): Upper bound of the opcode range parsed from ADL.
+        width (int): Width of the instructions defined in this instruction class.
+        constraint_class (str): LLVM constraint class used for instruction encoding/selection.
+        constraint_prefix (str): Constraint prefix used in LLVM.
+        constraint_value (int | str): Constraint value used in LLVM.
+        tsflags_last_constraint (int): Upper bound of TSFlags when constraints are defined (from config).
+        tsflags_first_constraint (int): Lower bound of TSFlags when constraints are defined (from config).
+
+    Returns:
+        str: The generated content for the instruction class definition.
+    """
     config_variables = config.config_environment(config_file, llvm_config)
     statement = (
         "class "
@@ -4750,15 +4841,6 @@ def generate_define_instruction_class(
     return statement + content + LLVMVFlags + "}"
 
 
-## This function generates instruction format definition used in LLVM
-#
-# @param instruction_format The name of the instruction format class parsed from config_file
-# @param width The width used for instruction class definition parsed from config_file
-# @param InstructionFormatR Instruction format based on instruction class width
-# @param InstructionFormatCR Instruction format based on instruction class width
-# @param InstructionFormatI Instruction format based on instruction class type and width
-# @param InstructionFormatCI Instruction format based on instruction class type and width
-# @return Content of instruction format definition added to RISCVInstructionFormats.td file
 def generate_instruction_format_define(
     instruction_format,
     width,
@@ -4767,6 +4849,20 @@ def generate_instruction_format_define(
     InstructionFormatI,
     InstructionFormatCI,
 ):
+    """
+    Generates the LLVM instruction format definition.
+
+    Args:
+        instruction_format (str): Name of the instruction format class parsed from the config file.
+        width (int): Instruction width used when generating the format definition.
+        InstructionFormatR (str | Any): Instruction format based on class width for R-type encodings.
+        InstructionFormatCR (str | Any): Instruction format based on class width for CR-type encodings.
+        InstructionFormatI (str | Any): Instruction format based on class type and width for I-type encodings.
+        InstructionFormatCI (str | Any): Instruction format based on class type and width for CI-type encodings.
+
+    Returns:
+        str: Content added to `RISCVInstructionFormats.td` representing the instruction format definition.
+    """
     statement = "class " + instruction_format + "<bits<" + width + "> val>{\n"
     content = "\tbits<" + width + "> Value = val;\n"
     content += "}\n"
@@ -4777,13 +4873,19 @@ def generate_instruction_format_define(
     return statement + content
 
 
-## This function generates a constraints class used in LLVM
-#
-# @param namespace The namaspace used, parsed from config_file
-# @param class_constraint_name The name given to the constraint class defined parsed from config_file
-# @param width The width parsed from config_file
-# @return The content of the constraint class definition
 def generate_riscv_vconstraint_class(namespace, class_constraint_name, width):
+    """
+    Generates a RISC‑V constraint class definition used in LLVM.
+
+    Args:
+        namespace (str): Namespace parsed from the configuration file.
+        class_constraint_name (str): Name assigned to the generated constraint class.
+        width (int): Instruction or operand width parsed from the configuration file.
+
+    Returns:
+        str: Content of the generated constraint class definition.
+    """
+
     statement = (
         "class " + namespace + class_constraint_name + "<bits<" + width + "> val> {\n"
     )
@@ -4792,16 +4894,21 @@ def generate_riscv_vconstraint_class(namespace, class_constraint_name, width):
     return statement + content
 
 
-## This function generates a constraint definition
-#
-# @param namespace The namaspace used, parsed from config_file
-# @param class_constraint_name The name given to the constraint class defined parsed from config_file
-# @param constraint_value The type of constraint applied parsed from config_file
-# @param value The value used in constraint definition parsed from config_file
-# @return The content of the constraint definition
 def generate_constraint_define(
     namespace, class_constraint_name, constraint_value, value
 ):
+    """
+    Generates a constraint definition used in LLVM.
+
+    Args:
+        namespace (str): Namespace parsed from the configuration file.
+        class_constraint_name (str): Name of the constraint class defined in the configuration.
+        constraint_value (str | int): The type of constraint applied (parsed from config).
+        value (str | int): The value used in the constraint definition (parsed from config).
+
+    Returns:
+        str: The generated content of the constraint definition.
+    """
     content = (
         "def "
         + constraint_value
@@ -4815,11 +4922,14 @@ def generate_constraint_define(
     return content
 
 
-## This function generates the RISCVInstrFormats.td file
-#
-# @param file_name ADL file which is parsed for gathering all information needed
-# @return The content of RISCVInstrFormats.td file
-def generate_instruction_format(file_name, file_name_c):
+def generate_instruction_format(file_name, file_name_c): 
+    """ Generates the contents of the `RISCVInstrFormats.td` file. 
+    Args: 
+        file_name (str): ADL file parsed to gather all needed information. 
+        file_name_c (str): Additional ADL or configuration file used during generation. 
+    Returns: 
+        str: The generated content of the `RISCVInstrFormats.td` file. """
+        
     config_variables = config.config_environment(config_file, llvm_config)
     instructions = adl_parser.parse_instructions_from_adl(config_variables["ADLName"])[
         0
@@ -4963,14 +5073,22 @@ def generate_instruction_format(file_name, file_name_c):
     f.close()
 
 
-## This functions generates definitions types for immediates that are used in instructions.
-# The result will be generated as string and passed to another function which will perform the writting action in file.
-#
-# @param key The name name of the immediate type which has to be defined
-# @param instructions A dictionary which contains all the instructions parsed from ADL file
-# @param immediate_key A guard to check if the immediate we are about to generate is the correct one
-# @return The definition for a certain immediate type
 def generate_imms_class(key, instructions, immediate_key):
+    """
+    Generates the definition for an immediate type used in instructions.
+
+    The result is returned as a string and then passed to another function
+    responsible for writing it to the final output file.
+
+    Args:
+        key (str): Name of the immediate type that must be defined.
+        instructions (dict): Dictionary containing all instructions parsed from the ADL file.
+        immediate_key (str): Guard used to ensure that the generated immediate type
+            corresponds to the correct instruction immediate.
+
+    Returns:
+        str: Definition string for the specified immediate type.
+    """
     config_variables = config.config_environment(config_file, llvm_config)
     instrfield_imm = adl_parser.get_instrfield_from_adl(config_variables["ADLName"])[0]
     namespace = config_variables["Namespace"]
@@ -9155,23 +9273,35 @@ def generate_imms_class(key, instructions, immediate_key):
     content += "}"
     return statement + content
 
-## A function that generates RISCVOp definition based on the LLVM requirements
-#
-# @return It returns the content for RISCVOp definition
 def generate_riscv_operand():
+    """
+    Generates the definition for a RISCVOp operand according to LLVM requirements.
+
+    Returns:
+        str: The generated content for the RISCVOp definition.
+    """
     config_variables = config.config_environment(config_file, llvm_config)
     statement = "class RISCVOp<ValueType vt = " + config_variables['XLenVT_key'] + "> : Operand<vt> {\n"
     content = "\tlet OperandNamespace =" + "\"" + "RISCVOp" + "\"" + ";\n}"
     return statement + content
     
-## A function which writes in a file the content for an immediate type which is used in instructions
-#
-# @param filename The name for the file in which the function will write the content
-# @param filenameC The name for the file in which the function will write the content for compressed
-# @param instrfield_classes The immediate types which have to be defined
-# @param instructions A dictionary which contains all the instructions parsed from ADL file
-# @return It writes in a file the content generated by the called function (generate_imms_class)
 def write_imms_classes(filename, filenameC, instrfield_classes, instructions):
+    """
+    Writes the generated content for immediate types used in instructions to the appropriate files.
+
+    This function receives the set of immediate types (instrfield_classes),
+    generates their definitions using `generate_imms_class`, and writes the
+    resulting content into the specified output files.
+
+    Args:
+        filename (str): Name of the file where the immediate type definitions will be written.
+        filenameC (str): Name of the file where compressed immediate type definitions will be written.
+        instrfield_classes (list[str] | list[Any]): Immediate types that must be defined.
+        instructions (dict): Dictionary containing all instructions parsed from the ADL file.
+
+    Returns:
+        None: Writes generated content to the specified files.
+    """
     this_instructions = instructions
     f = open(filename, "a")
     g = open(filenameC, "a")
@@ -9395,11 +9525,17 @@ def write_imms_classes(filename, filenameC, instrfield_classes, instructions):
     g.close()
 
 
-## This function generates instruction alias content based on the information parsed from ADL
-#
-# @param key This argument represents the alias which will be generated
-# @return The function will return a generated content representing the alias definition
 def generate_instruction_alias(key):
+    """
+    Generates the definition content for an instruction alias based on
+    information parsed from the ADL file.
+
+    Args:
+        key (str): The alias name for which the definition will be generated.
+
+    Returns:
+        str: Generated content representing the instruction alias definition.
+    """
     config_variables = config.config_environment(config_file, llvm_config)
     define = "def"
     registers = adl_parser.parse_registers_from_adl(config_variables["ADLName"])
@@ -9631,12 +9767,23 @@ def generate_instruction_alias(key):
     return define + " : " + statement
 
 
-## This function will write the content for each alias generated in a specific file
-#
-# @param file_name The parameter represents the file in which the content will be written
-# @param extensions_list This list contains the extensions for which the instrinsics will be generated. If empty, all extensions will be generated
-# @return This function will return a file which contains all the information about aliases
 def write_instructions_aliases(file_name, file_name_c, extensions_list):
+    """
+    Writes the generated alias definitions into the specified output files.
+
+    This function receives the list of extensions for which aliases must
+    be generated. If the list is empty, aliases are generated for all
+    available extensions parsed from the ADL.
+
+    Args:
+        file_name (str): File in which the alias definitions will be written.
+        file_name_c (str): File in which compressed alias definitions will be written.
+        extensions_list (list[str]): List of extensions for which intrinsics and
+            alias definitions should be generated. If empty, all extensions are used.
+
+    Returns:
+        None: Writes the generated alias definition content to the output files.
+    """
     config_variables = config.config_environment(config_file, llvm_config)
     instructions = adl_parser.parse_instructions_from_adl(config_variables["ADLName"])[
         0
@@ -9751,11 +9898,17 @@ def write_instructions_aliases(file_name, file_name_c, extensions_list):
                             f.close()
 
 
-## A function which generates calling convention information required by LLVM
-#
-# @param file_name The parameter indicates the file in which the content will be written
-# @return This function will return calling convention information
 def write_calling_convention(file_name):
+    """
+    Generates and writes the calling convention information required by LLVM.
+
+    Args:
+        file_name (str): Name of the file in which the calling convention
+            information will be written.
+
+    Returns:
+        str: The generated calling convention information.
+    """
     config_variables = config.config_environment(config_file, llvm_config)
     f = open(file_name, "a")
     content = ""
@@ -9833,11 +9986,16 @@ def write_calling_convention(file_name):
     f.close()
 
 
-## This function will generate relocations definitions
-#
-# @param file_name This parameter indicates the file in which the content will be written
-# @return The function will return the content generated as strings
 def generate_relocation_define(file_name):
+    """
+    Generates relocation definitions required by LLVM and returns them as strings.
+
+    Args:
+        file_name (str): Name of the file for which relocation definitions are generated.
+
+    Returns:
+        str: Generated relocation definition content.
+    """
     f = open(file_name, "a")
     config_variables = config.config_environment(config_file, llvm_config)
     relocations = adl_parser.parse_relocations(config_variables["ADLName"])
@@ -9850,12 +10008,21 @@ def generate_relocation_define(file_name):
     f.close()
 
 
-## This function will generate intrinsics for the instructions defined in the ADL file parsed
-#
-# @param file_name This parameter indicates the file in which the instrinsics will be generated
-# @param extensions_list This list contains the extensions for which the instrinsics will be generated. If empty, all extensions are used.
-# @return This function will return the definitions for intrinsics
 def generate_intrinsics(file_name, extensions_list):
+    """
+    Generates LLVM intrinsic definitions for the instructions parsed from the ADL file.
+
+    Intrinsics are generated either for all extensions, or only for those
+    explicitly specified in `extensions_list`.
+
+    Args:
+        file_name (str): Name of the file in which the intrinsic definitions will be generated.
+        extensions_list (list[str]): List of extensions for which intrinsics should be generated.
+            If empty, intrinsics are generated for all available extensions.
+
+    Returns:
+        str: The generated intrinsic definitions.
+    """
     config_variables = config.config_environment(config_file, llvm_config)
     instructions = adl_parser.parse_instructions_from_adl(config_variables["ADLName"])[
         0
@@ -10190,14 +10357,20 @@ def generate_intrinsics(file_name, extensions_list):
             attributes_list_intrinsics.append(extension)
 
 
-## This function will generate the accumulator register definition
-#
-# @param file_name This parameter indicates the name for the in which the content will be written
-# @param abi_name This parameter indicates ABI information needed for LLVM register definition
-# @param register_class This parameter indicates what register class the accumulator belongs to
-# @param namespace This parameter indicates the namespace needed for LLVM register definition
-# @return The function will return the content as string
 def generate_accumulator_register(file_name, abi_name, register_class, namespace):
+    """
+    Generates the accumulator register definition used by LLVM.
+
+    Args:
+        file_name (str): Name of the file in which the accumulator register
+            definition will be written.
+        abi_name (str): ABI information required for the LLVM register definition.
+        register_class (str): Register class to which the accumulator belongs.
+        namespace (str): Namespace required for generating the LLVM register definition.
+
+    Returns:
+        str: Generated accumulator register definition as a string.
+    """
     config_variables = config.config_environment(config_file, llvm_config)
     registers = adl_parser.parse_registers_from_adl(config_variables["ADLName"])
     define = ""
@@ -10265,11 +10438,16 @@ def generate_accumulator_register(file_name, abi_name, register_class, namespace
     f.close()
 
 
-## This function will generate a pattern for a given instrunction
-#
-# @param instruction_key This parameter indicates the instruction for which the pattern is generated
-# @return The function will return the pattern for the instruction given as string
 def generate_pattern_for_instructions(instruction_key):
+    """
+    Generates a pattern definition for a given instruction.
+
+    Args:
+        instruction_key (str): The instruction for which the pattern is generated.
+
+    Returns:
+        str: The generated instruction pattern as a string.
+    """
     config_variables = config.config_environment(config_file, llvm_config)
     instructions = adl_parser.parse_instructions_from_adl(config_variables["ADLName"])[
         0
@@ -10486,10 +10664,30 @@ def generate_pattern_for_instructions(instruction_key):
                             ref = instrfields[instrfield_destination]['ref']
                             register_classes_width[instrfields[instrfield_destination]['ref']+"P"] = 2 * int(registers[ref.upper()].width)
                             break
+                for instrfield in instructions[instruction_key]['inputs']:
+                    if "(" in instrfield:
+                        instrfield = instrfield.split("(")[1].replace(")", "").replace(" ", "")
+                        if "+1" in instrfield:
+                            instrfield_destination = instrfield.strip(" ").split("+")[0]
+                            ref = instrfields[instrfield_destination]['ref']
+                            register_classes_width[instrfields[instrfield_destination]['ref']+"P"] = 2 * int(registers[ref.upper()].width)
+                            break
                 if instrfield_destination in instrfields.keys():
+                    max_width = 0
                     return_class = str(instruction_registers_used_outs[instruction_key]).split("$")[0].replace(":", "").replace("[", "").replace("'", "")
                     if return_class in register_classes_width.keys():
-                        return_type = "i" + str(register_classes_width[return_class])
+                        if max_width == 0:
+                            max_width = int(register_classes_width[return_class])
+                        elif int(register_classes_width[return_class]) > max_width:
+                            max_width = int(register_classes_width[return_class])
+                    return_class = str(instruction_registers_used_ins[instruction_key]).split("$")[0].replace(":", "").replace("[", "").replace("'", "")
+                    if return_class in register_classes_width.keys():    
+                        if max_width == 0:
+                            max_width = int(register_classes_width[return_class])
+                        elif int(register_classes_width[return_class]) > max_width:
+                            max_width = int(register_classes_width[return_class])
+                    if max_width != 0:
+                        return_type = "i" + str(max_width)
                 extension = ""
                 for element in instructions[key]["attributes"]:
                     if "LLVMExt" + element.capitalize() in config_variables.keys():
@@ -10635,13 +10833,27 @@ def generate_pattern_for_instructions(instruction_key):
             return statement
 
 
-## This function will generate builtin definitions and also a header for defining name convention for builtin definitions
-#
-# @param file_name This parameter indicates the file which will contain builtin definitions
-# @param header_name This parameter indicates the header which will be included for activating naming convention
-# @param extensions_list This parameter indicates is a list containing the extensions that the user wants to use. If empty, all extensions are used
-# @return The function will write the content for builtin definitions in 2 files as presented before
 def generate_builtin(file_name, header_name, extensions_list):
+    """
+    Generates builtin definitions and a corresponding header used for naming
+    conventions required by LLVM.
+
+    Builtin definitions are generated based on the extensions provided.
+    If `extensions_list` is empty, the function generates builtins for all
+    available extensions parsed from the ADL/configuration files.
+
+    Args:
+        file_name (str): File that will contain the builtin definitions.
+        header_name (str): Header file that will be included to activate the
+            naming convention for builtin definitions.
+        extensions_list (list[str]): List of extensions for which builtin
+            definitions should be generated. If empty, all extensions
+            are included.
+
+    Returns:
+        None: The function writes the builtin definitions to the two
+            specified output files.
+    """
     config_variables = config.config_environment(config_file, llvm_config)
     instructions = adl_parser.parse_instructions_from_adl(config_variables["ADLName"])[0]
     instrfields = adl_parser.get_instrfield_from_adl(config_variables["ADLName"])[1]
@@ -10857,11 +11069,22 @@ def generate_builtin(file_name, header_name, extensions_list):
                     if once_print_header is True and once_print is True:
                         attributes_list.append(extension)
                         
-## This function will generate intrinsic tests for verifying and validating intrinsic usage
-#
-# @param include_path path to the location of builtin file that has to be included
-# @return This function will return a folder containing a test for each intrinsic generated
 def generate_intrinsic_tests(folder, include_path):
+    """
+    Generates intrinsic tests used for verifying and validating intrinsic usage.
+
+    Each intrinsic defined in the project will receive its own test file inside
+    the generated folder. The tests include the necessary builtin header
+    provided via `include_path`.
+
+    Args:
+        folder (str): Path to the folder where intrinsic tests will be generated.
+        include_path (str): Path to the builtin header file that must be included
+            in each generated test.
+
+    Returns:
+        str: The path to the folder containing all generated intrinsic test files.
+    """
     include_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', include_path)
     config_variables = config.config_environment(config_file, llvm_config)
     tree = ET.parse(config_variables["ADLName"])
@@ -11028,11 +11251,21 @@ def generate_intrinsic_tests(folder, include_path):
             f.close()
 
 
-## This function will generate a register memory operand wrapper required by LLVM 17
-#
-# @param file_name This parameter indicates the file in which the definitions will be generated
-# @return The function will generated the definition mapping the register classes to the corresponding memory operand wrapper
 def generate_operand_mem_wrapper_class(file_name):
+    """
+    Generates the register–memory operand wrapper definitions required by LLVM 17.
+
+    This function maps register classes to their corresponding memory operand
+    wrapper types and returns the resulting TableGen content as a string.
+
+    Args:
+        file_name (str): Name of the file for which the memory operand wrapper
+            definitions will be generated.
+
+    Returns:
+        str: Generated definition mapping register classes to the appropriate
+            memory operand wrapper.
+    """
     content = ""
     content += "class MemOperand<RegisterClass regClass> : RegisterOperand<regClass>{\n"
     content += '\tlet OperandType = "OPERAND_MEMORY";\n'
@@ -11068,11 +11301,17 @@ def generate_operand_mem_wrapper_class(file_name):
     f.close()
 
 
-## This function will generate register pairs
-#
-# @param file_name This parameter indicates the file in which the content will be written
-# @return The function returns a file containing the definitions for register pairs
 def generate_register_pairs(file_name):
+    """
+    Generates the definitions for register pairs used by LLVM.
+
+    Args:
+        file_name (str): Name of the file in which the register pair
+            definitions will be written.
+
+    Returns:
+        str: Generated content containing the definitions for register pairs.
+    """
     config_variables = config.config_environment(config_file, llvm_config)
     instrfield_data_ref = adl_parser.get_instrfield_offset(config_variables["ADLName"])[1]
     calling_convention_order = config_variables["RegisterAllocationOrder"]
@@ -11414,12 +11653,22 @@ def generate_register_pairs(file_name):
             f.write("\n\n")
             f.close()
 
-## Function which generates scheduling tests based on the information from scheduling table parsed from XML
-#
-# @param path string specifying the path to the actual folder in which tests will be generated
-# @param extension_list list specifying which extensions are enabled by the user
-# @return Scheduling tests for the instructions parsed from XML
 def generate_sched_tests(path, extension_list):
+    """
+    Generates scheduling tests based on the scheduling table parsed from the XML input.
+
+    Tests are generated inside the specified folder, and only for the extensions
+    enabled by the user. If the extension list is empty, tests are generated for
+    all available extensions.
+
+    Args:
+        path (str): Path to the folder where the scheduling tests will be generated.
+        extension_list (list[str]): List of extensions for which scheduling tests
+            should be generated. If empty, all extensions are considered.
+
+    Returns:
+        str: Generated scheduling tests for the instructions parsed from the XML.
+    """
     config_variables = config.config_environment(config_file, llvm_config)
     instructions = adl_parser.parse_instructions_from_adl(config_variables["ADLName"])[0]
     scheduling_table_dict = adl_parser.parse_sched_table_from_adl(config_variables["ADLName"])
@@ -12194,12 +12443,23 @@ def generate_sched_tests(path, extension_list):
         sched_app_regs_dep[instr] = scheduling_list_app
         scheduling_tests_struct[instr] = data_test
         
-## Function which generates scheduling table description
-#
-# @file_name string specifying the name given to the file in which scheduling model is generated
-# @schedule_file string specifying in which file the resources should be defined
-# @return both files presented before with specific content
 def generate_scheduling_table(file_name, schedule_file):
+    """
+    Generates the scheduling table description and the associated scheduling model.
+
+    The function produces two outputs:
+    - A file containing the scheduling table for instructions.
+    - A file defining the scheduling resources used by the model.
+
+    Args:
+        file_name (str): Name of the file in which the scheduling model will be generated.
+        schedule_file (str): Name of the file in which the scheduling resources
+            should be defined.
+
+    Returns:
+        tuple[str, str]: The generated content for both the scheduling model file
+        and the scheduling resource definition file.
+    """
     config_variables = config.config_environment(config_file, llvm_config)
     instructions = adl_parser.parse_instructions_from_adl(config_variables["ADLName"])[0]
     scheduling_table_dict = adl_parser.parse_sched_table_from_adl(config_variables["ADLName"])
@@ -12505,12 +12765,24 @@ def generate_scheduling_table(file_name, schedule_file):
         f.close()
         
         
-## Function which generates scheduling references for scheduling tests
-#
-# @param path string specifying the path to the actual folder in which the content will be written
-# @param extension_list list specifying which extensions are enabled by the user
-# @return scheduling references for generated tests
 def generate_scheduling_ref(path, extension_list):
+    """
+    Generates scheduling reference files for the scheduling tests.
+
+    The references are written into the specified folder and depend on the
+    extensions enabled by the user. If the extension list is empty, scheduling
+    references are generated for all extensions available in the parsed data.
+
+    Args:
+        path (str): Path to the folder where the scheduling reference files
+            will be generated.
+        extension_list (list[str]): List of enabled extensions for which
+            scheduling references should be generated. If empty, references
+            for all extensions are produced.
+
+    Returns:
+        str: Generated scheduling reference content for the tests.
+    """
     config_variables = config.config_environment(config_file, llvm_config)
     scheduling_table_dict = adl_parser.parse_sched_table_from_adl(config_variables["ADLName"])
     sched_parameters = adl_parser.parse_scheduling_model_params(config_variables['ADLName'])
@@ -13112,12 +13384,23 @@ def generate_scheduling_ref(path, extension_list):
                     print("Scheduling is not supported for instruction " + instruction)
                     break  
                                            
-## Function which generates sail description for instructions defined in the XML given as input
-#
-# @param path string specifying the path to the folder in which the content will be written
-# @param extension_list list specifying which extensions are enabled by the user
-# @return Sail description for the instructions supported
 def generate_sail_description(path, extensions_list):
+    """
+    Generates Sail descriptions for the instructions defined in the XML input.
+
+    The generated Sail specification files are written into the specified folder.
+    Only the extensions enabled by the user are included. If the extension list
+    is empty, Sail descriptions are generated for all supported extensions.
+
+    Args:
+        path (str): Path to the folder in which the Sail descriptions will be written.
+        extensions_list (list[str]): List of enabled extensions for which Sail
+            descriptions should be generated. If empty, all supported extensions
+            are considered.
+
+    Returns:
+        str: Generated Sail descriptions for the supported instructions.
+    """
     config_variables = config.config_environment(config_file, llvm_config)
     instructions = adl_parser.parse_instructions_from_adl(config_variables["ADLName"])[0]
     instrfields = adl_parser.get_instrfield_from_adl(config_variables["ADLName"])[1]
@@ -13186,19 +13469,32 @@ def generate_sail_description(path, extensions_list):
                 f = open(file_name, 'a')
                 extension_set = element.replace("LLVMExt", "").capitalize()
                 main_extension = extension_set
-                instruction_extension_enum = "enum clause extension = " + "Ext_" + extension_set + "\n"
+                instruction_extension_enum = ""
+                hartSupport = False
                 if "BaseArchitecture" in config_variables.keys():
                     base_arch = [s for s in re.findall(r'\d+\d*', config_variables['BaseArchitecture'])]
-                    instruction_extension_enum += "function clause extensionEnabled(" + "Ext_" + extension_set + ") = xlen == " + base_arch[0] + " & "
+                    if hartSupport is False:
+                        instruction_extension_enum += "function clause currentlyEnabled(" + "Ext_" + extension_set + ") = hartSupports(" + "Ext_" + extension_set + ") & "
+                        hartSupport = True
+                    else:
+                        instruction_extension_enum += "function clause currentlyEnabled(" + "Ext_" + extension_set + ") & "
                 if base_arch[0] == '32' and extension_set.lower() != 'rv32i':
-                    instruction_extension_enum += "sys_enable_" + extension_set.lower() + "() & "
+                    instruction_extension_enum += ""
                 for reg in sys_reg_list:
                     if reg == 'rv32c':
                         reg = 'zca'
-                        instruction_extension_enum += "extensionEnabled(" + "Ext_" + reg.capitalize() + ") & "
+                        if hartSupport is False:
+                            instruction_extension_enum += "currentlyEnabled(" + "Ext_" + reg.capitalize() + ") = hartSupports(" + "Ext_" + extension_set + ") & "
+                            hartSupport = True
+                        else:
+                            instruction_extension_enum += "currentlyEnabled(" + "Ext_" + reg.capitalize() + ") & "
                     elif base_arch[0] == '32' and reg != 'rv32i':
                         if reg != extension_set.lower():
-                            instruction_extension_enum += "extensionEnabled(" + "Ext_" +  reg.capitalize() + ") & "
+                            if hartSupport is False:
+                                instruction_extension_enum += "currentlyEnabled(" + "Ext_" +  reg.capitalize() + ") = hartSupports(" + "Ext_" + extension_set + ") & "
+                                hartSupport = True
+                            else:
+                                instruction_extension_enum += "currentlyEnabled(" + "Ext_" +  reg.capitalize() + ") & "
                 instruction_extension_enum = instruction_extension_enum.rstrip(" & ")
                 f.write(instruction_extension_enum)
                 f.write("\n\n")
@@ -13229,12 +13525,12 @@ def generate_sail_description(path, extensions_list):
                     instruction_extension_enum = "enum clause extension = " + "Ext_" + extension_set + "\n"
                     if "BaseArchitecture" in config_variables.keys():
                         base_arch = [s for s in re.findall(r'\d+\d*', config_variables['BaseArchitecture'])]
-                    instruction_extension_enum += "function clause extensionEnabled(" + "Ext_" + extension_set + ") = xlen == " + base_arch[0] + " & "
+                    instruction_extension_enum += "function clause extensionEnabled(" + "Ext_" + extension_set + ") = hartSupports(Ext_" + extension_set + ")" + " & "
                     for reg in sys_reg_list:
                         if base_arch[0] == '32' and reg != 'rv32i':
                             if reg == 'rv32c':
                                 reg = 'zca'
-                            instruction_extension_enum += "sys_enable_" + reg + "()" + " & "
+                            instruction_extension_enum += ""
                     instruction_extension_enum = instruction_extension_enum.rstrip(" & ")
                     f.write(instruction_extension_enum)
                     f.write("\n\n")
@@ -13255,7 +13551,7 @@ def generate_sail_description(path, extensions_list):
                         break
             statement = "mapping clause encdec"
             reg_list = list()
-            if_statement = "if "
+            if_statement = ""
             content = "<-> "
             if_statement_copy = if_statement
             if instructions[instr]['width'] != config_variables['LLVMStandardInstructionWidth']:
@@ -13273,15 +13569,15 @@ def generate_sail_description(path, extensions_list):
                     key = prefix_attrib.upper() + "_" + key
                 else:
                     key = instr.lower()
-            statement += " = " + key.upper()
+            statement += " = " + key.upper().replace(".", "_")
             attributes_list = instructions[instr]['attributes']
             for attribute in attributes_list:
                 if "LLVMExt" + attribute.capitalize() in config_variables.keys():
                     if base_arch[0] == '32' and attribute != 'rv32i':
                         if attribute == 'rv32c':
                             attribute = 'zca'
-                        if_statement += "extensionEnabled(" + "Ext_" + attribute.capitalize() + ")" + " & "
-            if_statement += "xlen == " + base_arch[0]
+                        if_statement += "currentlyEnabled(" + "Ext_" + attribute.capitalize() + ")" + " & "
+            if_statement = "when " + if_statement + ""
             if if_statement.endswith(" & "):
                 if_statement = if_statement.rstrip(" & ")
             if if_statement != if_statement_copy:
@@ -13343,7 +13639,7 @@ def generate_sail_description(path, extensions_list):
             if content.endswith(" @ "):
                 content = content.rstrip(" @ ")
             statement_assembly = "mapping clause assembly"
-            statement_assembly +=  " = " + key.upper()
+            statement_assembly +=  " = " + key.upper().replace(".", "_")
             content_assembly = "<-> "
             content_assembly += "\"" + instr.lower() + "\"" + " ^ " + "spc()" + " ^ "
             index = len(instructions[instr]['syntax'])
@@ -13380,7 +13676,7 @@ def generate_sail_description(path, extensions_list):
                 statement_assembly = statement_assembly.rstrip(", ")
             statement_assembly += ")"
             function_clause = "function clause execute"
-            function_clause += "(" + key.upper()
+            function_clause += "(" + key.upper().replace(".", "_")
             statement_function = "("
             for element in reg_list_asm:
                 statement_function += element + ", "
@@ -13437,9 +13733,14 @@ def generate_sail_description(path, extensions_list):
                             function_list.append(field)
                             ast_clause_list.append(field)
                         elif str(2 ** int(instrfields[field]['width'])) == config_variables['LLVMRegBasicWidth']:
-                            content_function += "\tlet " + field + "_val" + " = "
                             if instrfields[field]['ref'] == 'GPR':
+                                content_function += "\tlet " + field + "_val" + " = "
                                 content_function += "X(" + field + ");\n" 
+                                function_list.append(field)
+                                ast_clause_list.append(field)
+                            elif instrfields[field]['ref'] == 'VR':
+                                content_function += "\tlet " + field + " = "
+                                content_function += "0\n" 
                                 function_list.append(field)
                                 ast_clause_list.append(field)
                     else:
@@ -13451,8 +13752,32 @@ def generate_sail_description(path, extensions_list):
                                 elif instrfields[field]['ref'] + "(" + field + ")?" in instructions[instr]['inputs']:
                                     content_function += "\tlet " + field + "_val" + " = "
                                     content_function += "X(" + field + ");\n" 
+                                elif instrfields[field]['ref'] + "(" + field + ")?" in instructions[instr]['outputs']:
+                                    content_function += "\tlet " + field + " = "
+                                    content_function += "X(" + field + ");\n" 
                                 function_list.append(field)
                                 ast_clause_list.append(field)
+                            else:
+                                if instrfields[field]['ref'] + "(" + field + ")" in instructions[instr]['inputs']:
+                                    content_function += "\tlet " + field + "_val" + " = "
+                                    content_function += "X(" + field + ");\n" 
+                                    function_list.append(field)
+                                    ast_clause_list.append(field)
+                                elif instrfields[field]['ref'] + "(" + field + ")?" in instructions[instr]['inputs']:
+                                    content_function += "\tlet " + field + "_val" + " = "
+                                    content_function += "X(" + field + ");\n" 
+                                    function_list.append(field)
+                                    ast_clause_list.append(field)
+                                if instrfields[field]['ref'] + "(" + field + ")" in instructions[instr]['outputs']:
+                                    content_function += "\tlet " + field + " = "
+                                    content_function += "0\n"
+                                    function_list.append(field)
+                                    ast_clause_list.append(field)
+                                elif instrfields[field]['ref'] + "(" + field + ")?" in instructions[instr]['outputs']:
+                                    content_function += "\tlet " + field + " = "
+                                    content_function += "0\n"
+                                    function_list.append(field)
+                                    ast_clause_list.append(field)
                         else:
                             content_function += "\tlet " + field + "_idx" + " = "
                             content_function += "creg2reg_idx(" + field + ");\n"
@@ -13465,8 +13790,22 @@ def generate_sail_description(path, extensions_list):
                                     compressed_reg = True
                                     content_function += "\tlet " + field + "_val" + " = "
                                     content_function += "X(" + field + "_idx" + ");\n" 
+                                elif instrfields[field]['ref'] + "(" + field + ")?" in instructions[instr]['outputs']:
+                                    content_function += "\tlet " + field + " = "
+                                    content_function += "X(" + field + ");\n" 
                                 function_list.append(field)
                                 ast_clause_list.append(field)
+                            else:
+                                if instrfields[field]['ref'] + "(" + field + ")?" in instructions[instr]['outputs']:
+                                    content_function += "\tlet " + field + + " = "
+                                    content_function += "0\n"
+                                    function_list.append(field)
+                                    ast_clause_list.append(field)
+                                elif instrfields[field]['ref'] + "(" + field + ")" in instructions[instr]['outputs']:
+                                    content_function += "\tlet " + field + + " = "
+                                    content_function += "0\n"
+                                    function_list.append(field)
+                                    ast_clause_list.append(field) 
             destination = ""
             for input in instructions[instr]['inputs']:
                 for register in register_parsed.keys():
@@ -13513,6 +13852,9 @@ def generate_sail_description(path, extensions_list):
                                         ast_clause_list.append(register_alias)
                                         instrfields[register_alias] = {}
                                         destination = register_alias
+            if 'zimt' in instructions[instr]['attributes']:
+                action = instructions[instr]['action']
+                content_function = action
             if 'load' in instructions[instr]['attributes']:
                 action = instructions[instr]['action']
                 line_list = action.split("\n")
@@ -13617,7 +13959,7 @@ def generate_sail_description(path, extensions_list):
                                 if len(variable) > 0 and variable[index_var] != "":
                                     content_list_copy.remove(line_content)
                                     line_content = line_content.replace(source + "_val", variable[index_var])
-                                    line_content = line_content.replace(";", " + offset;\n")
+                                    line_content = line_content.replace(";", " + offset;\n").replace("=", " : xlenbits =")
                                     content_list_copy.append(line_content)
                         if len(variable) > 0:
                             if index_var < len(variable)-1:
@@ -13632,7 +13974,7 @@ def generate_sail_description(path, extensions_list):
                                 if instrfield + "_idx" == line.split("=")[0].replace(" ", "").replace("\tlet", ""):
                                     if instrfields[instrfield]['ref'] == 'GPR':
                                         if instrfield not in destination_list:
-                                            new_line = "\tlet " + variable[0] + " = " + "X(" + instrfield + "_idx" + ") + offset;"
+                                            new_line = "\tlet " + variable[0] + ": xlenbits" + " = " + "X(" + instrfield + "_idx" + ") + offset;"
                                             content_list_copy.append(new_line)
                         if source == "":
                             instrfield = line.split("=")[0].replace("\tlet", "").strip(" ")
@@ -13654,27 +13996,32 @@ def generate_sail_description(path, extensions_list):
                     virtual_address = variable[index_var]
                     content_new += "\tif xlen == 32 then\n"
                     if_activated = True
-                    content_new += "\tif check_misaligned(" +  "virtaddr" + "(" + virtual_address + ")" + ", DOUBLE)\n"
-                    content_new += "\tthen {handle_mem_exception(" + "virtaddr" + "(" + virtual_address + ")"  + ", E_Load_Addr_Align()); RETIRE_FAIL}\n"
-                    content_new += "\telse match translateAddr(" + "virtaddr" + "(" + virtual_address + ")"  + ", Read(Data)) {\n"
-                    content_new += "\tTR_Failure(e, _) => {handle_mem_exception(" + "virtaddr" + "(" + virtual_address + ")"  + ", e); RETIRE_FAIL},\n"
+                    content_new += "\tmatch translateAddr(" + "Virtaddr" + "(" + virtual_address + ")"  + ", Load(Data)) {\n"
+                    content_new += "\t\tErr(_) => return Illegal_Instruction(),\n"
                     p_address = variable[index_var].replace('v', 'p')
                     virtual_address = variable[index_var]
-                content_new += "\tTR_Address(" + p_address + ", _) =>\n"
+                    content_new += "\t\tOk(" + p_address + ", _) => \n"
                 if  len(variable) > 0 and len(variable) - 1 > index_var:
                     index_var += 1
                 if len(list(mem_values.keys())) > 0:
                     index = 0
                     key_mem = list(mem_values.keys())[index]
-                    content_new += "\t\tmatch mem_read(Read(Data), " + p_address + ", " + mem_values[key_mem] + ", " + "false, false, false) {\n"
+                    content_new += "\t\tmatch mem_read(Load(Data), " + p_address + ", " + mem_values[key_mem] + ", " + "false, false, false) {\n"
                 if len(variable) > 0:
-                    content_new += "\t\tOk(" + variable[index_var] + ") => {\n"
+                    content_new += "\t\tErr(_) => return Illegal_Instruction(),\n"
+                    content_new += "\t\tOk(" + variable[index_var] + ") => \n"
                 if  len(variable) > 0 and len(variable) - 1 > index_var:
                     index_var += 1
                 if len(list(mem_values.keys())) > 1:
                     index += 1
-                    content_new += "\t\t\tmatch translateAddr(" + "virtaddr" + "(" + list(mem_values.keys())[index] + ")" + ", " + "Read(Data)) {\n"
-                    content_new += "\t\t\tTR_Failure(e, _) => {handle_mem_exception(" + "virtaddr" + "(" + list(mem_values.keys())[index] + ")" + ", e); RETIRE_FAIL},\n"
+                    address_value = list(mem_values.keys())[index].split("+")[1]
+                    content_new += "\t\t\tlet vaddr_hi : xlenbits = add_bits_int(vaddr, " + address_value + ")" + " in \n"
+                    content_new += "\t\t\tmatch translateAddr(Virtaddr(vaddr_hi), Load(Data)) {\n"
+                    content_new += "\t\t\t\tErr(_) => return Illegal_Instruction(),\n"
+                    content_new += "\t\t\t\tOk((" + p_address + "_hi, _)) =>\n"
+                    content_new += "\t\t\t\t\tmatch mem_read(Load(Data), " + p_address + "_hi, " + address_value +  ", false, false, false) {\n"
+                    content_new += "\t\t\t\t\tErr(_) => return Illegal_Instruction(),\n"
+                    content_new += "\t\t\t\t\tOk(result_hi) => {\n"
                     p_shift_addr = list(mem_values.keys())[index].replace("v", "p")
                     key_mem = list(mem_values.keys())[index]
                     pattern = re.compile(r'[a-zA-Z0-9]*')
@@ -13682,10 +14029,6 @@ def generate_sail_description(path, extensions_list):
                     while '' in list_regex:
                         list_regex.remove('')
                     p_shift_addr = str(list_regex[0]) + "_" + str(list_regex[1:]).replace("['", "").replace("']", "")
-                    content_new += "\t\t\tTR_Address("  + p_shift_addr + ", _) =>\n"
-                    content_new += "\t\t\t\tmatch mem_read(Read(Data), " + p_shift_addr + ", " + mem_values[key_mem] + ", false, false, false) {\n"
-                if  len(variable) > 0:
-                    content_new += "\t\t\t\tOk(" + variable[index_var] + ") => {\n"
                 condition_line = list()
                 for element in destination_list:
                     if element in instrfields.keys() and instrfields[element]['ref'] == 'GPR':
@@ -13724,16 +14067,18 @@ def generate_sail_description(path, extensions_list):
                     if len(pattern_digit) > 0:
                         condition = condition.replace(pattern_digit[0], num2words.num2words(pattern_digit[0]) + "s()")
                     if condition != "":
-                        content_new += "\t\t\t\t" + condition + " then {\n"
+                        content_new += "\t\t\t\t\t" + condition + " then {\n"
+                destination = ""
                 for element in destination_list:
                     if element in instrfields.keys() and instrfields[element]['ref'] == 'GPR':
                         for key_var in destination_vars.keys():
                             if element == destination_vars[key_var]:
+                                destination = element
                                 if str(2 ** int(instrfields[element]['width'])) != config_variables['LLVMRegBasicWidth']:
-                                    content_new += "\t\t\t\t\tX(" + element + "_idx" + ") = " + "sign_extend(" + key_var + ");\n"
+                                    content_new += "\t\t\t\t\t\t\tX(" + element + "_idx" + ") = " + "sign_extend(" + key_var + ");\n"
                                     break
                                 else:
-                                    content_new += "\t\t\t\t\tX(" + element + ") = " + "sign_extend(" + key_var + ");\n"
+                                    content_new += "\t\t\t\t\t\t\tX(" + element + ") = " + "sign_extend(" + key_var + ");\n"
                                     break
                     else:
                         if "+1" in element:
@@ -13741,26 +14086,31 @@ def generate_sail_description(path, extensions_list):
                                 for key_var in destination_vars.keys():
                                     if element == destination_vars[key_var]:
                                         if str(2 ** int(instrfields[element.replace("+1", "")]['width'])) != config_variables['LLVMRegBasicWidth']:
-                                            element = "regidx_offset(" + element.replace("+1", "") + "_idx" + ", to_bits(" + str(math.log(int(config_variables['LLVMRegBasicWidth']), 2)).replace(".0", "") + ", " + "1))"
-                                            content_new += "\t\t\t\t\tX(" + element + ") = " + "sign_extend(" + key_var + ")" + ";\n"
+                                            element = "regidx_offset(" + element.replace("+1", "") + "_idx" + ", to_bits((if base_E_enabled then " + str(math.log(int(config_variables['LLVMRegBasicWidth']), 2) - 1).replace(".0", "") +  " else " + str(math.log(int(config_variables['LLVMRegBasicWidth']), 2)).replace(".0", "") + "), 1))"
+                                            content_new += "\t\t\t\t\t\t\tX(" + element + ") = " + "sign_extend(" + "result_hi" + ")" + ";\n"
+                                            content_new += "\t\t\t\t\t\t\tRETIRE_SUCCESS \n\t\t\t\t\t\t}\n"
                                             break
                                         else:
-                                            element = "regidx_offset(" + element.replace("+1", "") + ", to_bits(" + str(math.log(int(config_variables['LLVMRegBasicWidth']), 2)).replace(".0", "") + ", " + "1))"
-                                            content_new += "\t\t\t\t\tX(" + element + ") = " + "sign_extend(" + key_var + ")" + ";\n"
+                                            element = "regidx_offset(" + element.replace("+1", "") + ", to_bits((if base_E_enabled then " + str(math.log(int(config_variables['LLVMRegBasicWidth']), 2) - 1).replace(".0", "") +  " else " + str(math.log(int(config_variables['LLVMRegBasicWidth']), 2)).replace(".0", "") + "), 1))"
+                                            content_new += "\t\t\t\t\t\t\tX(" + element + ") = " + "sign_extend(" + "result_hi" + ")" + ";\n"
+                                            content_new += "\t\t\t\t\t\t\tRETIRE_SUCCESS \n\t\t\t\t\t\t}\n"
                                             break
                 if condition != "":
-                  content_new += "\t\t\t\t\t};\n"   
-                content_new += "\t\t\t\t\tRETIRE_SUCCESS\n"
-                content_new += "\t\t\t\t},\n"
+                    content_new += "\t\t\t\t\t\telse {\n"
+                    content_new += "\t\t\t\t\t\t\tX(" + destination + ") = zeros();\n"
+                    content_new += "\t\t\t\t\t\t\tRETIRE_SUCCESS\n"
+                    content_new += "\t\t\t\t\t\t}\n"
+                    content_new += "\t\t\t\t\t}\n"
                 if  len(variable) > 0:
-                    content_new += "\t\t\t\tErr(e) => {handle_mem_exception(" + "virtaddr" + "(" + virtual_address + ")" + ", e); RETIRE_FAIL},\n"
-                content_new += "\t\t\t}\n"
-                content_new += "\t\t}\n"
-                content_new += "\t},\n"
+                    content_new += "\t\t\t\t}\n"
+                    content_new += "\t\t\t}\n"
+                    content_new += "\t\t}\n"
                 if  len(variable) > 0:
-                    content_new += "\tErr(e) => {handle_mem_exception(" + "virtaddr" + "(" + virtual_address + ")" + ", e); RETIRE_FAIL},\n"
-                content_new += "\t},\n"
-                content_new += "}\n"
+                    content_new += "\t}\n"
+                    content_new += "else\n return Illegal_Instruction()\n"
+                    content_new += "}\n"
+                if "RETIRE_SUCCESS" not in content_new:
+                    content_new += "\tRETIRE_SUCCESS\n"
                 content_function = content_new
             elif 'store' in instructions[instr]['attributes']:
                 action = instructions[instr]['action']
@@ -13870,7 +14220,7 @@ def generate_sail_description(path, extensions_list):
                                 if len(variable) > 0 and variable[index_var] != "":
                                     content_list_copy.remove(line_content)
                                     line_content = line_content.replace(source + "_val", variable[index_var])
-                                    line_content = line_content.replace(";", " + offset;\n")
+                                    line_content = line_content.replace(";", " + offset;\n").replace("=", " : xlenbits =")
                                     found = False
                                     for line_variable in content_list_copy:
                                         if variable[index_var] in line_variable:
@@ -13919,21 +14269,21 @@ def generate_sail_description(path, extensions_list):
                     virtual_address = variable[index_var]
                     if_activated = True
                     content_new += "\tif xlen == 32 then\n"
-                    content_new += "\tif check_misaligned(" + "virtaddr" + "(" + virtual_address + ")" + ", DOUBLE)\n"
-                    content_new += "\tthen {handle_mem_exception(" + "virtaddr" + "(" + virtual_address + ")"  + ", E_SAMO_Addr_Align()); RETIRE_FAIL}\n"
-                    content_new += "\telse match translateAddr(" +"virtaddr" + "(" + virtual_address + ")"  + ", Read(Data)) {\n"
-                    content_new += "\tTR_Failure(e, _) => {handle_mem_exception(" + "virtaddr" + "(" + virtual_address + ")"  + ", e); RETIRE_FAIL},\n"
-                content_new += "\tTR_Address(" + p_address + ", _) =>\n"
+                    content_new += "\t\tmatch translateAddr(" +"Virtaddr" + "(" + virtual_address + ")"  + ", Store(Data)) {\n"
+                    content_new += "\t\tErr(_) => return Illegal_Instruction(),\n"
+                    content_new += "\t\tOk(" + p_address + ", _) => {\n"
                 if  len(variable) > 0 and len(variable) - 1 > index_var:
                     index_var += 1
                 if len(list(mem_values.keys())) > 0:
                     index = 0
                     key_mem = list(mem_values.keys())[index]
-                    content_new += "\t\tmatch mem_write_ea(" + p_address + ", " + mem_values[key_mem] + ", " + "false, false, false) {\n"
+                    content_new += "\t\t\tmatch mem_write_ea(" + p_address + ", " + mem_values[key_mem] + ", " + "false, false, false) {\n"
                 if len(variable) > 0:
-                    content_new += "\t\tOk(" + "_" + ") => {\n"
+                    content_new += "\t\t\t\tErr(_) => return Illegal_Instruction(),\n"
+                    content_new += "\t\t\t\tOk(" + "_" + ") => {\n"
                     element_reg = ""
                     element_reg_dict = dict()
+                    source_reg = ""
                     if index_var > 0:
                         for line_content in line_list:
                             if variable[index_var] in line_content:
@@ -13955,23 +14305,54 @@ def generate_sail_description(path, extensions_list):
                                                         element_reg = "X(" + right_op.replace("+1", "") + "_idx" + "+1)"
                                                     else:
                                                         element_reg = "X(" + right_op + "_idx" + ")"
+                                                    source_reg = right_op.replace("+1", "")
+                                                    source_reg += "_idx"
                                                 else:
                                                     element_reg = "X(" + right_op + ")"
+                                                    source_reg = right_op.replace("+1", "")
                                                 element_reg_dict[variable[index_var]] = element_reg
                                                 if  len(variable) > 0 and len(variable) - 1 > index_var:
                                                     index_var += 1
                         index_var = 1
                         if variable[index_var] in element_reg_dict.keys():
-                            content_new += "\t\t\tlet " + variable[index_var] + " : MemoryOpResult(bool) = mem_write_value(" + p_address + ", " + mem_values[key_mem] + ", " + element_reg_dict[variable[index_var]] + ", " + "false, false, false) in\n"
-                        content_new += "\t\t\tmatch result {\n"
-                        content_new += "\t\t\t\tOk(true) =>{\n"
+                            content_new += "\t\t\t\t\tlet value_low : bits(32) = " + element_reg_dict[variable[index_var]] + " in \n"
+                            content_new += "\t\t\t\t\tmatch mem_write_value(" + p_address + ", " + mem_values[key_mem] + ", " + "value_low" + ", " + "false, false, false) {\n"
+                        content_new += "\t\t\t\t\t\tErr(_) => return Illegal_Instruction(),\n"
+                        content_new += "\t\t\t\t\t\tOk(true) => {\n"
+                        content_new += "\t\t\t\t\t\t\tlet value_high : bits(32) = \n"
+                        if len(condition_dict.keys()) > 0:
+                            for condition_key in condition_dict.keys():
+                                condition_line = condition_dict[condition_key][0]
+                                if 'if' in condition_key:
+                                    condition_line = condition_line.replace(source_reg, "")
+                                    pattern = re.findall(r"\d+", condition_line.split("=")[1])
+                                    pattern_instr = re.findall(r"\w+\d*\_*\w*", condition_key)
+                                    content_new += "\t\t\t\t\t\t\t\tif encdec_reg(" + source_reg + ") == " + num2words.num2words(pattern[0]) + "s()" + " then\n"
+                                    content_new += "\t\t\t\t\t\t\t\t\t" + num2words.num2words(pattern[0]) + "s()\n"
+                                    content_new += "\t\t\t\t\t\t\t\telse\n"
+                                    content_new += "\t\t\t\t\t\t\t\t\tlet " + source_reg.replace("_idx", "") + "_hi : regidx = \n"
+                                    content_new += "\t\t\t\t\t\t\t\t\t\tif base_E_enabled then \n"
+                                    content_new += "\t\t\t\t\t\t\t\t\t\t\tregidx_offset(" + source_reg + ", to_bits(" + str(math.log(int(config_variables['LLVMRegBasicWidth']), 2) - 1).replace(".0", "") + ", 1))\n"
+                                    content_new += "\t\t\t\t\t\t\t\t\t\telse\n"
+                                    content_new += "\t\t\t\t\t\t\t\t\t\t\tregidx_offset(" + source_reg + ", to_bits(" + str(math.log(int(config_variables['LLVMRegBasicWidth']), 2)).replace(".0", "") + ", 1))\n"
+                                    content_new += "\t\t\t\t\t\t\t\t\tin X(" + source_reg.replace("_idx", "") + "_hi);\n"
+                                    break
                 if  len(variable) > 0 and len(variable) - 1 > index_var:
                     index_var += 1
                 virtual_shift_address = ""
                 if len(list(mem_values.keys())) > 1:
                     index += 1
-                    content_new += "\t\t\t\tmatch translateAddr(" + "virtaddr" + "(" + list(mem_values.keys())[index] + ")" + ", " + "Write(Data)) {\n"
-                    content_new += "\t\t\t\tTR_Failure(e, _) => {handle_mem_exception(" + "virtaddr" + "(" + list(mem_values.keys())[index] + ")" + ", e); RETIRE_FAIL},\n"
+                    content_new += "\t\t\t\t\t\t\tlet vaddr_hi : xlenbits = add_bits_int(vaddr, 4);\n"
+                    content_new += "\t\t\t\t\t\t\tmatch translateAddr(" + "Virtaddr" + "(" + "vaddr_hi" + ")" + ", " + "Store(Data)) {\n"
+                    content_new += "\t\t\t\t\t\t\tErr(_) => return Illegal_Instruction(),\n"
+                    content_new += "\t\t\t\t\t\t\tOk(" + p_address + "_hi, _) => {\n"
+                    content_new += "\t\t\t\t\t\t\t\tmatch mem_write_ea(" + p_address + "_hi, 4, false, false, false) {\n"
+                    content_new += "\t\t\t\t\t\t\t\t\tErr(_) => return Illegal_Instruction(),\n"
+                    content_new += "\t\t\t\t\t\t\t\t\tOk(_) => {\n"
+                    content_new += "\t\t\t\t\t\t\t\t\t\tmatch mem_write_value(" + p_address + "_hi, 4, value_high, false, false, false) {\n"
+                    content_new += "\t\t\t\t\t\t\t\t\t\t\tErr(_) => return Illegal_Instruction(),\n"
+                    content_new += "\t\t\t\t\t\t\t\t\t\t\tOk(true) => RETIRE_SUCCESS,\n"
+                    content_new += "\t\t\t\t\t\t\t\t\t\t}\n"
                     p_shift_addr = list(mem_values.keys())[index].replace("v", "p")
                     key_mem = list(mem_values.keys())[index]
                     pattern = re.compile(r'[a-zA-Z0-9]*')
@@ -13980,9 +14361,6 @@ def generate_sail_description(path, extensions_list):
                         list_regex.remove('')
                     p_shift_addr = str(list_regex[0]) + "_" + str(list_regex[1:]).replace("['", "").replace("']", "")
                     virtual_shift_address = str(list_regex[0]).replace("p", "v") + "+" + str(list_regex[1:]).replace("['", "").replace("']", "")
-                    content_new += "\t\t\t\tTR_Address("  + p_shift_addr + ", _) =>\n"
-                    content_new += "\t\t\t\t\tmatch mem_write_ea(" + p_shift_addr + ", " + mem_values[key_mem] + ", false, false, false) {\n"
-                    content_new += "\t\t\t\t\t\tOk(" + "_" + ") => {\n"
                     value_condition_checked = False
                     instrfield_set = ""
                     if len(condition_dict.keys()) > 0:
@@ -14012,7 +14390,6 @@ def generate_sail_description(path, extensions_list):
                                     condition_key = condition_key.replace("(", "", 1)
                                 if condition_key.rstrip(" \n").endswith(")"):
                                     condition_key = condition_key[:-2]
-                                content_new += "\t\t\t\t\t\t\tlet value : xlenbits = " + condition_key.replace(pattern[0], num2words.num2words(pattern[0])).rstrip(" ") + "s()" + " then " + num2words.num2words(pattern[0]) + "s()" + " "
                             if 'else'  in condition_key:
                                 for element in variable:
                                     if element  + "=" in condition_line:
@@ -14029,15 +14406,10 @@ def generate_sail_description(path, extensions_list):
                                             if str(2 ** int(instrfields[instrfield]['width'])) != config_variables['LLVMRegBasicWidth']:
                                                 condition_line = condition_line.replace(instrfield + "+1", instrfield + "+1" +"_idx")
                                 condition_line = condition_line.replace(instrfield_set + "+1", "regidx_offset(" + instrfield_set + ", " + "to_bits(" + instrfields[instrfield_set]['width'] + ",1))")
-                                content_new += condition_key + condition_line.strip(";") + " in" + "\n"
                                 value_condition_checked = True
                     index_var = 0
                     if  len(variable) > 0 and len(variable) - 1 > index_var:
                         if index_var > 1:
-                            if value_condition_checked is True:
-                                content_new += "\t\t\t\t\t\t\tlet " + variable[index_var] + " : MemoryOpResult(bool) = mem_write_value(" + p_shift_addr + ", " + mem_values[key_mem] + ", " "value, " + "false, false, false) in\n"
-                                content_new += "\t\t\t\t\t\t\tmatch " + variable[index_var] + " {\n"
-                            else:
                                 element_copy = element_reg_dict[variable[index_var]]
                                 fixed_instrfield = ""
                                 idx_enabled = False
@@ -14057,61 +14429,49 @@ def generate_sail_description(path, extensions_list):
                                     reg_function = element_copy.replace(element_copy_instrfield, "regidx_offset(" + fixed_instrfield + ", " + "to_bits(" + str(int(math.log2(int(config_variables['LLVMRegBasicWidth'])))) + ",1))")
                                 else:
                                     reg_function = element_copy.replace(element_copy_instrfield, "regidx_offset(" + fixed_instrfield + ", " + "to_bits(" + instrfields[element_copy_instrfield]['width'] + ",1))")
-                                content_new += "\t\t\t\t\t\t\tlet " + variable[index_var] + " : MemoryOpResult(bool) = mem_write_value(" + p_shift_addr + ", " + mem_values[key_mem] + ", " + reg_function + ", " + "false, false, false) in\n"
-                                content_new += "\t\t\t\t\t\t\tmatch " + variable[index_var] + " {\n"
                         else:
                             while index_var <= 1:
                                 index_var += 1
                             if index_var > 1:
-                                if value_condition_checked is True:
-                                    content_new += "\t\t\t\t\t\t\tlet " + variable[index_var] + " : MemoryOpResult(bool) = mem_write_value(" + p_shift_addr + ", " + mem_values[key_mem] + ", " "value, " + "false, false, false) in\n"
-                                    content_new += "\t\t\t\t\t\t\tmatch " + variable[index_var] + " {\n"
+                                element_copy = element_reg_dict[variable[index_var]]
+                                fixed_instrfield = ""
+                                idx_enabled = False
+                                if '+1' in element_copy:
+                                    element_copy = element_copy.replace('+1', '')
+                                if '_idx' in element_copy:
+                                    element_copy = element_copy.replace("_idx", "")
+                                    idx_enabled = True
+                                element_copy_instrfield = element_copy.split("(")[1].replace(")", "")
+                                for instrfield in instrfields.keys():
+                                    if instrfield == element_copy_instrfield:
+                                        fixed_instrfield = instrfield
+                                        break
+                                if idx_enabled is True:
+                                    fixed_instrfield = element_copy_instrfield + "_idx"
+                                if str(2 ** int(instrfields[element_copy_instrfield]['width'])) != config_variables['LLVMRegBasicWidth']:
+                                    reg_function = element_copy.replace(element_copy_instrfield, "regidx_offset(" + fixed_instrfield + ", " + "to_bits(" + str(int(math.log2(int(config_variables['LLVMRegBasicWidth'])))) + ",1))")
                                 else:
-                                    element_copy = element_reg_dict[variable[index_var]]
-                                    fixed_instrfield = ""
-                                    idx_enabled = False
-                                    if '+1' in element_copy:
-                                        element_copy = element_copy.replace('+1', '')
-                                    if '_idx' in element_copy:
-                                        element_copy = element_copy.replace("_idx", "")
-                                        idx_enabled = True
-                                    element_copy_instrfield = element_copy.split("(")[1].replace(")", "")
-                                    for instrfield in instrfields.keys():
-                                        if instrfield == element_copy_instrfield:
-                                            fixed_instrfield = instrfield
-                                            break
-                                    if idx_enabled is True:
-                                        fixed_instrfield = element_copy_instrfield + "_idx"
-                                    if str(2 ** int(instrfields[element_copy_instrfield]['width'])) != config_variables['LLVMRegBasicWidth']:
-                                        reg_function = element_copy.replace(element_copy_instrfield, "regidx_offset(" + fixed_instrfield + ", " + "to_bits(" + str(int(math.log2(int(config_variables['LLVMRegBasicWidth'])))) + ",1))")
-                                    else:
-                                        reg_function = element_copy.replace(element_copy_instrfield, "regidx_offset(" + fixed_instrfield + ", " + "to_bits(" + instrfields[element_copy_instrfield]['width'] + ",1))")
-                                    content_new += "\t\t\t\t\t\t\tlet " + variable[index_var] + " : MemoryOpResult(bool) = mem_write_value(" + p_shift_addr + ", " + mem_values[key_mem] + ", " + reg_function + ", " + "false, false, false) in\n"
-                                    content_new += "\t\t\t\t\t\t\tmatch " + variable[index_var] + " {\n"
+                                    reg_function = element_copy.replace(element_copy_instrfield, "regidx_offset(" + fixed_instrfield + ", " + "to_bits(" + instrfields[element_copy_instrfield]['width'] + ",1))")
                 index = 0
                 if len(variable) > 0:
                     if virtual_shift_address != "":
-                        content_new += "\t\t\t\t\t\t\t\tOk(true) => {RETIRE_SUCCESS},\n"
-                        content_new += "\t\t\t\t\t\t\t\tOk(false) => {internal_error(__FILE__, __LINE__, \"" + instr.lower() + " failed\")},\n"
-                        content_new += "\t\t\t\t\t\t\t\tErr(e) => {handle_mem_exception(" + "virtaddr" + "(" + virtual_shift_address + ")" + ", e); RETIRE_FAIL},\n"
-                        content_new += "\t\t\t\t\t\t\t}\n"
-                content_new += "\t\t\t\t\t},\n"
+                        content_new += "\t\t\t\t\t\t\t\t\t\t}\n"
+                    content_new += "\t\t\t\t\t\t\t\t\t}\n"
                 if  len(variable) > 0:
-                    content_new += "\t\t\t\tErr(e) => {handle_mem_exception(" + "virtaddr" + "(" + virtual_address + ")" + ", e); RETIRE_FAIL},\n"
-                content_new += "\t\t\t\t}\n"
-                content_new += "\t\t\t}\n"
-                content_new += "\t\t\t},\n"
+                    content_new += "\t\t\t\t\t\t\t\t}\n"
+                    content_new += "\t\t\t\t\t\t\t}\n"
+                    content_new += "\t\t\t\t\t\t}\n"
                 if  len(variable) > 0:
                     index = 1
-                    if len(list(mem_values.keys())) > index:
-                        content_new += "\t\t\tOk(false) => {internal_error(__FILE__, __LINE__, \"" + instr.lower() + " failed\")},\n"
-                        content_new += "\t\t\tErr(e) => {handle_mem_exception(" + "virtaddr" + "(" + list(mem_values.keys())[index] + ")" + ", e); RETIRE_FAIL},\n"
-                content_new += "\t\t\t}\n"
-                content_new += "\t\t},\n"
+                    content_new += "\t\t\t\t\t}\n"
+                    content_new += "\t\t\t\t}\n"
                 if  len(variable) > 0:
-                    content_new += "\t\tErr(e) => {handle_mem_exception(" + "virtaddr" + "(" + virtual_address + ")" + ", e); RETIRE_FAIL},\n"
-                content_new += "\t\t},\n"
-                content_new += "\t}\n"
+                    content_new += "\t\t\t}\n"
+                    content_new += "\t\t}\n"
+                    content_new += "\t}\n"
+                    content_new += "else\n"
+                    content_new += "\treturn Illegal_Instruction()\n"
+                    content_new += "}\n"
                 content_function = content_new
             else:
                 action_parsed = instructions[instr]['action']
@@ -14346,11 +14706,13 @@ def generate_sail_description(path, extensions_list):
                                     if instrfield == result.strip(" ").strip(";"):
                                         result = result.replace(instrfield, "imm_val")
                                         break
-                        content_execute += condition.rstrip(" ") + " then " + "{\n"
-                        content_execute += "\t\tlet t : xlenbits = " + result + "\n"
+                        if result != "":
+                            content_execute += condition.rstrip(" ") + " then " + "{\n"
+                            content_execute += "\t\tlet t : xlenbits = " + result + "\n"
                         if 'PC' in result:
                             content_execute += "\t\tset_next_pc(t);\n"
-                        content_execute += "\t};\n"
+                        if result != "":
+                            content_execute += "\t};\n"
                 if content_execute_action is True and content_execute != "":
                     content_execute = content_execute.rstrip("\n")
                     content_execute = content_execute + " in" + "\n"
@@ -14366,10 +14728,7 @@ def generate_sail_description(path, extensions_list):
                         content_execute += "\tX(" + destination + ") = result;\n"
                 content_function += content_execute
                 content_function += "\tRETIRE_SUCCESS\n"
-            if if_activated is True:
-                content_function += "\telse RETIRE_FAIL\n"
-            content_function += "}"
-            ast_clause = "union clause ast = " + key.upper() + " : " + "("
+            ast_clause = "union clause instruction = " + key.upper().replace(".", "_") + " : " + "("
             for element in ast_clause_list:
                 if element in instrfield_imm.keys():
                     ast_clause += "bits(" + str(int(instrfield_imm[element]['width'])) + ")"
@@ -14392,11 +14751,11 @@ def generate_sail_description(path, extensions_list):
                             f = open(file_name, 'a')
                             f.write(ast_clause)
                             f.write("\n\n")
-                            f.write(statement + "\n" + "\t" + if_statement + "\n" + content + "\n" + "\t" + if_statement)
+                            f.write(statement + "\n" + "\t" + "\n" + content + "\n" + "\t" + if_statement)
                             f.write("\n\n")
                             f.write(function_clause + content_function + "\n")
                             f.write("\n")
-                            f.write(statement_assembly + "\n" + "\t" + if_statement + "\n" + content_assembly + "\n" + "\t" + if_statement)
+                            f.write(statement_assembly + "\n" + "\t" + "\n" + content_assembly + "\n" + "\t" + if_statement)
                             f.write("\n\n")
                             f.close()
             else:
@@ -14410,20 +14769,31 @@ def generate_sail_description(path, extensions_list):
                                 f = open(file_name, 'a')
                                 f.write(ast_clause)
                                 f.write("\n\n")
-                                f.write(statement + "\n" + "\t" + if_statement + "\n" + content + "\n" + "\t" + if_statement)
+                                f.write(statement + "\n" + "\t" + "\n" + content + "\n" + "\t" + if_statement)
                                 f.write("\n\n")
                                 f.write(function_clause + content_function + "\n")
                                 f.write("\n")
-                                f.write(statement_assembly + "\n" + "\t" + if_statement + "\n" + content_assembly + "\n" + "\t" + if_statement)
+                                f.write(statement_assembly + "\n" + "\t" + "\n" + content_assembly + "\n" + "\t" + if_statement)
                                 f.write("\n\n")
                                 f.close()
                                 
-## This function generates the description for adding a new feature in LLVM project
-#
-# @param file_name Specifies the file in which the content will be generated
-# @param extension_list Specifies the list of extensions enabled
-# @return It returns the definition for a new feature                                 
 def generate_extension_definition(file_name, extension_list):
+    """
+    Generates the description for adding a new feature (extension) in the LLVM project.
+
+    This function creates the TableGen definitions required for enabling a new
+    architectural extension. The generated content is adjusted based on the set
+    of enabled extensions provided by the user.
+
+    Args:
+        file_name (str): Name of the file in which the extension definitions
+            will be written.
+        extension_list (list[str]): List of enabled extensions. The function
+            generates feature definitions only for these extensions.
+
+    Returns:
+        str: Generated definition describing the new feature(s) to be added to LLVM.
+    """
     config_variables = config.config_environment(config_file, llvm_config)
     instructions = adl_parser.parse_instructions_from_adl(config_variables["ADLName"])[0]
     attributes = list()

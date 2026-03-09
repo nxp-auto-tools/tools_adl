@@ -1,4 +1,4 @@
-# Copyright 2023-2025 NXP
+# Copyright 2023-2026 NXP
 # SPDX-License-Identifier: BSD-2-Clause
 ## @package legalDisclaimer
 #
@@ -7,12 +7,18 @@ from datetime import date
 import os
 
 
-## A simple wrapper on top of a file
-# It can add the copyright and "generated" comments
-#
-# @param filename The file it writes into
-# @return The string representing copyright
 def get_copyright(filename):
+    """
+    A simple wrapper around a file used to generate copyright and
+    auto‑generated notices.
+
+    Args:
+        filename (str): Name of the file into which the copyright
+            and generated comments will be written.
+
+    Returns:
+        str: The generated copyright string.
+    """
     string = """/*=============================================================================================*/
 /* Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.               */
 /* See https://llvm.org/LICENSE.txt for license information.                                   */
@@ -31,10 +37,14 @@ def get_copyright(filename):
     f.write(string)
     f.close()
 
-## A function that will return the string for determining its length
-#
-# @return It will return the strings
 def get_copyright_len():
+    """
+    Returns the string used to determine its length for copyright
+    and generated-comment handling.
+
+    Returns:
+        str: A string whose length is used for formatting or validation.
+    """
     string = """/*=======================================================================================*/
 /* Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.         */
 /* See https://llvm.org/LICENSE.txt for license information.                             */
@@ -45,11 +55,17 @@ def get_copyright_len():
     return string
 
 
-## A simple wrapper on top of a file
-#
-# @param filename The file it writes into
-# @return A basic string
 def get_generated_file(filename):
+    """
+    A simple wrapper for a file, used to generate a basic "generated" marker string.
+
+    Args:
+        filename (str): Name of the file into which the generated marker
+            or metadata will be written.
+
+    Returns:
+        str: A basic generated-string marker.
+    """
     string = """"""
     list_dir = list()
     for fname in os.listdir("."):
@@ -70,10 +86,13 @@ def get_generated_file(filename):
         f.close()
 
 
-## A function that will return the string for determining its length
-#
-# @return It will return the string
 def get_generated_file_len():
+    """
+    Returns the string used to determine its length for the generated-file marker.
+
+    Returns:
+        str: A string used to compute the length of the generated-file marker.
+    """
     string = """
 // This file is generated, DO NOT EDIT IT DIRECTLY!\n
 """

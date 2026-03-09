@@ -1,71 +1,112 @@
-# Copyright 2023-2025 NXP 
+# Copyright 2023-2026 NXP
 # SPDX-License-Identifier: BSD-2-Clause
 
-## @package make_test
-# The main module which generates tests for all instructions
-#
-# Run this from the command line using "python make_test.py <adl_name> <extension(s)>"
+import logging
 import os
 import shutil
 import sys
-import generate_inst_tests
-import generate_reference
-import utils
-import parse
+from tools.testing import parse
+from tools.testing import utils
+from tools.testing.encoding import write_refs
+from tools.testing.encoding import write_tests
 
 
-## The main function that calls all the necessary functions for the build
-#
-# @note Extensions must be separated by comma
-def main():
-    # Get the command line arguments
-    adl_file_path, adl_file_name, extension_list, output_dir, display_extensions = utils.cmd_args()
+# Set up logging configuration
+logging.basicConfig(
+    level=logging.INFO,  # Change to DEBUG for verbose output
+    format="%(asctime)s [%(levelname)s] %(message)s",
+)
+logger = logging.getLogger(__name__)
 
-    # A dictionary with instructions and associated attribute prefixes
-    instruction_attributes_dict, norv32_instruction_attributes_dict = parse.instruction_attribute(adl_file_path)
-    instruction_attributes_dict = utils.set_available_extensions(instruction_attributes_dict)
 
-    # Check for invalid extensions
-    if extension_list is not None:
-        extension_error = [extension for extension in extension_list if not any(extension in attributes for attributes in instruction_attributes_dict.values())]
+def main() -> None:
+    """
+    Main function that orchestrates the test generation process.
+    Parses arguments, loads configurations, and generates encoding tests and references.
+    """
+    logger.info("Starting encoding test generation tool")
+
+    try:
+        args = parse.parse_encoding_command_line_args()
+        logger.info(f"Using ADL file: {args.adl_file_path}")
+    except Exception as e:
+        logger.error(f"Failed to parse command line arguments: {e}")
+        sys.exit(1)
+
+    try:
+        cores = parse.get_cores_element(args.adl_file_path)
+        logger.info("Parsed info from ADL file.")
+    except Exception as e:
+        logger.error(f"Failed to parse ADL file: {e}")
+        sys.exit(1)
+
+    try:
+        instructions = utils.filter_instructions(
+            parse.parse_instructions(cores), utils.load_llvm_config(), args.extensions
+        )
+        logger.info(f"Loaded {len(instructions)} instructions.")
+    except Exception as e:
+        logger.error(f"Failed to parse or filter instructions: {e}")
+        sys.exit(1)
+
+    # Extract available attributes for validation
+    available_attributes = set(
+        attr for instr in instructions for attr in instr.attributes
+    )
+
+    if args.extensions is not None:
+        extension_error = [
+            ext for ext in args.extensions if ext not in available_attributes
+        ]
         if extension_error:
-            sys.exit(f"Error: The following extensions were not found: {', '.join(extension_error)}")
+            logger.error(
+                f"The following extensions were not found: {', '.join(extension_error)}"
+            )
+            sys.exit(1)
+        logger.info(f"Filtering only for extensions: {', '.join(args.extensions)}")
 
-    if display_extensions:
-        sys.exit(f"Available extensions for instructions in this model: {list(dict.fromkeys(value for sublist in instruction_attributes_dict.values() for value in sublist))}")
+    if args.display_extensions:
+        logger.info("Displaying available extensions and exiting.")
+        sys.exit(f"Available extensions: {sorted(available_attributes)}")
 
-    # Check if the output directory exists and refresh it
-    if extension_list is not None:
-        if os.path.exists(os.path.join(output_dir, 'results_' + adl_file_name, 'tests_' + '_'.join(extension_list))):
-            shutil.rmtree(os.path.join(output_dir, 'results_' + adl_file_name, 'tests_' + '_'.join(extension_list)))
-
-        if os.path.exists(os.path.join(output_dir, 'results_' + adl_file_name, 'refs_' + '_'.join(extension_list))):
-            shutil.rmtree(os.path.join(output_dir, 'results_' + adl_file_name, 'refs_' + '_'.join(extension_list)))
-        # Create the "tests" folder if it doesn't exist
-        os.makedirs(os.path.join(output_dir, 'results_' + adl_file_name, 'tests_' + '_'.join(extension_list)), exist_ok=True)
-        
-        # Create the "references" folder if it doesn't exist
-        os.makedirs(os.path.join(output_dir, 'results_' + adl_file_name, 'refs_' + '_'.join(extension_list)), exist_ok=True)
+    # Prepare output directories
+    if args.extensions is not None:
+        test_dir = os.path.join(
+            args.output_dir,
+            f"results_{args.adl_file_name}",
+            f"tests_{'_'.join(args.extensions)}",
+        )
+        ref_dir = os.path.join(
+            args.output_dir,
+            f"results_{args.adl_file_name}",
+            f"refs_{'_'.join(args.extensions)}",
+        )
     else:
-        if os.path.exists(os.path.join(output_dir, 'results_' + adl_file_name, 'tests_all')):
-            shutil.rmtree(os.path.join(output_dir, 'results_' + adl_file_name, 'tests_all'))
+        test_dir = os.path.join(
+            args.output_dir, f"results_{args.adl_file_name}", "tests_all"
+        )
+        ref_dir = os.path.join(
+            args.output_dir, f"results_{args.adl_file_name}", "refs_all"
+        )
 
-        if os.path.exists(os.path.join(output_dir, 'results_' + adl_file_name, 'refs_all')):
-            shutil.rmtree(os.path.join(output_dir, 'results_' + adl_file_name, 'refs_all'))
+    logger.info("Preparing output directories.")
+    for path in [test_dir, ref_dir]:
+        if os.path.exists(path):
+            logger.debug(f"Removing existing directory: {path}")
+            shutil.rmtree(path)
+        os.makedirs(path, exist_ok=True)
+        logger.debug(f"Created directory: {path}")
 
-        # Create the "tests" folder if it doesn't exist
-        os.makedirs(os.path.join(output_dir, 'results_' + adl_file_name, 'tests_all'), exist_ok=True)
-        
-        # Create the "references" folder if it doesn't exist
-        os.makedirs(os.path.join(output_dir, 'results_' + adl_file_name, 'refs_all'), exist_ok=True)
+    logger.info("Starting encoding tests generation.")
+    write_tests.write_tests()
+    logger.info("Test generation completed.")
 
+    logger.info("Starting refs generation.")
+    write_refs.write_refs()
+    logger.info("Refs generation completed.")
 
-    # Generate instruction encoding tests
-    generate_inst_tests.write_header()
-    generate_inst_tests.generate_instructions()
+    logger.info("All operations completed successfully.")
 
-    # Generate references
-    generate_reference.generate_reference(adl_file_path)
 
 if __name__ == "__main__":
     main()

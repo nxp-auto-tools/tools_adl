@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<!--Copyright 2023-2025 NXP
+<!--Copyright 2023-2026 NXP
 SPDX-License-Identifier: BSD-2-Clause 
 -->
 <data>
 <cores>
 <core name="RV32IC">
 <licenseText>
-<str> Copyright 2023-2025 NXP
+<str> Copyright 2023-2026 NXP
 SPDX-License-Identifier: BSD-2-Clause </str>
 </licenseText>
 <doc>
@@ -3827,7 +3827,7 @@ The base Risc-V 32-bit integer instruction set. Based upon version 2.0.
 <str>rv32i2p1_c2p0</str>
 </attributes>
 <mattrib>
-<str></str>
+<str>+c</str>
 </mattrib>
 </asm_config>
 <helpers>

@@ -1,17 +1,16 @@
 #!/bin/bash
-# Copyright 2023-2025 NXP 
+# Copyright 2023-2026 NXP 
 # SPDX-License-Identifier: BSD-2-Clause
 
-# 0. Add path for llvm-assembler, llvm-readelf, tests_folder, refs_folder, and lit_cfg
+# 0. Add path for llvm-assembler, llvm-readelf, tests_folder and refs_folder
 llvm_assembler=$1
 llvm_readelf=$2
 tests_folder=$3
 refs_folder=$4
-lit_cfg=$5
 
 
-if [ "$#" -ne 5 ]; then
-    echo "Usage: $0 <llvm-assembler> <llvm-readelf> <tests_folder> <refs_folder> <lit_cfg>"
+if [ "$#" -ne 4 ]; then
+    echo "Usage: $0 <llvm-assembler> <llvm-readelf> <tests_folder> <refs_folder>"
     return 1
 fi
 

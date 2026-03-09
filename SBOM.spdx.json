@@ -1,0 +1,42 @@
+{
+  "SPDXID": "SPDXRef-DOCUMENT",
+  "spdxVersion": "SPDX-2.3",
+  "creationInfo": {
+    "created": "2026-03-09T14:49:05Z",
+    "creators": [
+      "Organization: NXP"
+    ],
+    "licenseListVersion": "3.26"
+  },
+  "name": "tools_adl-0.5",
+  "dataLicense": "CC0-1.0",
+  "hasExtractedLicensingInfos": [
+    {
+      "name": "BSD 2-clause FreeBSD License",
+      "licenseId": "LicenseRef-5eb66925-abf8-45f4-a079-7c6337d8bf7b",
+      "extractedText": "The FreeBSD Copyright\n=====================\n\nCopyright 1992-2012 The FreeBSD Project. All rights reserved.\n\nRedistribution and use in source and binary forms, with or without modification,\nare permitted provided that the following conditions are met:\n\n  1. Redistributions of source code must retain the above copyright notice, this\n    list of conditions and the following disclaimer.\n\n  2. Redistributions in binary form must reproduce the above copyright notice,\n    this list of conditions and the following disclaimer in the documentation\n    and/or other materials provided with the distribution.\n\nTHIS SOFTWARE IS PROVIDED BY THE FREEBSD PROJECT ``AS IS'' AND ANY EXPRESS OR\nIMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF\nMERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT\nSHALL THE FREEBSD PROJECT OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,\nINCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT\nLIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR\nPROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,\nWHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR\nOTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF\nTHE POSSIBILITY OF SUCH DAMAGE.\n\nThe views and conclusions contained in the software and documentation are those\nof the authors and should not be interpreted as representing official policies,\neither expressed or implied, of the FreeBSD Project."
+    }
+  ],
+  "documentNamespace": "https://nxp.com/spdx/fb57a777-1cdb-4ae8-aa07-56f06e4ea180",
+  "packages": [
+    {
+      "SPDXID": "SPDXRef-package-fb57a777-1cdb-4ae8-aa07-56f06e4ea180",
+      "name": "tools_adl",
+      "versionInfo": "0.5",
+      "licenseConcluded": "(LicenseRef-5eb66925-abf8-45f4-a079-7c6337d8bf7b)",
+      "licenseDeclared": "(LicenseRef-5eb66925-abf8-45f4-a079-7c6337d8bf7b)",
+      "downloadLocation": "https://github.com/nxp-auto-tools/tools_adl",
+      "originator": "Organization: tools_adl",
+      "supplier": "NOASSERTION",
+      "externalRefs": [],
+      "filesAnalyzed": false
+    }
+  ],
+  "relationships": [
+    {
+      "spdxElementId": "SPDXRef-DOCUMENT",
+      "relationshipType": "DESCRIBES",
+      "relatedSpdxElement": "SPDXRef-package-fb57a777-1cdb-4ae8-aa07-56f06e4ea180"
+    }
+  ]
+}
