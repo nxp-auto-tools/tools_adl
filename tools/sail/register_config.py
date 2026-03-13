@@ -95,15 +95,15 @@ VR = {
         # Define ranges for the calling convention
         # Format: (start_index, end_index, description)
         'ranges': [
-            (0, 0, 'Lower_0'),
-            (1, 1, 'Lower_1'),
-            (2, 2, 'Lower_2'),
-            (3, 3, 'Lower_3'),
-            (4, 4, 'Lower_4'),
-            (5, 5, 'Lower_5'),
-            (6, 6, 'Lower_6'),  
-            (7, 7, 'Lower_7'),
-            (8, 31, 'Higher')
+            (0, 0, 'Temporary_0'),
+            (1, 1, 'Temporary_1'),
+            (2, 2, 'Temporary_2'),
+            (3, 3, 'Temporary_3'),
+            (4, 4, 'Temporary_4'),
+            (5, 5, 'Temporary_5'),
+            (6, 6, 'Temporary_6'),  
+            (7, 7, 'Temporary_7'),
+            (8, 31, 'Temporary')
         ]
     }
 }

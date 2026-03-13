@@ -138,7 +138,7 @@ TargetOverlapConstraintTypeTSFlagsEnd = 21
 
 
 // ---- Calling Convention -----------------------------------------------------------------------------------
-RegisterAllocationOrder = {GPR: [(Function_arguments, [0,1]), (Temporary, [0,1]), (Saved_register, [0,1]), Hard_wired_zero, (Return_address, [0,1]), (Stack_pointer, [0,1]), (Global_pointer, [0,1]), (Thread_pointer, [0,1])], VR: [Higher, Lower_7, Lower_6, Lower_5, Lower_4, Lower_3, Lower_2, Lower_1, Lower_0]}
+RegisterAllocationOrder = {GPR: [(Function_arguments, [0,1]), (Temporary, [0,1]), (Saved_register, [0,1]), Hard_wired_zero, (Return_address, [0,1]), (Stack_pointer, [0,1]), (Global_pointer, [0,1]), (Thread_pointer, [0,1])], VR: [Temporary, Temporary_7, Temporary_6, Temporary_5, Temporary_4, Temporary_3, Temporary_2, Temporary_1, Temporary_0]}
 CallingConventionAllocationOrder = {}
 CallingConventionAllocationExcluded = {}
 XLenRIRegInfo = RegInfoByHwMode<[RV32, RV64], [RegInfo<32,32,32>, RegInfo<64,64,64>]>

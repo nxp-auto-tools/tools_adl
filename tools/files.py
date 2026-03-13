@@ -14110,7 +14110,7 @@ def generate_sail_description(path, extensions_list):
                     content_new += "else\n return Illegal_Instruction()\n"
                     content_new += "}\n"
                 if "RETIRE_SUCCESS" not in content_new:
-                    content_new += "\tRETIRE_SUCCESS\n"
+                    content_new += "\tRETIRE_SUCCESS\n}\n"
                 content_function = content_new
             elif 'store' in instructions[instr]['attributes']:
                 action = instructions[instr]['action']
@@ -14727,7 +14727,7 @@ def generate_sail_description(path, extensions_list):
                     else:
                         content_execute += "\tX(" + destination + ") = result;\n"
                 content_function += content_execute
-                content_function += "\tRETIRE_SUCCESS\n"
+                content_function += "\tRETIRE_SUCCESS\n}\n"
             ast_clause = "union clause instruction = " + key.upper().replace(".", "_") + " : " + "("
             for element in ast_clause_list:
                 if element in instrfield_imm.keys():
